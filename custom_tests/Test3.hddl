@@ -1,0 +1,77 @@
+(define (domain test)
+    (:types dummytype1 - object)
+    (:predicates
+        (pred1 ?r - robot)
+        (pred2 ?r - robot ?d - dummytype1)
+        (pred3 ?r - robot ?loc - location)
+        (pred4 ?r - robot)
+        (pred5 ?r - robot)
+    )
+    (:capabilities c1 c2 c3)
+
+    (:task AT1 :parameters (?r - robot ?l - location ?d - dummytype1))
+    (:method m1-at1
+        :parameters (?r - robot ?l - location ?d - dummytype1)
+        :task (AT1 ?r ?l ?d)
+        :precondition ()
+        :subtasks (and
+            (t1 (a1 ?r ?l))
+            (t2 (a2 ?r ?d))
+            (t3 (a3 ?r ?l))
+            (t4 (a4 ?r ?d))
+        )
+        :ordering (and
+            (t1 < t2)
+            (t1 < t3)
+        )
+    )
+
+    (:action a1
+        :parameters (?r - robot ?l - location)
+        :required-capabilities (c1)
+        :precondition (and
+            (at ?r ?l)
+            (pred3 ?r ?l)
+            (hascapability ?r c1)
+        )
+        :effect (and
+            (pred1 ?r)
+        )
+    )
+
+    (:action a2
+        :parameters (?r - robot ?d - dummytype1)
+        :required-capabilities (c2)
+        :precondition (and
+            (pred2 ?r ?d)
+            (pred1 ?r)
+            (hascapability ?r c2)
+        )
+        :effect (and
+            (pred4 ?r)
+        )
+    )
+
+    (:action a3
+        :parameters (?r - robot ?l - location)
+        :required-capabilities (c2)
+        :precondition (and
+            (pred4 ?r)
+            (at ?r ?l)
+            (hascapability ?r c3)
+        )
+        :effect (and
+            (pred5 ?r)
+        )
+    )
+
+    (:action a4
+        :parameters (?r - robot ?d - dummytype1)
+        :required-capabilities (c3)
+        :precondition (and
+            (pred5 ?r)
+            (hascapability ?r c1)
+        )
+        :effect ()
+    )
+)

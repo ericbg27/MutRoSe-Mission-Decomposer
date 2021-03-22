@@ -1,0 +1,103 @@
+(define (domain hospital)
+    (:types room - object
+            MoveRobot CleanerRobot - robot)
+    (:predicates
+        (clean ?rm - room)
+        (sanitized ?r - robot)
+        (prepared ?rm - room)
+        (door-open ?rm - room)
+    )
+    (:capabilities moveobject cleaning sanitize door-opening)
+
+    (:task RoomCleaning :parameters (?r - CleanerRobot ?rm - room))
+    (:method room-cleaning-door-open
+        :parameters (?r - CleanerRobot ?rm - room)
+        :task (RoomCleaning ?r ?rm)
+        :precondition (and
+            (door-open ?rm)    
+        )
+        :ordered-subtasks (and
+            (clean-room ?r ?rm)
+        )
+    )
+    (:method room-cleaning-door-closed
+        :parameters (?r - CleanerRobot ?rm - room)
+        :task (RoomCleaning ?r ?rm)
+        :precondition (and
+            (not (door-open ?rm))
+        )
+        :subtasks (and
+            (a1 (open-door ?r ?rm))
+            (a2 (clean-room ?r ?rm))
+        )
+        :ordering (and
+            (a1 < a2)
+        )
+    )
+
+    (:action clean-room
+        :parameters (?r - CleanerRobot ?rm - room)
+        :required-capabilities (cleaning)
+        :precondition (and
+            (not (clean ?rm))
+        )
+        :effect (and
+            (clean ?rm)
+            (not (sanitized ?r))
+        )
+        :reliability (relClean)
+    )
+    (:action open-door
+        :parameters (?r - CleanerRobot ?rm - room)
+        :required-capabilities (door-opening)
+        :precondition (and
+            (not (door-open ?rm))
+        )
+        :effect (and
+            (door-open ?rm)
+        )
+        :reliability (relDoor)
+    )
+
+    (:task FurnitureMoving :parameters (?r1 ?r2 - MoveRobot ?rm - room))
+    (:method furniture-moving
+        :parameters (?r1 ?r2 - Moverobot ?rm - room)
+        :task (FurnitureMoving ?r1 ?r2 ?rm)
+        :precondition ()
+        :ordered-subtasks (and
+            (move-furniture ?r1 ?r2 ?rm)
+        )
+    )
+
+    (:action move-furniture
+        :parameters (?r1 ?r2 - robot ?rm - room)
+        :required-capabilities (moveobject)
+        :precondition ()
+        :effect (and
+            (prepared ?rm)
+        )
+        :reliability (relMove)
+    )
+
+    (:task RobotSanitization :parameters (?r - CleanerRobot ?srm - room))
+    (:method robot-sanitization
+        :parameters (?r - CleanerRobot ?srm - room)
+        :task (RobotSanitization ?r ?srm)
+        :precondition ()
+        :ordered-subtasks (and
+            (sanitize-robot ?r ?srm)
+        )
+    )
+
+    (:action sanitize-robot
+        :parameters (?r - CleanerRobot ?srm - room)
+        :required-capabilities (sanitize)
+        :precondition (and
+            (not (sanitized ?r))
+        )
+        :effect (and
+            (sanitized ?r)
+        )
+        :reliability (relSanitize)
+    )
+)

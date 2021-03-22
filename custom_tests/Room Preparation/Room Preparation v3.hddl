@@ -1,0 +1,80 @@
+(define (domain hospital)
+    (:types room - object
+            MoveRobot CleanerRobot - robot)
+    (:predicates
+        (clean ?rm - room)
+        (sanitized ?r - robot)
+        (prepared ?rm - room)
+    )
+    (:capabilities moveobject cleaning sanitize)
+
+    (:task RoomCleaning :parameters (?r - CleanerRobot ?rm - room))
+    (:method room-cleaning
+        :parameters (?r - CleanerRobot ?rm - room)
+        :task (RoomCleaning ?r ?rm)
+        :precondition ()
+        :ordered-subtasks (and
+            (clean-room ?r ?rm)
+        )
+    )
+
+    (:action clean-room
+        :parameters (?r - CleanerRobot ?rm - room)
+        :required-capabilities (cleaning)
+        :precondition (and
+            (not (clean ?rm))
+            (hascapability ?r cleaning)
+        )
+        :effect (and
+            (clean ?rm)
+            (not (sanitized ?r))
+        )
+        :reliability (relClean)
+    )
+
+    (:task FurnitureMoving :parameters (?r1 ?r2 - MoveRobot ?rm - room))
+    (:method furniture-moving
+        :parameters (?r1 ?r2 - Moverobot ?rm - room)
+        :task (FurnitureMoving ?r1 ?r2 ?rm)
+        :precondition ()
+        :ordered-subtasks (and
+            (move-furniture ?r1 ?r2 ?rm)
+        )
+    )
+
+    (:action move-furniture
+        :parameters (?r1 ?r2 - robot ?rm - room)
+        :required-capabilities (moveobject)
+        :precondition (and
+            (hascapability ?r1 moveobject)
+            (hascapability ?r2 moveobject)
+        )
+        :effect (and
+            (prepared ?rm)
+        )
+        :reliability (relMove)
+    )
+
+    (:task RobotSanitization :parameters (?r - CleanerRobot ?srm - room))
+    (:method robot-sanitization
+        :parameters (?r - CleanerRobot ?srm - room)
+        :task (RobotSanitization ?r ?srm)
+        :precondition ()
+        :ordered-subtasks (and
+            (sanitize-robot ?r ?srm)
+        )
+    )
+
+    (:action sanitize-robot
+        :parameters (?r - CleanerRobot ?srm - room)
+        :required-capabilities (sanitize)
+        :precondition (and
+            (not (sanitized ?r))
+            (hascapability ?r sanitize)
+        )
+        :effect (and
+            (sanitized ?r)
+        )
+        :reliability (relSanitize)
+    )
+)

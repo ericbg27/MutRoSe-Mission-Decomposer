@@ -1,0 +1,45 @@
+<tasks>
+    <task>
+        <id></id>
+        <name></name>
+        <location></location>
+        <robots_num fixed="True"></robots_num>
+        <preconditions>
+            <!--Preconditions are planned to be given as attributes and not FOL predicates-->
+        </preconditions>
+        <decomposition>
+            <action>
+            </action>
+        <decomposition>
+    </task>
+</tasks>
+
+<actions>
+    <action>
+        <name></name>
+        <rewards></rewards>
+        <preconditions></preconditions>
+        <effects></effects>
+        <capabilities number=""></capabilities>
+        <robots_num fixed="True"></robots_num>
+    </action>
+</actions>
+
+<constraints>
+    <constraint>
+        <type>SEQ</type>
+        <task_instances>
+            <!--Here we just put the id of the task instances-->
+            <id0></id0>
+            <id1></id1>
+        </task_instances>
+    </constraint>
+</constraints>
+
+<mission_decompositions>
+    <decomposition>
+        <tasks>
+            <task></task>
+        </tasks>
+    <decomposition>
+</mission_decompositions>
