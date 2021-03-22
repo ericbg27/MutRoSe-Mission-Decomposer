@@ -99,4 +99,6 @@ void find_non_coop_task_ids(ATGraph mission_decomposition, int node_id, set<int>
 
 bool can_unite_decompositions(Decomposition d1, Decomposition d2, bool non_coop_nodes);
 
+void print_mission_decomposition(ATGraph mission_decomposition);
+
 #endif

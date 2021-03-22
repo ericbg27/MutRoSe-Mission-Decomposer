@@ -31,6 +31,8 @@ struct Robot {
 void initialize_world_state(KnowledgeBase robotsdb, KnowledgeBase worlddb, vector<ground_literal>& init, vector<pair<ground_literal,int>>& init_functions, 
                                 vector<SemanticMapping> semantic_mapping, map<string,string> type_mapping, map<string,set<string>> sorts);
 
+void print_world_state(vector<ground_literal> world_state);
+
 inline bool operator==(const Robot& r1, const Robot& r2) {
     return (r1.name == r2.name);
 }

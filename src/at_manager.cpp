@@ -387,3 +387,48 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 
 	return at_instances;
 }
+
+void print_at_instances_info(map<string,vector<AbstractTask>> at_instances) {
+	map<string,vector<AbstractTask>>::iterator at_it;
+	cout << "AT instances:" << endl;
+	for(at_it = at_instances.begin();at_it != at_instances.end();++at_it) {
+		cout << "AT name: " << at_it->first << endl;
+		for(AbstractTask inst : at_it->second) {
+			cout << "ID: " << inst.id << endl;
+			cout << "Name: " << inst.name << endl;
+			cout << "Variable Mappings:" << endl;
+			for(auto var_map : inst.variable_mapping) {
+				cout << var_map.second << ": " << var_map.first << endl;
+			}
+			cout << "Triggering Events:" << endl;
+			for(string event : inst.triggering_events) {
+				cout << event << ", ";
+			}
+			cout << endl;
+		}
+	}
+}
+
+void print_at_paths_info(map<string,vector<vector<task>>> at_decomposition_paths) {
+	map<string,vector<vector<task>>>::iterator at_paths_it;
+
+	for(at_paths_it = at_decomposition_paths.begin();at_paths_it != at_decomposition_paths.end();++at_paths_it) {
+		cout << "Abstract task " << at_paths_it->first << " decomposition paths:" << endl;
+
+		for(auto path : at_paths_it->second) {
+			cout << "#####################################" << endl;
+			cout << "Path: ";
+			for(auto t : path) {
+				cout << t.name;
+				if(t.name != path.back().name) {
+					cout << " -> ";
+				} else {
+					cout << endl;
+				}
+			}
+			cout << "#####################################" << endl;
+		}
+
+		cout << endl;
+	}
+}

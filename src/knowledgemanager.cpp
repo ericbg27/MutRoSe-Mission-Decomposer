@@ -289,3 +289,28 @@ void initialize_world_state(KnowledgeBase robotsdb, KnowledgeBase worlddb, vecto
         -> For now, we don't deal with reliabilities
     */
 }
+
+void print_world_state(vector<ground_literal> world_state) {
+    cout << "World state: " << endl;
+	for(ground_literal l : world_state) {
+		string state;
+		if(!l.positive) {
+			state += "not ";
+		}
+		state += l.predicate + " ";
+
+		unsigned int arg_num = 0;
+		for(string arg : l.args) {
+			state += arg;
+
+			arg_num++;
+			if(arg_num != l.args.size()) {
+				state += " ";
+			}
+		}
+
+		cout << state << endl;
+	}
+
+	cout << endl;
+}

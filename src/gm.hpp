@@ -172,4 +172,7 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v);
 
 int find_gm_node_by_id(string id, GMGraph gm);
 
+void print_gm_nodes_info(GMGraph gm);
+void print_gm_var_map_info(map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map);
+
 #endif

@@ -969,3 +969,33 @@ bool can_unite_decompositions(Decomposition d1, Decomposition d2, bool non_coop_
 
 	return can_unite;
 }
+
+void print_mission_decomposition(ATGraph mission_decomposition) {
+	ATGraph::vertex_iterator i, end;
+	ATGraph::adjacency_iterator ai, a_end;
+
+	for(boost::tie(i,end) = vertices(mission_decomposition); i != end; ++i) {
+		ATNode node = mission_decomposition[*i];
+		if(holds_alternative<AbstractTask>(node.content)) {
+			std::cout << get<AbstractTask>(node.content).id << " --> ";
+		} else if(holds_alternative<string>(node.content)) {
+			std::cout << get<string>(node.content) << " --> ";
+		} else {
+			std::cout << get<Decomposition>(node.content).id << " --> ";	
+		}
+
+		for(boost::tie(ai,a_end) = adjacent_vertices(*i,mission_decomposition); ai != a_end;++ai) {
+			ATNode a_node = mission_decomposition[*ai];
+			if(holds_alternative<AbstractTask>(a_node.content)) {
+				std::cout << get<AbstractTask>(a_node.content).id << " ";
+			} else if(holds_alternative<string>(a_node.content)) {
+				std::cout << get<string>(a_node.content) << " ";
+			} else {
+				std::cout << get<Decomposition>(a_node.content).id << " ";
+			}
+		}	
+		std::cout << std::endl;
+	}
+
+	std::cout << std::endl;
+}

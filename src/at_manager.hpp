@@ -23,4 +23,7 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
                                                         KnowledgeBase world_db, map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map,
                                                             vector<VariableMapping> var_mapping);
 
+void print_at_instances_info(map<string,vector<AbstractTask>> at_instances);
+void print_at_paths_info(map<string,vector<vector<task>>> at_decomposition_paths);
+
 #endif

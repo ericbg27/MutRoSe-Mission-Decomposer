@@ -1,4 +1,6 @@
 #include <string>
+#include <set>
+#include <map>
 
 using namespace std;
 
@@ -8,3 +10,5 @@ enum Mode{MODE_NORMAL,MODE_BOLD,MODE_CURSIVE,MODE_Y,MODE_UNDERLINE,MODE_BLINK};
 string color (Color color, string text, Mode m = MODE_NORMAL, Color background = COLOR_NONE);
 
 extern bool no_colors_in_output;
+
+void print_sorts(std::map<std::string,std::set<std::string>> sorts);

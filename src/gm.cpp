@@ -572,3 +572,51 @@ pair<int,int> parse_robot_number(string text) {
 
     return make_pair(lower_bound, upper_bound);
 }
+
+void print_gm_nodes_info(GMGraph gm) {
+    GMGraph::vertex_iterator i1, end1;
+	GMGraph::adjacency_iterator ai1, a_end1;
+
+	for(boost::tie(i1,end1) = vertices(gm); i1 != end1; ++i1) {
+		VertexData node = gm[*i1];
+
+		std::cout << "Node: " << node.text << std::endl;
+		std::cout << "Context: " << std::endl;
+
+		Context c;
+			
+		if(node.custom_props.find("CreationCondition") != node.custom_props.end()) {
+			c = get<Context>(node.custom_props["CreationCondition"]);
+
+			std::cout << "\tType: " << c.type << std::endl;
+			std::cout << "\tCondition: " << c.condition << std::endl;
+		} else {
+			std::cout << "\tNo Context" << std::endl;
+		}
+			
+		std::cout << std::endl;
+	}
+}
+
+void print_gm_var_map_info(map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
+    map<string, variant<pair<string,string>,pair<vector<string>,string>>>::iterator gm_var_it;
+	for(gm_var_it = gm_var_map.begin();gm_var_it != gm_var_map.end();++gm_var_it) {
+		cout << "Var name: " << gm_var_it->first << endl;
+		if(holds_alternative<pair<vector<string>,string>>(gm_var_it->second)) {
+			cout << "Mapping: [";
+			unsigned int cnt = 0;
+			vector<string> val_vec = get<pair<vector<string>,string>>(gm_var_it->second).first;
+			for(string val : val_vec) {
+				if(cnt == val_vec.size()-1) {
+					cout << val << "]" << endl << endl;
+				} else {
+					cout << val << ",";
+				}
+				cnt++;
+			} 
+		} else {
+			cout << "Mapping: " << get<pair<string,string>>(gm_var_it->second).first << endl << endl;
+		}
+	}
+
+}
