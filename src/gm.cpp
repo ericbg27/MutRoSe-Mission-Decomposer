@@ -39,6 +39,16 @@ int find_gm_node_by_id(string id, GMGraph gm) {
     return -1;
 }
 
+
+/*
+    Function: analyze_custom_props
+    Objective: Here we analyze all kinds of custom properties on a specific Goal Model vertex and
+    attribute them to the custom properties attribute of this vertex
+
+    @ Input 1: A map representing the custom properties
+    @ Input 2: The reference to the Goal Model vertex
+    @ Output: Void
+*/ 
 void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
     v.periodic = false;
     v.group = true;
@@ -127,6 +137,15 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
         - Other types of goals need to be considered here
     */
 }
+
+/*
+    Function: parse_gm_nodes
+    Objective: Parse GM nodes and attribute values to vertices in the GMGraph. We do not add them in
+    the GMGraph structure, only return the vertices and their user-defined ID's.
+
+    @ Input: A ptree representing the nodes
+    @ Output: A vector of vertices and their ids
+*/ 
 vector<pair<int,VertexData>> parse_gm_nodes(pt::ptree nodes) {
     vector<pair<int,VertexData>> vertex;
 
@@ -168,7 +187,15 @@ vector<pair<int,VertexData>> parse_gm_nodes(pt::ptree nodes) {
     return vertex;
 }
 
-vector<pair<int, pair<pair<int,int>, EdgeData>>> parse_gm_edges(pt::ptree links, GMGraph& gm, vector<pair<int,VertexData>> vertex) {
+/*
+    Function: parse_gm_edges
+    Objective: Parse GM edges and update vertices parent and children attributes based on them. Also, create
+    a vector of the edges and return them alongside the vertices linked by them
+
+    @ Input: A ptree representing the nodes
+    @ Output: A vector of vertices and their ids
+*/ 
+vector<pair<pair<int,int>, EdgeData>> parse_gm_edges(pt::ptree links, GMGraph& gm, vector<pair<int,VertexData>> vertex) {
     vector<pair<int, VertexData>>::iterator vertex_it;
     for(vertex_it = vertex.begin();vertex_it != vertex.end();++vertex_it) {
         boost::add_vertex(vertex_it->second, gm);
@@ -176,7 +203,7 @@ vector<pair<int, pair<pair<int,int>, EdgeData>>> parse_gm_edges(pt::ptree links,
 
     auto vertex_idMap = get(boost::vertex_index, gm);
 
-    vector<pair<int, pair<pair<int,int>, EdgeData>>> edges;
+    vector<pair<pair<int,int>, EdgeData>> edges;
 
     BOOST_FOREACH(pt::ptree::value_type& link, links) {
         EdgeData e;
@@ -201,12 +228,19 @@ vector<pair<int, pair<pair<int,int>, EdgeData>>> parse_gm_edges(pt::ptree links,
         gm[boost::vertex(s,gm)].parent = t;
         gm[boost::vertex(t,gm)].children.push_back(s);
 
-        edges.push_back(make_pair(gm[boost::vertex(s,gm)].x, make_pair(make_pair(s,t),e)));
+        edges.push_back(make_pair(make_pair(s,t),e));
     }
 
     return edges;
 }
 
+/*
+    Function: graph_from_property_tree
+    Objective: Here we generate the GMGraph from the property tree representing the Goal Model.
+
+    @ Input: A ptree representing the Goal Model 
+    @ Output: The GMGraph representing the Goal Model
+*/ 
 GMGraph graph_from_property_tree(pt::ptree root) {
     GMGraph gm;
 
@@ -230,15 +264,15 @@ GMGraph graph_from_property_tree(pt::ptree root) {
     //Retrieve edges from Goal Model
     links = root.get_child("links");
 
-    vector<pair<int, pair<pair<int,int>, EdgeData>>> edges;
+    vector<pair<pair<int,int>, EdgeData>> edges;
 
     edges = parse_gm_edges(links, gm, vertex);
 
-    vector<pair<int, pair<pair<int,int>, EdgeData>>>::iterator edges_it;
+    vector<pair<pair<int,int>, EdgeData>>::iterator edges_it;
     for(edges_it = edges.begin();edges_it != edges.end();++edges_it) {
-        int s = edges_it->second.first.first;
-        int t = edges_it->second.first.second;
-        EdgeData e = edges_it->second.second;
+        int s = edges_it->first.first;
+        int t = edges_it->first.second;
+        EdgeData e = edges_it->second;
 
         boost::add_edge(boost::vertex(t, gm), boost::vertex(s, gm), e, gm);
     }
@@ -246,6 +280,17 @@ GMGraph graph_from_property_tree(pt::ptree root) {
     return gm;
 }
 
+/*
+    Function: check_undefined_number_of_robots
+    Objective: Here we infer the number of robots in tasks that do not have the RobotNumber attribute.
+    This inferring occurs based on the HDDL Domain definition, since we assume that we can count the
+    number of robots in the HDDL definition for tasks that do not have the RobotNumber attribute.
+
+    @ Input 1: The reference to the GMGraph representing the Goal Model
+    @ Input 2: The vector of the abstract tasks
+    @ Input 3: The sort definitions, in order to infer types that are derived from the robot type 
+    @ Output: Void
+*/ 
 void check_undefined_number_of_robots(GMGraph& gm, vector<task> abstract_tasks, vector<sort_definition> sort_definitions) {
     auto nodes = vertices(gm);
 
@@ -264,6 +309,9 @@ void check_undefined_number_of_robots(GMGraph& gm, vector<task> abstract_tasks, 
                         if(var_type == "robot") {
                             robot_number++;
                         } else {
+                            if(var_type == "robotteam") { //Maybe later change this to deal with subtypes of robotteam
+                                throw std::runtime_error("Tasks without RobotNumber attribute cannot have robotteam variable!");
+                            }
                             bool is_robot_subtype = false;
                             for(sort_definition def : sort_definitions) {
                                 if(std::find(def.declared_sorts.begin(),def.declared_sorts.end(),var_type) != def.declared_sorts.end()) {
@@ -291,6 +339,13 @@ void check_undefined_number_of_robots(GMGraph& gm, vector<task> abstract_tasks, 
     }
 }
 
+/*
+    Function: parse_vars
+    Objective: Parse vars in OCL declaration syntax
+
+    @ Input: The string representing the var declaration
+    @ Output: The vector with variable names and OCL types
+*/ 
 vector<pair<string,string>> parse_vars(string var_decl) {
     stringstream ss(var_decl);
     vector<pair<string,string>> vars;
@@ -322,6 +377,14 @@ vector<pair<string,string>> parse_vars(string var_decl) {
     return vars;
 }
 
+/*
+    Function: parse_forAll_expr
+    Objective: Parse OCL forAll expression
+
+    @ Input: The string representing the forAll expression
+    @ Output: A vector with the iterated var at the first position, iteration var at the second
+    position and condition at the third position
+*/ 
 vector<string> parse_forAll_expr(string expr) {
     stringstream ss(expr);
     vector<string> res;
@@ -348,6 +411,14 @@ vector<string> parse_forAll_expr(string expr) {
     return res;
 }
 
+/*
+    Function: parse_achieve_condition
+    Objective: Parse AchieveCondition, which must be a forAll statement. With this we create an
+    AchieveCondition object and return it
+
+    @ Input: The string representing the achieve condition
+    @ Output: The generated achieve condition
+*/ 
 AchieveCondition parse_achieve_condition(string cond) {
     AchieveCondition a;
     if(cond.find("forAll") != std::string::npos) {
@@ -420,6 +491,14 @@ IterationRule parse_iterate_expr(string expr) {
     return it;
 }
 
+/*
+    Function: parse_select_expr
+    Objective: Parse OCL select expression, returning a QueriedProperty object. This is done due to
+    the fact that select statements are used in Query goals
+
+    @ Input: The string representing the select expression
+    @ Output: A QueriedProperty object generated from the select statement
+*/ 
 QueriedProperty parse_select_expr(string expr) {
     QueriedProperty q;
     stringstream ss(expr);
@@ -470,6 +549,13 @@ QueriedProperty parse_select_expr(string expr) {
     return q;
 }
 
+/*
+    Function: parse_at_text
+    Objective: Parse the text of an Abstract Task in the goal model
+
+    @ Input: The string representing the text of the abstract task
+    @ Output: A pair which contains the user-defined ID of the task and its description
+*/ 
 pair<string,string> parse_at_text(string text) {
     regex id("[AT]{2}[0-9]+");
     regex name("[a-zA-Z]+");
@@ -490,6 +576,13 @@ pair<string,string> parse_at_text(string text) {
     return at;
 }
 
+/*
+    Function: parse_goal_text
+    Objective: Parse the text of a Goal in the goal model
+
+    @ Input: The string representing the text of the goal
+    @ Output: A pair which contains the user-defined ID of the goal and its description
+*/ 
 pair<string,string> parse_goal_text(string text) {
     regex id("[G]{1}[0-9]+");
     regex name("[a-zA-Z]+");
@@ -510,7 +603,7 @@ pair<string,string> parse_goal_text(string text) {
     return g;
 }
 
-vector<pair<string,string>> parse_var_mapping(string text) {
+/*vector<pair<string,string>> parse_var_mapping(string text) {
     vector<string> mappings;
     stringstream ss(text);
 
@@ -550,8 +643,15 @@ vector<pair<string,string>> parse_var_mapping(string text) {
     }
 
     return parsed_mappings;
-}
+}*/
 
+/*
+    Function: parse_robot_number
+    Objective: Parse the RobotNumber attribute from a task
+
+    @ Input: The string representing the text of the RobotNumber attribute in the form "[n1,n2]"
+    @ Output: A pair representing the lower and upper bounds
+*/ 
 pair<int,int> parse_robot_number(string text) {
     size_t begin, sep, end;
 
@@ -568,11 +668,16 @@ pair<int,int> parse_robot_number(string text) {
     ss << text.substr(sep+1,end-sep-1);
     ss >> upper_bound;
 
-    cout << "upper_bound: " << upper_bound << endl;
-
     return make_pair(lower_bound, upper_bound);
 }
 
+/*
+    Function: print_gm_nodes_info
+    Objective: Print information about the vertices of the Goal Model
+
+    @ Input: The GMGraph representing the goal model
+    @ Output: void. There is only printing to a terminal
+*/ 
 void print_gm_nodes_info(GMGraph gm) {
     GMGraph::vertex_iterator i1, end1;
 	GMGraph::adjacency_iterator ai1, a_end1;
@@ -598,6 +703,13 @@ void print_gm_nodes_info(GMGraph gm) {
 	}
 }
 
+/*
+    Function: print_gm_var_map_info
+    Objective: Print information variable mappings
+
+    @ Input: The existing variable mappings
+    @ Output: void. There is only printing to a terminal
+*/ 
 void print_gm_var_map_info(map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
     map<string, variant<pair<string,string>,pair<vector<string>,string>>>::iterator gm_var_it;
 	for(gm_var_it = gm_var_map.begin();gm_var_it != gm_var_map.end();++gm_var_it) {

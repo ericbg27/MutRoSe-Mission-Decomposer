@@ -143,7 +143,7 @@ class DFSVisitor : public boost::default_dfs_visitor {
 
 vector<pair<int,VertexData>> parse_gm_nodes(pt::ptree nodes);
 
-vector<pair<int, pair<pair<int,int>, EdgeData>>> parse_gm_edges(pt::ptree links, GMGraph& gm, vector<pair<int,VertexData>> vertex);
+vector<pair<pair<int,int>, EdgeData>> parse_gm_edges(pt::ptree links, GMGraph& gm, vector<pair<int,VertexData>> vertex);
 
 GMGraph graph_from_property_tree(pt::ptree root);
 
