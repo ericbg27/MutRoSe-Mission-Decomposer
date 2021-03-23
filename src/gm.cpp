@@ -6,6 +6,15 @@
 #include <sstream>
 #include <set>
 
+const std::set<std::string> default_props{"Description", "QueriedProperty", "FailureCondition", "AchieveCondition"};
+
+/*
+    Function: get_node_name
+    Objective: Return the user-defined ID of some node given its text
+
+    @ Input 1: The node text
+    @ Output: The node name
+*/ 
 string get_node_name(string node_text) {
     size_t pos = node_text.find(":");
     string node_name;
@@ -16,6 +25,13 @@ string get_node_name(string node_text) {
     return node_name;
 }
 
+/*
+    Function: parse_gm_var_type
+    Objective: Verify the OCL type represented by the input string and return a standard string
+
+    @ Input 1: The OCL type in string format
+    @ Output: A standard string representing the given type
+*/ 
 string parse_gm_var_type(string var_type) {
     if(var_type.find("Sequence") != std::string::npos) {
         return "SEQUENCE";
@@ -24,6 +40,14 @@ string parse_gm_var_type(string var_type) {
     return "VALUE";
 }
 
+/*
+    Function: find_gm_node_by_id
+    Objective: Find a vertex in the GMGraph given its user-defined ID
+
+    @ Input 1: The user-defined ID in a string format
+    @ Input 2: The GMGraph
+    @ Output: The ID of the vertex in the GMGraph
+*/ 
 int find_gm_node_by_id(string id, GMGraph gm) {
     GMGraph::vertex_iterator v, vend;
 
@@ -100,6 +124,11 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
         } else if(cp_it->first == "RobotNumber") {
             v.fixed_robot_num = false;
             v.robot_num = parse_robot_number(cp_it->second);
+        } else {
+            if(default_props.find(cp_it->first) == default_props.end()) {
+                std::string error_str = "Invalid property " + cp_it->first + " in vertex " + v.text;
+                throw std::runtime_error(error_str);
+            }
         }
     }
 
@@ -116,26 +145,23 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
             f.condition = custom_props["FailureCondition"];
             v.custom_props["FailureCondition"] = f;
         }
-    } else if(std::get<string>(v.custom_props["GoalType"]) == "Loop") {
-        v.custom_props["IterationRule"] = parse_iterate_expr(custom_props["IterationRule"]);
     } else if(std::get<string>(v.custom_props["GoalType"]) == "Query") {
         if(custom_props["QueriedProperty"].find("select")) {
             v.custom_props["QueriedProperty"] = parse_select_expr(custom_props["QueriedProperty"]);
         } else {
             v.custom_props["QueriedProperty"] = custom_props["QueriedProperty"];
         }
-    } else if(std::get<string>(v.custom_props["GoalType"]) == "Trigger") {
-        v.custom_props["TriggeredEvent"] = custom_props["TriggeredEvent"];
     } else if(std::get<string>(v.custom_props["GoalType"]) == "Perform") {
         if(custom_props.find("FailureCondition") != custom_props.end()) {
             FailureCondition f;
             f.condition = custom_props["FailureCondition"];
             v.custom_props["FailureCondition"] = f;
         }
-    }
-    /*
-        - Other types of goals need to be considered here
-    */
+    } /*else if(std::get<string>(v.custom_props["GoalType"]) == "Loop") {
+        v.custom_props["IterationRule"] = parse_iterate_expr(custom_props["IterationRule"]);
+    } else if(std::get<string>(v.custom_props["GoalType"]) == "Trigger") {
+        v.custom_props["TriggeredEvent"] = custom_props["TriggeredEvent"];
+    } */
 }
 
 /*
@@ -372,6 +398,11 @@ vector<pair<string,string>> parse_vars(string var_decl) {
         var_type = m[0];
 
         vars.push_back(make_pair(var_name,var_type));
+
+        if(var_name == "") {
+            std::string var_err = "Invalid variable declaration " + substr + " in GM.";
+            throw std::runtime_error(var_err);
+        }
     }
 
     return vars;
@@ -386,27 +417,45 @@ vector<pair<string,string>> parse_vars(string var_decl) {
     position and condition at the third position
 */ 
 vector<string> parse_forAll_expr(string expr) {
-    stringstream ss(expr);
+    bool error = false;
+
     vector<string> res;
-    string aux;
 
-    regex e1("[a-zA-Z]+[a-zA-z_.0-9]*");
-    smatch m;
+    std::regex forall_reg("[a-zA-Z]+[a-zA-z_.0-9]*(->forAll)[(][a-zA-Z]+[a-zA-z_.0-9]*[ ]?[|][ ]?([a-zA-Z]+[a-zA-z_.0-9]*)?[)]");
 
-    getline(ss, aux, '>');
-    regex_search(aux,m,e1);
-    res.push_back(m[0]);
+    if(!std::regex_match(expr, forall_reg)) {
+        error = true;
+    }
 
-    getline(ss, aux, '|');
-    aux = aux.substr(aux.find('(')+1);
-    regex_search(aux,m,e1);
-    res.push_back(m[0]);
+    if(!error) {
+        try {
+            stringstream ss(expr);
+            string aux;
 
-    //regex e1("([a-zA-Z]+[a-zA-z_.0-9]*)"); This will need to be upated when a parser is indeed implemented
+            regex e1("[a-zA-Z]+[a-zA-z_.0-9]*");
+            smatch m;
 
-    getline(ss, aux, ')');
-    regex_search(aux,m,e1);
-    res.push_back(m[0]);
+            getline(ss, aux, '>');
+            regex_search(aux,m,e1);
+            res.push_back(m[0]);
+
+            getline(ss, aux, '|');
+            aux = aux.substr(aux.find('(')+1);
+            regex_search(aux,m,e1);
+            res.push_back(m[0]);
+
+            getline(ss, aux, ')');
+            regex_search(aux,m,e1);
+            res.push_back(m[0]);
+        } catch(...) {
+            error = true;
+        }
+    }
+
+    if(res.at(0) == "" || res.at(1) == "" || error) {
+        std::string forAll_err = "Invalid forAll statement " + expr + " in GM.";
+        throw std::runtime_error(forAll_err);
+    }
 
     return res;
 }
@@ -500,6 +549,14 @@ IterationRule parse_iterate_expr(string expr) {
     @ Output: A QueriedProperty object generated from the select statement
 */ 
 QueriedProperty parse_select_expr(string expr) {
+    bool error = false;
+
+    std::regex select_reg("[a-zA-Z]+[a-zA-z_.0-9]*(->select)[(][a-zA-Z]+[a-zA-z_.0-9]*[:][a-zA-z]+[a-zA-Z0-9]+[ ]?[|][ ]?([!]?[a-zA-Z]+[a-zA-z_.0-9]*|[a-zA-Z]+[a-zA-z_.0-9]*[ ](==)[ ]([a-zA-z]+[a-zA-Z0-9]+|\"[a-zA-z]+[a-zA-Z0-9]+\"))[)]");
+    
+    if(!std::regex_match(expr, select_reg)) {
+        error = true;
+    }
+
     QueriedProperty q;
     stringstream ss(expr);
     string aux;
@@ -544,6 +601,11 @@ QueriedProperty parse_select_expr(string expr) {
         getline(ss,aux,')');
         regex_search(aux,m,e3);
         q.query.push_back(m[0]);
+    }
+
+    if(error == true) {
+        std::string select_err = "Invalid select statement " + expr + " in GM.";
+        throw std::runtime_error(select_err);
     }
 
     return q;
