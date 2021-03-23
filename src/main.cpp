@@ -264,6 +264,11 @@ int main(int argc, char** argv) {
 
 	gm = graph_from_property_tree(json_root);
 
+	/*
+		TODO: Add flag which will indicate if we need to verify or not our constructs (deal with errors)
+	*/
+	check_gm_validity(gm);
+
 	print_gm_nodes_info(gm);
 
 	check_undefined_number_of_robots(gm, abstract_tasks, sort_definitions);
@@ -273,7 +278,7 @@ int main(int argc, char** argv) {
 
 	map<string,vector<AbstractTask>> at_instances;
 		
-	at_instances = generate_at_instances(abstract_tasks, gm, world_db.get_knowledge(), location_type, world_db, gm_var_map, variable_mapping);
+	at_instances = generate_at_instances(abstract_tasks, gm, location_type, world_db, gm_var_map, variable_mapping);
 
 	print_at_instances_info(at_instances);
 

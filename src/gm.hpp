@@ -141,6 +141,10 @@ class DFSVisitor : public boost::default_dfs_visitor {
     boost::shared_ptr<std::vector<int> > vv;
 };
 
+vector<int> get_dfs_gm_nodes(GMGraph gm);
+
+void check_gm_validity(GMGraph gm);
+
 vector<pair<int,VertexData>> parse_gm_nodes(pt::ptree nodes);
 
 vector<pair<pair<int,int>, EdgeData>> parse_gm_edges(pt::ptree links, GMGraph& gm, vector<pair<int,VertexData>> vertex);
