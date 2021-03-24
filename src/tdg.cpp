@@ -6,10 +6,18 @@
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>
 
+/*
+    Function: TDG
+    Objective: Constructor for the TDG object. Here we generate a TDG and deal with the cycles 
+    problem only when generating possible decompositions
+
+    @ Input 1: The root abstract task of the TDG, which needs to be decomposed
+    @ Input 2: The abstract tasks defined in HDDL
+    @ Input 3: The primitive tasks defined in HDDL
+    @ Input 4: The methods defined in HDDL
+    @ Output: void. The TDG object
+*/ 
 TDG::TDG(task root_abstract_task, vector<task> a_tasks, vector<task> p_tasks, vector<method> ms) {
-    /*
-        Let's generate a TDG and deal with the cycles problem only when generating possible decompositions
-    */
     abstract_tasks = a_tasks;
     primitive_tasks = p_tasks;
     methods = ms;
@@ -29,14 +37,20 @@ TDG::TDG(task root_abstract_task, vector<task> a_tasks, vector<task> p_tasks, ve
     add_task_path(n);
 }
 
-vector<vector<task>> TDG::retrieve_possible_decompositions() {
-    /*
-        Need to deal with cycles. Checking predicates is needed.
+/*
+    Function: retrieve possible decompositions
+    Objective: Find all possible decompositions of the root abstract task
+
+    @ Output: A vector of the possible decompositions of the task. One must note that 
+    these are not necessarily valid in the current world state
+
+    NOTE: Need to deal with cycles. Checking predicates is needed.
         - For each path starting in method m1 we need to have as initial state of the world the methods preconditions (if any).
-            - If the method originating some path does not contain preconditions, we assume nothing about what was not told to us. This way
+            * If the method originating some path does not contain preconditions, we assume nothing about what was not told to us. This way
             if we find some predicate in action preconditions, we assume them to be true if they were not set by previous actions effects, since
             this means no harm because we are not generating a plan (just decomposing the task)
-    */
+*/ 
+vector<vector<task>> TDG::retrieve_possible_decompositions() {
     vector<int> depth_first_nodes = DFS_visit();
 
     vector<vector<task>> paths;
@@ -50,14 +64,26 @@ vector<vector<task>> TDG::retrieve_possible_decompositions() {
     return paths;
 }
 
-vector<vector<task>> TDG::decomposition_recursion(vector<int> dfs_nodes, int current_pos, vector<pair<string,string>> original_vars, 
-                                                    vector<literal>& world_state, vector<pair<string,string>> variable_mapping) {
-    /*
-        NOTE: Every variable involved in the recursion must come from the root task
+/*
+    Function: decomposition_recursion
+    Objective: Recursively generate the decomposition based on a previously generated DFS nodes vector. World state is
+    create based on previous preconditions and effects and variables are mapped accordingly to the original root abstract
+    task variables.
+
+    @ Input 1: The vector containing the TDG nodes visited using DFS
+    @ Input 2: An index to the current element in the vector being considered
+    @ Input 3: The original variables from the original root task
+    @ Input 4: The world state generated until the moment
+    @ Input 5: The variable mappings with respect to the original root abstract task variables
+    @ Output: A vector of the decompositions generated at the current recursion depth
+
+    NOTE: Every variable involved in the recursion must come from the root task
             - In this sense, variable substition must happen 
             - Inside every method we know which method variable refers to which original variable
             - Inside every action we also know which variable refers to which original variable
-    */
+*/ 
+vector<vector<task>> TDG::decomposition_recursion(vector<int> dfs_nodes, int current_pos, vector<pair<string,string>> original_vars, 
+                                                    vector<literal>& world_state, vector<pair<string,string>> variable_mapping) {
     int node = dfs_nodes.at(current_pos);
 
     NodeData n = tdg[node];
@@ -94,15 +120,9 @@ vector<vector<task>> TDG::decomposition_recursion(vector<int> dfs_nodes, int cur
         */
         vector<vector<int>> possible_orderings = find_method_possible_orderings(n.m,n.children);
 
-        cout << "Possible orderings for method " << n.m.name << ":" << endl;
-        for(vector<int> ordering : possible_orderings) {
-            for(int t : ordering) {
-                cout << tdg[t].t.name << " ";
-            }
-            cout << endl;
-        }
+        print_method_possible_orderings(possible_orderings, n);
 
-        bool method_exec = true;
+        //bool method_exec = true;
         vector<vector<vector<task>>> child_paths;
         for(vector<int> ordering : possible_orderings) {
             bool ordering_exec = true;
@@ -233,6 +253,14 @@ vector<vector<task>> TDG::decomposition_recursion(vector<int> dfs_nodes, int cur
     return generated_paths;
 }
 
+/*
+    Function: add_method_path
+    Objective: Add method path in TDG by iterating through method decomposition tasks
+    and further adding these tasks paths to the TDG
+
+    @ Input: The method node being considered
+    @ Output: void. The path will be added to the TDG object calling the function
+*/ 
 void TDG::add_method_path(NodeData m) {
     for(plan_step ps : m.m.ps) {
         NodeData t_node;
@@ -283,8 +311,15 @@ void TDG::add_method_path(NodeData m) {
     }
 }
 
+/*
+    Function: add_task_path
+    Objective: Add a task (primitive or abstract) to the TDG. Find methods that decompose the task 
+    and from them generate the complete path resulting from their decomposition
+
+    @ Input: The task node being considered
+    @ Output: void. The path will be added to the TDG object calling the function
+*/ 
 void TDG::add_task_path(NodeData t) {
-    //Find methods that decompose the task and from them generate the complete path resulting from their decomposition
     if(t.type != PT) {
         for(method m : methods) {
             if(m.at == t.t.name) {
@@ -306,6 +341,14 @@ void TDG::add_task_path(NodeData t) {
     }
 }
 
+/*
+    Function: add_edge
+    Objective: Add an edge between TDG nodes
+
+    @ Input 1: The soruce node ID
+    @ Input 2: The target node ID
+    @ Output: void. The edge will be added in the TDG
+*/ 
 void TDG::add_edge(int s_id, int t_id) {
     EData edge;
 
@@ -324,6 +367,13 @@ void TDG::add_edge(int s_id, int t_id) {
      boost::add_edge(s_id,t_id,edge,tdg);
 }
 
+/*
+    Function: DFS_visit
+    Objective: Perform a Depth-First visit in the TDG and return a vector of node ID's
+    generated through this visit
+
+    @ Output: The vector of node ID's
+*/ 
 vector<int> TDG::DFS_visit() {
     auto indexmap = boost::get(boost::vertex_index, tdg);
     auto colormap = boost::make_vector_property_map<boost::default_color_type>(indexmap);
@@ -336,6 +386,12 @@ vector<int> TDG::DFS_visit() {
     return vctr;
 }
 
+/*
+    Function: print_edges
+    Objective: Print TDG edges
+
+    @ Output: void. The edges will be printed in a terminal
+*/ 
 void TDG::print_edges() {
     boost::graph_traits<TDGraph>::edge_iterator it, end;
 	
@@ -357,13 +413,36 @@ void TDG::print_edges() {
 	}
 }
 
-pair<bool,int> TDG::check_cycle(int m_id, NodeData t) {
-    /*
-        Here we have a method that is already in the graph and a task that is to be introduced to the graph
-        if it is not already in it. In case it is, return true since we have a cycle.
+/*
+    Function: print_method_possible_orderings
+    Objective: Print all the possible orderings for a method
 
-        Note: Task t must be a parent in some degree of m in order for us to consider a cycle
-    */ 
+    @ Input 1: The possible orderings for the method
+    @ Input 2: The method node being considered 
+    @ Output: void. The possible orderings will be printed in a terminal
+*/ 
+void TDG::print_method_possible_orderings(vector<vector<int>> possible_orderings, NodeData n) {
+    cout << "Possible orderings for method " << n.m.name << ":" << endl;
+    for(vector<int> ordering : possible_orderings) {
+        for(int t : ordering) {
+            cout << tdg[t].t.name << " ";
+        }
+        cout << endl;
+    }
+}
+
+/*
+    Function: add_task_path
+    Objective: Here we have a method that is already in the graph and a task that is to be introduced to the graph
+    if it is not already in it. In case it is, return true since we have a cycle.
+
+    @ Input 1: The method ID in the TDG
+    @ Input 2: The task node in the TDG
+    @ Output: A pair containing a flag if we have a cycle or not and the ID of the task to which this cycle refers to.
+
+    NOTE: Task t must be a parent in some degree of m in order for us to consider a cycle
+*/ 
+pair<bool,int> TDG::check_cycle(int m_id, NodeData t) {
     pair<bool,int> cycle = make_pair(false,-1);
     NodeData m = tdg[m_id];
 
@@ -391,6 +470,17 @@ pair<bool,int> TDG::check_cycle(int m_id, NodeData t) {
     return cycle;
 }
 
+/*
+    Function: check_predicates
+    Objective: Here we check if all predicates for a task hold in the current world state. One must note that since
+    the world state is generated based on the root abstract task of the TDG and we must rename variables.
+
+    @ Input 1: The task to be evaluated
+    @ Input 2: The variable mapping between the task and the TDG's root abstract task
+    @ Input 3: The task ID in the TDG
+    @ Input 4: The world state
+    @ Output: A boolean flag indicating if predicates hold
+*/ 
 bool TDG::check_predicates(task t, vector<pair<string,string>> var_mapping, int t_id, vector<literal>& world_state) {
     vector<literal> t_precs, precs_to_add;
 
@@ -478,6 +568,16 @@ bool TDG::check_predicates(task t, vector<pair<string,string>> var_mapping, int 
     return executable;
 }
 
+/*
+    Function: change_world state
+    Objective: Here we change the world state based on the effects of a task. We must consider the variable mapping
+    with respect to the TDG's root abstract task
+
+    @ Input 1: The task to be evaluated
+    @ Input 2: A reference to the world state
+    @ Input 3: The variable mapping with respect to the TDG's root abstract task
+    @ Output: Void. The reference to the world state is changed
+*/ 
 void TDG::change_world_state(task t,vector<literal>& world_state, vector<pair<string,string>> variable_mapping) {
     vector<literal> t_effs = t.eff;
 
@@ -530,6 +630,14 @@ void TDG::change_world_state(task t,vector<literal>& world_state, vector<pair<st
     }
 }
 
+/*
+    Function: variable_renaming
+    Objective: Rename variables of a specific task
+
+    @ Input 1: A reference to the task being considered
+    @ Input 2: The variable mapping between the task and the TDG's root abstract task
+    @ Output: Void. The reference to the task is modified
+*/ 
 void TDG::variable_renaming(task& t, vector<pair<string,string>> var_mapping) {
     //Rename preconditions
     for(literal& prec : t.prec) {
@@ -596,6 +704,14 @@ void TDG::variable_renaming(task& t, vector<pair<string,string>> var_mapping) {
     cout << endl;*/
 }
 
+/*
+    Function: find_method_possible_orderings
+    Objective: Find the possible orderings for a method's decomposition
+
+    @ Input 1: The method being considered
+    @ Input 2: The ID's of this method's children nodes in the TDG
+    @ Output: The vector of the possible orderings by means of task ID's
+*/ 
 vector<vector<int>> TDG::find_method_possible_orderings(method m, vector<int> children) {
     map<string,int> plan_step_id_map;
     for(plan_step ps : m.ps) {
@@ -630,6 +746,15 @@ vector<vector<int>> TDG::find_method_possible_orderings(method m, vector<int> ch
     return possible_orderings;
 }
 
+/*
+    Function: recursive_method_possible_orderings
+    Objective: Recursive generations of a method's possible orderings of decomposition
+
+    @ Input 1: The map of precendence constraints given in HDDL
+    @ Input 2: The orderings generated so far
+    @ Input 3: The task ID's to be inserted
+    @ Output: The possible orderings generated in this depth of the recursion
+*/ 
 vector<vector<int>> TDG::recursive_method_possible_ordering(map<int,set<int>> precedence_map, vector<vector<int>> current_orderings, set<int> values_to_insert) {
     vector<vector<int>> new_orderings;
 

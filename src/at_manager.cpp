@@ -26,24 +26,6 @@
 map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tasks, GMGraph gm, string location_type,
 														KnowledgeBase world_db, map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map,
 															vector<VariableMapping> var_mapping) {
-	/*	
-		-> HERE WE ARE ASSUMING THE FIRST MONITORED VARIABLE REPRESENTS THE LOCATION. DEAL WITH THIS LATER!
-	*/
-
-	/*
-		Ideas:
-			- Search through nodes in the order given by depth-first search and verify valid
-			variables and valid conditions. If the goal we are visiting is in the same or in 
-			higher depth than the goal which holds some condition, than the condition is not
-			valid anymore. Variables just need to be seen somewhere in order for them to be
-			valid. One note about variables is that if they aren't controlled by some other
-			goal, we have to search in the local database (which is the default database). In
-			a real-world case study, this types of variables would only be worth something if
-			some goal was already assigned to a robot, so in this initial parsing they are not
-			used (but are considered). Conditions, aside from context conditions, must be evaluated
-			on variables that are controlled by some goal (in a higher-level than the goal which uses
-			it or in the same level and the left)
-	*/
 	std::vector<int> vctr = get_dfs_gm_nodes(gm);
 
 	/*
@@ -108,6 +90,7 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 					* Insert events if it is a sequential
 					* If it isn't, we throw an exception
 		*/
+
 		if(last_visited != current) {
 			if(gm[current].parent == last_visited) {
 				depth++;
@@ -154,6 +137,7 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 		}
 
 		if(gm[v].type == "istar.Goal") { 
+
 			/*
 				If current vertex is a goal in the GM we check its type
 
@@ -186,9 +170,16 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 				*******************************************************************************************
 
 				************************************** ACHIEVE GOALS **************************************
+				If we have an Achieve goal we:
 
+				-> Get its AchieveCondition and add it to valid_forAll conditions if it has a forAll
+				statement
 				*******************************************************************************************
+
+				After checking the type we verify trigger types CreationCondition attributes. If we find one, 
+				we add the event to the valid_events list of the current depth
 			*/
+
 			if(std::get<string>(gm[v].custom_props["GoalType"]) == "Query") {
 				vector<pt::ptree> aux;
 				QueriedProperty q = std::get<QueriedProperty>(gm[v].custom_props["QueriedProperty"]);
@@ -260,22 +251,29 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 				}
 			}
 		} else if(gm[v].type == "istar.Task") {
+
 			/*
-				Populate AT instances
-				Steps:
-				- Improve select statement parsing
-				- For every AT, check if the parent monitored variable belongs to a forAll condition or not
-					- This check will result in an if-else statement, depending on the result
-				- We can just verify to which forAll condition the variable belongs to, because then each forAll condition in a higher level is
-				  its parent
-				- Think about how is the work of a forAll inside a forAll
-					- If this gets too complex, deal with the case where a forAll can't be inside another forAll
-					- In the future, a forAll can be inside a forAll and also a Loop type goal with its IterationRule
-			
-				- Not all abstract tasks will be under a forAll condition
-				- Not all abstract tasks that are under a forAll condition happen in a condition defined by it. There can be tasks which happen in
-				  static positions
+				If we are dealing with a task vertex we:
+
+				1. Get its user-defined ID and text
+				2. Verify if its text (name) matches an abstract task in HDDL
+				3. Verify if we have valid forAll conditions*
+					3.1. If we have valid forAll conditions:
+						3.1.1. If the task location_var is equal to the forAll_iteration_var we can create
+						multiple instances of the task in multiple locations. With this in mind:
+							3.1.1.1. We create the AT with the data from HDDL and the GM. 
+						3.1.2. If the task location_var is not equal to the forAll_ieration_var we can also
+						create multiple instances but only in one location. With this in mind:
+							3.1.2.1. We create the AT with the data from HDDL and the GM
+					3.2. If we do not have valid forAll conditions we simply create an AT instance in the
+					location defined by the Location attribute of the task (if any)
+				4. Verify valid events and insert all of them in the triggering events list of all the generated
+				instances for the AT
+
+				* For now: Assume only one forAll condition is allowed for each AT
+				** VERIFY IF VARIABLE MAPPINGS ARE STILL USEFUL!
 			*/
+
 			pair<string,string> at_def = parse_at_text(gm[v].text);
 
 			task at_hddl_def;
@@ -290,14 +288,11 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 			}
 
 			if(!found_abstract_task) {
-				cout << "Could not find AT [" << at_def.second << "] in HDDL Domain definition." << endl;
-				exit(1);
+				std::string bad_at_error = "Could not find AT [" + at_def.second + "] in HDDL Domain definition.";
+				throw std::runtime_error(bad_at_error);
 			}
 
-			/*
-				For now: Assume only one forAll condition is allowed for each AT
-			*/
-			if(!valid_forAll_conditions.empty()) {
+			if(!valid_forAll_conditions.empty()) { // We have valid forAll conditions
 				string location_var, forAll_iterated_var, forAll_iteration_var;
 				map<int,AchieveCondition>::iterator a_it;
 
@@ -305,6 +300,7 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 					//Since we are assuming one valid forAll condition, this will work properly
 					forAll_iterated_var = a_it->second.get_iterated_var();
 					forAll_iteration_var = a_it->second.get_iteration_var();
+					break;
 				}
 
 				if(gm[v].custom_props.find("Location") != gm[v].custom_props.end()) {
@@ -313,7 +309,7 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 					location_var = "";
 				}
 
-				if(location_var == forAll_iteration_var) {
+				if(location_var == forAll_iteration_var) { // Task location variable is equal to forAll iteration var
 					for(pt::ptree current_val : valid_variables[forAll_iterated_var].second) {
 						AbstractTask at;
 						
@@ -340,10 +336,11 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 									at.variable_mapping.push_back(make_pair(current_val.get<string>("name"),var.get_hddl_var()));
 								} else {
 									if(valid_variables.find(var.get_gm_var()) != valid_variables.end()) {
-										at.variable_mapping.push_back(make_pair(valid_variables[var.get_gm_var()].second.at(0).get<string>("name"),var.get_hddl_var()));
+										std::pair<std::string,std::string> new_var_mapping = make_pair(valid_variables[var.get_gm_var()].second.at(0).get<std::string>("name"),var.get_hddl_var());
+										at.variable_mapping.push_back(new_var_mapping);
 									} else { 
-										cout << "Could not find variable mapping..." << endl;
-										exit(1);
+										std::string var_mapping_error = "Could not find variable mapping for task " + at.name;
+										throw std::runtime_error(var_mapping_error);
 									}
 								}
 							}
@@ -351,12 +348,7 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 
 						at_instances[at.name].push_back(at);
 					}
-				} else {
-					/*
-						Here we are assuming that the location variable is not the iteration variable
-
-						-> We create multiple instances with the same value
-					*/
+				} else { // Task location variable is not equal to forAll iteration var
 					for(unsigned int i = 0;i < valid_variables[forAll_iterated_var].second.size();i++) {
 						AbstractTask at;
 
@@ -377,16 +369,19 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 							at.robot_num = get<pair<int,int>>(gm[v].robot_num);
 						}
 
+						std::cout << "Variable Mappings for at: " << at.name << std::endl;
 						for(VariableMapping var : var_mapping) {
 							if(var.get_task_id() == at_def.first) {
 								if(var.get_gm_var() == forAll_iteration_var) {
 									at.variable_mapping.push_back(make_pair(valid_variables[forAll_iteration_var].second.at(0).get<string>("name"),var.get_hddl_var()));
+									std::cout << valid_variables[forAll_iteration_var].second.at(0).get<string>("name") << " : " << var.get_hddl_var() << std::endl;
 								} else {
 									if(valid_variables.find(var.get_gm_var()) != valid_variables.end()) {
 										at.variable_mapping.push_back(make_pair(valid_variables[var.get_gm_var()].second.at(0).get<string>("name"),var.get_hddl_var()));
+										std::cout << valid_variables[var.get_gm_var()].second.at(0).get<string>("name") << " : " << var.get_hddl_var() << std::endl;
 									} else { 
-										cout << "Could not find variable mapping..." << endl;
-										exit(1);
+										std::string var_mapping_error = "Could not find variable mapping for task " + at.name;
+										throw std::runtime_error(var_mapping_error);
 									}
 								}
 							}
@@ -395,10 +390,7 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 						at_instances[at.name].push_back(at);
 					}
 				}
-			} else {
-				/*
-					Here is the case where we don't have a forAll statement
-				*/
+			} else { // We don't have valid forAll statements
 				string location_var;
 
 				if(gm[v].custom_props.find("Location") != gm[v].custom_props.end()) {
@@ -431,8 +423,8 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 						if(valid_variables.find(var.get_gm_var()) != valid_variables.end()) {
 							at.variable_mapping.push_back(make_pair(valid_variables[var.get_gm_var()].second.at(0).get<string>("name"),var.get_hddl_var()));
 						} else {
-							cout << "Could not find variable mapping..." << endl;
-							exit(1);
+							std::string var_mapping_error = "Could not find variable mapping for task " + at.name;
+							throw std::runtime_error(var_mapping_error);
 						}
 					}
 				}
@@ -462,6 +454,13 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 	return at_instances;
 }
 
+/*
+    Function: print_at_instances_info
+    Objective: Print abstract tasks instances info in terminal
+
+    @ Input: The abstract task instances in a map format
+    @ Output: Void. We just print to the terminal
+*/ 
 void print_at_instances_info(map<string,vector<AbstractTask>> at_instances) {
 	map<string,vector<AbstractTask>>::iterator at_it;
 	cout << "AT instances:" << endl;
@@ -483,6 +482,13 @@ void print_at_instances_info(map<string,vector<AbstractTask>> at_instances) {
 	}
 }
 
+/*
+    Function: print_at_paths_info
+    Objective: Print abstract tasks decomposition paths info in terminal
+
+    @ Input: The abstract tasks decomposition paths in a map format
+    @ Output: Void. We just print to the terminal
+*/ 
 void print_at_paths_info(map<string,vector<vector<task>>> at_decomposition_paths) {
 	map<string,vector<vector<task>>>::iterator at_paths_it;
 

@@ -50,6 +50,7 @@ class TDG {
         void change_world_state(task t,vector<literal>& world_state, vector<pair<string,string>> variable_mapping);
         void variable_renaming(task& t, vector<pair<string,string>> var_mapping);
         void print_edges();
+        void print_method_possible_orderings(vector<vector<int>> possible_orderings, NodeData n);
 
         vector<int> DFS_visit();
 
