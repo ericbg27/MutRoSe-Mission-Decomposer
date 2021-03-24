@@ -13,6 +13,13 @@ int parse_string(const char* in);
 
 map<string,general_annot*> goals_and_rannots;
 
+/*
+    Function: retrieve_runtime_annot
+    Objective: Retrieve the runtime annotation of some given node. We need to have goals_and_rannots initialized
+
+    @ Input: The text of the desired node in the goal model
+    @ Output: The runtime annotation of the given node
+*/ 
 general_annot* retrieve_runtime_annot(string id) {
     parse_string(id.c_str());
 
@@ -21,6 +28,16 @@ general_annot* retrieve_runtime_annot(string id) {
     return goals_and_rannots[node_name];
 }
 
+/*
+    Function: retrieve_gm_annot
+    Objective: Retrieve the runtime annotation of the whole goal model
+
+    @ Input 1: The goal model as a GMGraph object
+    @ Input 2: The ptree object representing the world database
+    @ Input 3: The high-level location type
+    @ Input 4: The abstract task instances vector
+    @ Output: The goal model runtime annotation
+*/ 
 general_annot* retrieve_gm_annot(GMGraph gm, pt::ptree worlddb, string location_type, map<string,vector<AbstractTask>> at_instances) {
     auto indexmap = boost::get(boost::vertex_index, gm);
     auto colormap = boost::make_vector_property_map<boost::default_color_type>(indexmap);
@@ -70,10 +87,20 @@ general_annot* retrieve_gm_annot(GMGraph gm, pt::ptree worlddb, string location_
 }
 
 /*
-    -> We have to check for the forAll operators
-        - Create the different instances of the goal that contains a forAll as an achieve condition (if it generates multiple instances)
-        - Put the different instances as parallel annotations
-*/
+    Function: recursive_gm_annot_generation
+    Objective: Recusive generation of the goal model runtime annotation
+
+    @ Input 1: The current node runtime annotation, generated for the whole goal model so far
+    @ Input 2: The nodes indexes visited in a depth-first search manner
+    @ Input 3: The goal model as a GMGraph object
+    @ Input 4: The world knowledge ptree object
+    @ Input 5: The high-level location type
+    @ Input 6: The current node index
+    @ Input 7: The valid variables, given the query goals select statements
+    @ Input 8: The valid forAll conditions, given the achieve goals
+    @ Input 9: The map of node depths
+    @ Output: Void. The runtime goal model annotation is generated
+*/ 
 void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr, GMGraph gm, pt::ptree worlddb, string location_type, int current_node,
                                         map<string,pair<string,vector<pt::ptree>>>& valid_variables, map<int,AchieveCondition> valid_forAll_conditions, 
                                         map<int,int>& node_depths) {
@@ -309,6 +336,15 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
     }
 }
 
+/*
+    Function: recursive_child_replacement
+    Objective: Replacing the children nodes of a given annotation, since we are dealing with references.
+    This is needed in order to deal with forAll statements runtime annotations
+
+    @ Input 1: A reference to the copy runtime annotation to be created
+    @ Input 2: A reference to the original runtime annotation
+    @ Output: Void. The copy runtime annotation is initialized with the values of the original one
+*/ 
 void recursive_child_replacement(general_annot* copy, general_annot* original) {
     if(original->children.size() > 0) {
         for(general_annot* original_child : original->children) {
@@ -328,6 +364,14 @@ void recursive_child_replacement(general_annot* copy, general_annot* original) {
     }
 }
 
+/*
+    Function: rename_at_instances_in_runtime_annot
+    Objective: Rename AT instances in goal model runtime annotation
+
+    @ Input 1: The goal model runtime annotation
+    @ Input 2: The at instances map
+    @ Output: Void. The goal model runtime annotation has the AT's instances renamed
+*/ 
 void rename_at_instances_in_runtime_annot(general_annot* gmannot, map<string,vector<AbstractTask>> at_instances) {
     map<string,int> at_instances_counter;
 
@@ -355,6 +399,15 @@ void rename_at_instances_in_runtime_annot(general_annot* gmannot, map<string,vec
     }
 }
 
+/*
+    Function: recursive_at_instances_renaming
+    Objective: Rename AT instances in the runtime annotation object and recursive call this renaming step
+
+    @ Input 1: The runtime annotation being considered
+    @ Input 2: The counter in order to know which instance we left
+    @ Input 3: Boolean flag to know if we have a forAll generated node in the root
+    @ Output: Void. The runtime goal model annotation is renamed
+*/ 
 void recursive_at_instances_renaming(general_annot* rannot, map<string,int>& at_instances_counter, bool in_forAll) {
     set<string> operators {";","#","FALLBACK","OPT","|"};
 
@@ -389,6 +442,13 @@ void recursive_at_instances_renaming(general_annot* rannot, map<string,int>& at_
     }
 }   
 
+/*
+    Function: print_runtime_annot_from_general_annot
+    Objective: Print the given runtime annotation in the terminal
+
+    @ Input: The runtime annotation to be printed 
+    @ Output: Void. The runtime annotation is printed
+*/ 
 void print_runtime_annot_from_general_annot(general_annot* rt) {
     string rt_annot = "";
 
@@ -397,6 +457,13 @@ void print_runtime_annot_from_general_annot(general_annot* rt) {
     cout << rt_annot << endl;
 }
 
+/*
+    Function: recursive_rt_annot_build
+    Objective: Build the runtime annotation string recursively
+
+    @ Input: The current runtime annotation being considered
+    @ Output: The current runtime annotation string
+*/ 
 string recursive_rt_annot_build(general_annot* rt) {
     set<string> operators {";","#","FALLBACK","OPT","|"};
 

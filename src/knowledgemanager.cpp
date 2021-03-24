@@ -7,14 +7,21 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 
+/*
+    Function: construct_knowledge_base
+    Objective: Construct a knowledge base given the database name and the configuration map
+
+    @ Input 1: The database name
+    @ Input 2: The configuration map, obtained from the parsing of the configuration file
+    @ Output: The constructed KnowledgeBase object
+
+    NOTES: -> For now, the only type allowed is XML file
+		   -> When (and if) more types are allowed we need to delegate the task of opening these files to functions
+		    passing the configuration file as a function parameter
+*/ 
 KnowledgeBase construct_knowledge_base(string db_name, map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> cfg) {
     string db_type = get<map<string,string>>(cfg[db_name])["type"];
 
-    /*
-		-> For now, the only type allowed is XML file
-		-> When (and if) more types are allowed we need to delegate the task of opening these files to functions
-		passing the configuration file as a function parameter
-	*/
     pt::ptree db_knowledge;
     string db_root = "";
 	if(db_type == "file") {
@@ -31,6 +38,18 @@ KnowledgeBase construct_knowledge_base(string db_name, map<string, variant<map<s
     return kb;
 }
 
+/*
+    Function: initialize_objects
+    Objective: Initalize the objects on the sorts map based on the knowledge bases (world and robot)
+
+    @ Input 1: World knowledge database
+    @ Input 2: Robots database
+    @ Input 3: The reference to the sorts map
+    @ Input 4: The high-level location type (for now it is only one)
+    @ Input 5: The map of abstract task instances
+    @ Input 6: The mapping between HDDL types and OCL types
+    @ Output: Void. The sorts are initialized
+*/ 
 void initialize_objects(KnowledgeBase worlddb, KnowledgeBase robotsdb, map<string,set<string>>& sorts, string location_type,
                             map<string,vector<AbstractTask>>& at_instances, map<string,string> type_mapping) {
 
@@ -103,6 +122,19 @@ void initialize_objects(KnowledgeBase worlddb, KnowledgeBase robotsdb, map<strin
     } 
 }
 
+/*
+    Function: initialize_world_state
+    Objective: Initialize the world state based on the world and robots knowledge. We also use the semantic mappings
+
+    @ Input 1: The robots database object
+    @ Input 2: The world knowledge database object
+    @ Input 3: A reference to the initial world state vector
+    @ Input 4: A reference to the initial function values (in the future we may remove this)
+    @ Input 5: The vector of semantic mappings given in the configuration file
+    @ Input 6: The mapping between HDDL types and OCL types
+    @ Input 7: The sorts map with the existing objects
+    @ Output: Void. The reference to the initial world state vector is initialized
+*/ 
 void initialize_world_state(KnowledgeBase robotsdb, KnowledgeBase worlddb, vector<ground_literal>& init, vector<pair<ground_literal,int>>& init_functions, 
                                 vector<SemanticMapping> semantic_mapping, map<string,string> type_mapping, map<string,set<string>> sorts) {
     /*
@@ -290,6 +322,13 @@ void initialize_world_state(KnowledgeBase robotsdb, KnowledgeBase worlddb, vecto
     */
 }
 
+/*
+    Function: initialize_world_state
+    Objective: Initialize the world state based on the world and robots knowledge. We also use the semantic mappings
+
+    @ Input: The world state vector 
+    @ Output: Void. The world state is printed in the terminal
+*/ 
 void print_world_state(vector<ground_literal> world_state) {
     cout << "World state: " << endl;
 	for(ground_literal l : world_state) {
