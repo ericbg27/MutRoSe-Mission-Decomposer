@@ -9,6 +9,78 @@
 const std::set<std::string> default_props{"Description", "QueriedProperty", "FailureCondition", "AchieveCondition"};
 
 /*
+    Function: get_dfs_gm_nodes
+    Objective: Go through the GM using DFS and return nodes in the order they are visited
+
+    @ Input 1: The GMGraph representing the GM
+    @ Output: The vertices indexes based on DFS visit
+*/ 
+vector<int> get_dfs_gm_nodes(GMGraph gm) {
+    auto indexmap = boost::get(boost::vertex_index, gm);
+    auto colormap = boost::make_vector_property_map<boost::default_color_type>(indexmap);
+
+    DFSVisitor vis;
+    boost::depth_first_search(gm, vis, colormap, 0);
+
+    std::vector<int> vctr = vis.GetVector();
+
+    return vctr;
+}
+
+/*
+    Function: check_gm_validity
+    Objective: Go through the GMGraph representing the goal model and verify if it is valid. Here we mainly check
+    if AchieveConditions are correctly constructed (if variables are declared). If invalid
+    we throw an error at the first invalid construct we find.
+
+    @ Input 1: The GMGraph representing the GM
+    @ Output: Void. We only throw errors
+*/ 
+void check_gm_validity(GMGraph gm) {
+    std::vector<int> vctr = get_dfs_gm_nodes(gm);
+
+    for(int v : vctr) {
+        std::string goal_type = get<std::string>(gm[v].custom_props["GoalType"]);
+        std::vector<std::pair<std::string,std::string>> controlled_vars;
+        if(holds_alternative<std::vector<std::pair<std::string,std::string>>>(gm[v].custom_props["Controls"])) {
+            controlled_vars = std::get<std::vector<std::pair<std::string,std::string>>>(gm[v].custom_props["Controls"]);
+        }
+        if(goal_type == "Achieve") {
+            std::vector<std::pair<std::string,std::string>> monitored_vars;
+            if(holds_alternative<std::vector<std::pair<std::string,std::string>>>(gm[v].custom_props["Monitors"])) {
+                monitored_vars = std::get<std::vector<std::pair<std::string,std::string>>>(gm[v].custom_props["Monitors"]);
+            }
+
+            AchieveCondition ac = std::get<AchieveCondition>(gm[v].custom_props["AchieveCondition"]);
+            
+            bool found_iterated_var = false;
+            for(auto monitored : monitored_vars) {
+                if(monitored.first == ac.get_iterated_var()) {
+                    found_iterated_var = true;
+                    break;
+                }
+            }
+            if(!found_iterated_var) {
+                std::string iterated_var_err = "Did not find iterated variable " + ac.get_iterated_var() + " in " + get_node_name(gm[v].text) + "'s controlled variables list";
+                throw std::runtime_error(iterated_var_err);
+            }
+
+            bool found_iteration_var = false;
+            for(auto controlled : controlled_vars) {
+                if(controlled.first == ac.get_iteration_var()) {
+                    found_iteration_var = true;
+                    break;
+                }
+            }
+            if(!found_iteration_var) {
+                std::string iteration_var_err = "Did not find iteration variable " + ac.get_iteration_var() + " in " + get_node_name(gm[v].text) + "'s monitored variables list";
+                throw std::runtime_error(iteration_var_err);
+            }
+        }
+    }
+}
+
+/*
     Function: get_node_name
     Objective: Return the user-defined ID of some node given its text
 
@@ -273,8 +345,12 @@ GMGraph graph_from_property_tree(pt::ptree root) {
     pt::ptree nodes;
     pt::ptree links;
 	
-    //Retrieve nodes from Goal Model
-	BOOST_FOREACH(pt::ptree::value_type& child, root.get_child("actors")) { //Later work out how to deal with multiple actors (we want only one)
+    /*
+        Retrieve nodes from Goal Model
+
+        -> Later work out how to deal with multiple actors (we want only one)
+    */
+	BOOST_FOREACH(pt::ptree::value_type& child, root.get_child("actors")) { 
 		pt::ptree subtree = child.second;
 		BOOST_FOREACH(pt::ptree::value_type& c, subtree) {
 			if(c.first == "nodes") {
@@ -551,7 +627,7 @@ IterationRule parse_iterate_expr(string expr) {
 QueriedProperty parse_select_expr(string expr) {
     bool error = false;
 
-    std::regex select_reg("[a-zA-Z]+[a-zA-z_.0-9]*(->select)[(][a-zA-Z]+[a-zA-z_.0-9]*[:][a-zA-z]+[a-zA-Z0-9]+[ ]?[|][ ]?([!]?[a-zA-Z]+[a-zA-z_.0-9]*|[a-zA-Z]+[a-zA-z_.0-9]*[ ](==)[ ]([a-zA-z]+[a-zA-Z0-9]+|\"[a-zA-z]+[a-zA-Z0-9]+\"))[)]");
+    std::regex select_reg("[a-zA-Z]+[a-zA-z_.0-9]*(->select)[(][a-zA-Z]+[a-zA-z_.0-9]*[:][a-zA-z]+[a-zA-Z0-9]+[ ]?[|][ ]?([!]?[a-zA-Z]+[a-zA-z_.0-9]*|[a-zA-Z]+[a-zA-z_.0-9]*[ ]((==)|(!=))[ ]([a-zA-z]+[a-zA-Z0-9]+|\"[a-zA-z]+[a-zA-Z0-9]+\"))[)]");
     
     if(!std::regex_match(expr, select_reg)) {
         error = true;
