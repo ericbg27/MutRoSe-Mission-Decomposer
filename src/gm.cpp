@@ -84,7 +84,7 @@ void check_gm_validity(GMGraph gm) {
     Function: get_node_name
     Objective: Return the user-defined ID of some node given its text
 
-    @ Input 1: The node text
+    @ Input: The node text
     @ Output: The node name
 */ 
 string get_node_name(string node_text) {

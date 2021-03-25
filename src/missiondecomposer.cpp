@@ -4,27 +4,34 @@
 
 #include <boost/foreach.hpp>
 
+/*
+    Function: build_at_graph
+    Objective: Call the recursive Task Graph building structure, which generates an ATGraph object. This graph is the
+	graph of all possible combinations of tasks
+
+    @ Input 1: The abstract tasks instances map
+	@ Input 2: The abstract tasks decomposition paths map
+	@ Input 3: The goal model runtime annotation
+	@ Input 4: The goal model as a GMGraph object
+	@ Input 5: The initial world state, initialized using the knowledge (robots and world)
+	@ Input 6: The map between OCL goal model variables and HDDL variables
+	@ Input 7: The world knowledge as a KnowledgeBase object
+	@ Input 8: The semantic mappings vector
+    @ Output: The Task Graph as an ATGraph object
+
+	REMEMBER: AT's contained in at_instances are mandatory, their decompositions are alternative
+	NOTES: -> We can add an ALT operator (or similar name) in order to define operators for this alternative decompositions we can have
+			-> Main flow of things:
+				- Go through the goal model runtime annotation (gmannot) and create nodes for the tasks, operators and decompositions for the ATGraph
+					* Use AT instances to create the task nodes (each one of them will have a different id)
+				- For each AT Node in the graph, we will add all of the possible decomposition paths
+					* One thing to note is that we need to take into consideration the world state in order to define which are the valid decompositions
+			-> A recursive implementation seems to be the best approach
+			-> Let's not deal with the OPT or the FALLBACK case for the moment (29/11)
+*/ 
 ATGraph build_at_graph(map<string,vector<AbstractTask>> at_instances, map<string,vector<vector<task>>> at_decomposition_paths, general_annot* gmannot, GMGraph gm, 
 						vector<ground_literal> init, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_vars_map, KnowledgeBase world_db,
 							vector<SemanticMapping> semantic_mapping) {
-	/*
-		Generate Graph of all possible combinations of tasks
-
-		REMEMBER: AT's contained in at_instances are mandatory, their decompositions are alternative
-
-		-> We can add an ALT operator (or similar name) in order to define operators for this alternative decompositions we can have
-
-		-> Main flow of things:
-			- Go through the goal model runtime annotation (gmannot) and create nodes for the tasks, operators and decompositions for the ATGraph
-				- Use AT instances to create the task nodes (each one of them will have a different id)
-			- For each AT Node in the graph, we will add all of the possible decomposition paths
-				- One thing to note is that we need to take into consideration the world state in order to define which are the valid decompositions
-		
-		-> A recursive implementation seems to be the best approach
-
-		-> Let's not deal with the OPT or the FALLBACK case for the moment (29/11)
-	*/
-
 	ATGraph mission_decomposition;
 
 	map<string, variant<string,vector<string>>> instantiated_vars;
@@ -34,12 +41,29 @@ ATGraph build_at_graph(map<string,vector<AbstractTask>> at_instances, map<string
 	return mission_decomposition;
 }
 
+/*
+    Function: build_at_graph
+    Objective: Call the recursive Task Graph building structure, which generates an ATGraph object. This graph is the
+	graph of all possible combinations of tasks
+
+	@ Input 1: The partial Task Graph as an ATGraph object (this is the mission decomposition)
+	@ Input 2: The world state in this level of the recursion
+    @ Input 3: The abstract tasks instances map
+	@ Input 4: The abstract tasks decomposition paths map
+	@ Input 5: The goal model runtime annotation
+	@ Input 6: The ID of the parent of the current node
+	@ Input 7: The goal model as a GMGraph object
+	@ Input 8: A boolean flag indicating if the current node is involved in execution constraints
+	@ Input 9: The map between OCL goal model variables and HDDL variables
+	@ Input 10: The world knowledge as a KnowledgeBase object
+	@ Input 11: The semantic mappings vector
+	@ Input 12: A map of the instantiated OCL variables at this level of the recursion
+    @ Output: Void. The ATGraph object is built
+*/
 void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_literal> world_state, map<string,vector<AbstractTask>> at_instances, 
 								map<string,vector<vector<task>>> at_decomposition_paths, general_annot* rannot, int parent, GMGraph gm, bool non_coop,
-									map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_vars_map,KnowledgeBase world_db, 
+									map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_vars_map, KnowledgeBase world_db, 
 										vector<SemanticMapping> semantic_mapping, map<string, variant<string,vector<string>>> instantiated_vars) {
-										
-
 	ATNode node;
 	int node_id;
 	if(rannot->type == OPERATOR || rannot->type == MEANSEND) {
@@ -119,8 +143,8 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
 			bool resolved_context = check_context_dependency(mission_decomposition, parent, node_id, context, rannot, world_state, instantiated_vars, at_decomposition_paths, semantic_mapping);
 			
 			if(!resolved_context) {
-				cout << "COULD NOT RESOLVE CONTEXT FOR NODE: " << gm_node.text << endl; 
-				exit(1);
+				std::string bad_context_err = "COULD NOT RESOLVE CONTEXT FOR NODE: " + gm_node.text; 
+				throw std::runtime_error(bad_context_err);
 			}
 		}
 
@@ -239,6 +263,15 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
 	}
 }
 
+/*
+    Function: check_path_validity
+    Objective: Check if a path of tasks is valid given a world state
+
+    @ Input 1: The path to be checked
+	@ Input 2: The world state used for the evaluation
+	@ Input 3: The abstract task that originates the path of decomposition
+    @ Output: A boolean value indicating if the path is valid or not
+*/
 bool check_path_validity(vector<task> path, vector<ground_literal> world_state, AbstractTask at) {
 	bool valid_path = true;
 	for(task t : path) {
@@ -306,6 +339,15 @@ bool check_path_validity(vector<task> path, vector<ground_literal> world_state, 
 	return valid_path;
 }
 
+/*
+    Function: instantiate_decomposition_predicates
+    Objective: Ground as many predicates as possible for some decomposition of an abstract task
+
+    @ Input 1: The abstract task that generates the decomposition
+	@ Input 2: A reference to the decomposition being instantiated
+	@ Input 3: The map between OCL goal model variables and HDDL variables
+    @ Output: Void. The decomposition predicates are instantiated
+*/
 void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_vars_map) {
 	int task_counter = 1,task_number;
 
@@ -453,6 +495,20 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map
 	}
 }
 
+/*
+    Function: get_pred_from_context
+    Objective: Return a predicate definition from a context based on the existing semantic mappings
+
+    @ Input 1: The context condition being evaluated
+	@ Input 2: The semantic mappings vector
+    @ Output: A pair containing:
+		- A boolean flag indicating if the generated predicate is positive
+		- A pair of the actual variable name and the generated predicate
+
+	NOTE: For now we will accept only the attribute format
+
+		  -> This means that we will have as the context something in the form [variable].[attribute]
+*/
 pair<bool,pair<string,predicate_definition>> get_pred_from_context(Context context, vector<SemanticMapping> semantic_mapping) {
 	predicate_definition pred;
 	string var;
@@ -460,12 +516,6 @@ pair<bool,pair<string,predicate_definition>> get_pred_from_context(Context conte
 
 	if(context.type == "condition") {
 		string condition = context.condition;
-
-		/*
-			For now we will accept only the attribute format
-
-			-> This means that we will have as the context something in the form [variable].[attribute]
-		*/
 		string attr;
 
 		size_t cond_sep = condition.find('.');
@@ -478,13 +528,20 @@ pair<bool,pair<string,predicate_definition>> get_pred_from_context(Context conte
 
 			-> We need a way to check the variable type here
 		*/
+		bool found_pred = false;
 		for(SemanticMapping map : semantic_mapping) {
 			if(map.get_mapping_type() == "attribute") {
 				if(get<string>(map.get_prop("name")) == attr) {
 					pred = get<predicate_definition>(map.get_prop("map"));
+					found_pred = true;
 					break;
 				}
 			}
+		}
+
+		if(!found_pred) {
+			std::string predicate_not_found_err = "Could not build predicate from context: " + context.condition;
+			throw std::runtime_error(predicate_not_found_err);
 		}
 
 		if(condition.find("!") != std::string::npos || condition.find("not") != std::string::npos) {
@@ -495,6 +552,16 @@ pair<bool,pair<string,predicate_definition>> get_pred_from_context(Context conte
 	return make_pair(positive,make_pair(var,pred));
 }
 
+/*
+    Function: check_context
+    Objective: Check if a given context is active given a world_state
+
+    @ Input 1: The context beign evaluated
+	@ Input 2: The world state used to evaluate the context
+	@ Input 3: The semantic mapping vector
+	@ Input 4: The map of OCL goal model instantiated variables
+    @ Output: A boolean value indicating if the context is true or not
+*/
 bool check_context(Context context, vector<ground_literal> world_state, vector<SemanticMapping> semantic_mapping,
 					map<string, variant<string,vector<string>>> instantiated_vars) {
 	pair<bool,pair<string,predicate_definition>> var_and_pred = get_pred_from_context(context, semantic_mapping);
@@ -517,6 +584,22 @@ bool check_context(Context context, vector<ground_literal> world_state, vector<S
 	return is_active;
 }
 
+/*
+    Function: check_context_dependency
+    Objective: Verify context dependencies involving a given node. This is called if the context of some task is not
+	valid at the moment we evaluate it, so we go through all of the paths to the left of the Goal Model
+
+    @ Input 1: A reference to Task Graph as an ATGraph object
+	@ Input 2: The parent node ID of the node being evaluated 
+	@ Input 3: The ID of the node being evaluated
+	@ Input 4: The context of the current node
+	@ Input 5: The runtime annotation of the current node
+	@ Input 6: The current world state
+	@ Input 7: The instantiated OCL goal model variables
+	@ Input 8: The abstract tasks decomposition paths map
+	@ Input 9: The semantic mapping vector
+    @ Output: A boolean flag indicating if the context of the node was satisfied with some abstract task
+*/
 bool check_context_dependency(ATGraph& mission_decomposition, int parent_node, int current_node, Context context, general_annot* rannot, vector<ground_literal> world_state,
 								map<string, variant<string,vector<string>>> instantiated_vars, map<string,vector<vector<task>>> at_decomposition_paths,
 									vector<SemanticMapping> semantic_mapping) {
@@ -673,11 +756,16 @@ bool check_context_dependency(ATGraph& mission_decomposition, int parent_node, i
 	return found_at;
 }
 
-vector<pair<int,ATNode>> find_decompositions(ATGraph mission_decomposition, int node_id) {
-	/*
-		Search for all decompositions for a specific node and return them
-	*/
+/*
+    Function: find_decompositions
+    Objective: Search for all decompositions for a specific node and return them. We must note that only 
+	abstract task nodes have decompositions.
 
+    @ Input 1: The Task Graph as an ATGraph object
+	@ Input 2: The ID of the node being evaluated
+    @ Output: A vector of pairs of ID's and Nodes which are the roots of the decompositions (if any)
+*/
+vector<pair<int,ATNode>> find_decompositions(ATGraph mission_decomposition, int node_id) {
 	vector<pair<int,ATNode>> node_decompositions;
 	if(mission_decomposition[node_id].node_type == ATASK) {
 		ATGraph::out_edge_iterator ei, ei_end;
@@ -709,6 +797,14 @@ vector<pair<int,ATNode>> find_decompositions(ATGraph mission_decomposition, int 
 	return node_decompositions;
 }
 
+/*
+    Function: create_non_coop_edges
+    Objective: Create execution constraint edges with the current node (if they do not exist)
+
+    @ Input 1: A reference to the Task Graph as an ATGraph object
+	@ Input 2: The ID of the node being evaluated
+    @ Output: Void. The task graph is modified
+*/
 void create_non_coop_edges(ATGraph& mission_decomposition, int node_id) {
 	int non_coop_parent_id = -1;
 	int current_node = node_id;
@@ -774,6 +870,15 @@ void create_non_coop_edges(ATGraph& mission_decomposition, int node_id) {
 	}
 }
 
+/*
+    Function: find_non_coop_task_ids
+    Objective: Find the tasks which are involved in execution constraints with a given task
+
+    @ Input 1: The Task Graph as an ATGraph object
+	@ Input 2: The ID of the node being evaluated
+	@ Input 3: A reference of a set object of task ID's
+    @ Output: Void. The set of task ID's is filled 
+*/
 void find_non_coop_task_ids(ATGraph mission_decomposition, int node_id, set<int>& task_ids) {
 	if(mission_decomposition[node_id].node_type != ATASK) {
 		ATGraph::out_edge_iterator ei, ei_end;
@@ -792,17 +897,22 @@ void find_non_coop_task_ids(ATGraph mission_decomposition, int node_id, set<int>
 	}
 }
 
-bool can_unite_decompositions(Decomposition d1, Decomposition d2, bool non_coop_nodes) {
-	/*
-		Here we check if the effects of one decomposition affect the preconditions of another decomposition
+/*
+    Function: can_unite_decompositions
+    Objective: Here we check if the effects of one decomposition affect the preconditions of another decomposition
 
-		-> Predicates not present in the effects are considered to be true from the beginning
-		-> If tasks are non_coop we cannot assume nothing about the non_instantiated predicates
-			- If they are, we can assume everything robot related refers to the same constant(s)
-		
-		-> The way we are performing this right now does not seem to be right
-			- IDEA: Transform the initial state and then confront it with the preconditions, if we don't have conflicts we are ok
-	*/
+    @ Input 1: The first decomposition object
+	@ Input 2: The second decomposition object
+	@ Input 3: A flag indicating if these decompositions are decompositions of nodes involved in execution constraints
+    @ Output: A flag indicating if the decompositions can be united
+
+	NOTES: -> Predicates not present in the effects are considered to be true from the beginning
+			-> If tasks are non_coop we cannot assume nothing about the non_instantiated predicates
+				- If they are, we can assume everything robot related refers to the same constant(s)
+			-> The way we are performing this right now does not seem to be right
+				- IDEA: Transform the initial state and then confront it with the preconditions, if we don't have conflicts we are ok
+*/
+bool can_unite_decompositions(Decomposition d1, Decomposition d2, bool non_coop_nodes) {
 	bool can_unite = true;
 
 	vector<variant<ground_literal,literal>> d1_eff = d1.eff;
@@ -970,6 +1080,13 @@ bool can_unite_decompositions(Decomposition d1, Decomposition d2, bool non_coop_
 	return can_unite;
 }
 
+/*
+    Function: print_mission_decomposition
+    Objective: Print the mission decomposition to a terminal
+
+    @ Input: The mission decomposition as an ATGraph object
+    @ Output: Void. We just have an output in a terminal
+*/
 void print_mission_decomposition(ATGraph mission_decomposition) {
 	ATGraph::vertex_iterator i, end;
 	ATGraph::adjacency_iterator ai, a_end;
