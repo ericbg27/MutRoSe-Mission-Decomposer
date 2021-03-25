@@ -4,9 +4,24 @@
 
 #include <boost/property_tree/xml_parser.hpp>
 
+/*
+    Function: generate_instances_output
+    Objective: This function generates the XML output with all task instances, constraints, actions and valid mission
+    decompositions. By valid we mean that are viable given the knowledge that we have about the world. Robot-related
+    predicates are not resolved and are left as attributes to be evaluated
+
+    @ Input 1: The Task Graph as an ATGraph object
+    @ Input 2: The goal model as a GMGraph object
+    @ Input 3: The output file name and path
+    @ Input 4: The world state
+    @ Input 5: The semantic mappings vector
+	@ Input 6: The sorts map, where we have our objects
+	@ Input 7: The sort definitions
+	@ Input 8: The predicates definitions
+    @ Output: Void. The output file is generated in the given relative path
+*/
 void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<string,string> output, vector<ground_literal> world_state, vector<SemanticMapping> semantic_mapping,
                                 map<string,set<string>> sorts, vector<sort_definition> sort_definitions, vector<predicate_definition> predicate_definitions) {
-    //Generate all mission constraints, including parallel ones
     vector<Constraint> mission_constraints = generate_at_constraints(mission_decomposition);
 
     /*
@@ -20,21 +35,12 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
 
     generate_noncoop_constraints(final_mission_constraints,mission_decomposition);
 
-    /*
-        With the final constraints and the mission decomposition graph we generate our output
+    // With the final constraints and the mission decomposition graph we generate our output
 
-        -> The output file name and path are given in the output variable
-            - For now, only XML is allowed as an output
-    */
     pt::ptree output_file;
 
     vector<vector<pair<int,ATNode>>> valid_mission_decompositions = generate_valid_mission_decompositions(mission_decomposition, final_mission_constraints, world_state);
 
-    /*
-        Insert task instances into the XML output file
-
-        -> Each instance corresponds to a decomposition of an AT
-    */
     vector<Decomposition> task_instances;
     map<string,task> actions;
 
@@ -44,7 +50,7 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
 
     for(int index = 0;index < graph_size;index++) {
         if(mission_decomposition[index].node_type == DECOMPOSITION) {
-            Decomposition d = get<Decomposition>(mission_decomposition[index].content);
+            Decomposition d = std::get<Decomposition>(mission_decomposition[index].content);
 
             for(task a : d.path) {
                 if(actions.find(a.name) == actions.end() && a.name.find(method_precondition_action_name) == std::string::npos) {
@@ -56,13 +62,33 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
         }
     }
 
-    /*
-        Insert Actions into the XML Output file
+    output_actions(output_file, actions);
 
-        -> Fields:
+    std::map<std::string,std::string> task_id_map = output_tasks(output_file, task_instances, semantic_mapping);
+
+    output_constraints(output_file, final_mission_constraints, task_id_map);
+
+    output_mission_decompositions(output_file, valid_mission_decompositions, task_id_map);
+    
+    string output_filename = "xml/OutputTest.xml";
+
+    pt::xml_writer_settings<string> settings(' ',4);
+    pt::write_xml(output_filename, output_file, std::locale(), settings);
+}
+
+/*
+    Function: output_actions
+    Objective: Insert Actions into the XML Output file
+
+    @ Input 1: A reference to the output file ptree object
+    @ Input 2: The map of actions
+    @ Output: Void. The output file ptree oject is filled
+
+    NOTES: -> Fields:
             - Name
             - Capabilities
-    */
+*/
+void output_actions(pt::ptree& output_file, map<string,task> actions) {
     output_file.put("actions","");
 
     map<string,string>actions_id_map;
@@ -91,19 +117,28 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
 
         actions_counter++;
         actions_id_map[actions_it->first] = action_name;
-    }
+    }    
+}
 
-    /*
-        Insert Task Decompositions into the XML Output file
+/*
+    Function: output_tasks
+    Objective: Insert Task Decompositions into the XML Output file
 
-        -> Fields:
+    @ Input 1: A reference to the output file ptree object
+    @ Input 2: The vector of task_decompositions
+    @ Input 3: The vector of semantic mappings
+    @ Output: A map with the tasks XML ID's. Also, the output file ptree oject is filled
+
+    NOTES: -> Fields:
             - ID
             - Name
             - Location
             - Preconditions
             - Effects
             - Decomposition (Into actions)
-    */
+           -> Each instance corresponds to a decomposition of an AT
+*/
+std::map<std::string,std::string> output_tasks(pt::ptree& output_file, vector<Decomposition> task_instances, vector<SemanticMapping> semantic_mapping) {
     map<string,string> task_id_map;
 
     output_file.put("tasks","");
@@ -163,31 +198,32 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
             pair<SemanticMapping,bool> prec_mapping = find_predicate_mapping(prec,semantic_mapping,sorts,task_vars,sort_definitions);
 
             if(!prec_mapping.second) {
+                std::string semantic_mapping_error;
                 if(holds_alternative<ground_literal>(prec)) {
                     ground_literal p = get<ground_literal>(prec);
-                    cout << "No Semantic Mapping exists for predicate [" << p.predicate << " ";
+                    semantic_mapping_error += "No Semantic Mapping exists for predicate [" + p.predicate + " ";
                     unsigned int index = 0;
                     for(string arg : p.args) {
                         if(index == p.args.size()-1) {
-                            cout << arg << "] ";
+                            semantic_mapping_error += arg + "] ";
                         } else {
-                            cout << arg << " "; 
+                            semantic_mapping_error += arg + " "; 
                         }
                     }
                 } else {
                     literal p = get<literal>(prec);
-                    cout << "No Semantic Mapping exists for predicate [" << p.predicate << " ";
+                    semantic_mapping_error = "No Semantic Mapping exists for predicate [" + p.predicate + " ";
                     unsigned int index = 0;
                     for(string arg : p.arguments) {
                         if(index == p.arguments.size()-1) {
-                            cout << arg << "] ";
+                            semantic_mapping_error += arg + "] ";
                         } else {
-                            cout << arg << " "; 
+                            semantic_mapping_error += arg + " "; 
                         }
                     }
                 }
-                cout << "when trying to generate output for task " << instance.id << ": " << instance.at.name << endl;
-                exit(1);
+                semantic_mapping_error += "when trying to generate output for task " + instance.id + ": " + instance.at.name;
+                throw std::runtime_error(semantic_mapping_error);
             } else {
                 /*
                     Here we output the predicate as an attribute in the preconditions attribute of the XML
@@ -272,31 +308,32 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
             pair<SemanticMapping,bool> eff_mapping = find_predicate_mapping(eff,semantic_mapping,sorts,task_vars,sort_definitions);
 
             if(!eff_mapping.second) {
+                std::string semantic_mapping_error;
                 if(holds_alternative<ground_literal>(eff)) {
                     ground_literal e = get<ground_literal>(eff);
-                    cout << "No Semantic Mapping exists for predicate [" << e.predicate << " ";
+                    semantic_mapping_error += "No Semantic Mapping exists for predicate [" + e.predicate + " ";
                     unsigned int index = 0;
                     for(string arg : e.args) {
                         if(index == e.args.size()-1) {
-                            cout << arg << "] ";
+                            semantic_mapping_error += arg + "] ";
                         } else {
-                            cout << arg << " "; 
+                            semantic_mapping_error += arg + " "; 
                         }
                     }
                 } else {
                     literal e = get<literal>(eff);
-                    cout << "No Semantic Mapping exists for predicate [" << e.predicate << " ";
+                    semantic_mapping_error += "No Semantic Mapping exists for predicate [" + e.predicate + " ";
                     unsigned int index = 0;
                     for(string arg : e.arguments) {
                         if(index == e.arguments.size()-1) {
-                            cout << arg << "] ";
+                            semantic_mapping_error += arg + "] ";
                         } else {
-                            cout << arg << " "; 
+                            semantic_mapping_error += arg + " "; 
                         }
                     }
                 }
-                cout << "when trying to generate output for task " << instance.id << ": " << instance.at.name << endl;
-                exit(1);
+                semantic_mapping_error += "when trying to generate output for task " + instance.id + ": " + instance.at.name;
+                throw std::runtime_error(semantic_mapping_error);
             } else {
                 /*
                     Here we output the predicate as an attribute in the preconditions attribute of the XML
@@ -397,15 +434,25 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
         task_counter++;
     }
 
-    /*
-        Insert Constraints into the XML Output file
+    return task_id_map;
+}
 
-        -> Fields:
+/*
+    Function: output_constraints
+    Objective: Insert Constraints into the XML Output file
+
+    @ Input 1: A reference to the output file ptree object
+    @ Input 2: The final mission constraints
+    @ Input 3: The map of task XML ID's
+    @ Output: Void. The output file ptree oject is filled
+
+    NOTES: -> Fields:
             - Type
             - Task Instances
             - Group (Important only if constraint is of NC type)
             - Divisible (Important only if constraint is of NC type)
-    */
+*/
+void output_constraints(pt::ptree& output_file, vector<Constraint> final_mission_constraints, std::map<std::string,std::string> task_id_map) {
     output_file.put("constraints","");
     
     int constraint_counter = 0;
@@ -450,14 +497,22 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
         }
         constraint_counter++;
     }
+}
 
-    /*
-        Insert Mission Decompositions into the XML Output file
+/*
+    Function: output_mission_decompositions
+    Objective: Insert Mission Decompositions into the XML Output file
 
-        -> Fields:
+    @ Input 1: A reference to the output file ptree object
+    @ Input 2: The valid mission decompositions
+    @ Input 3: The map of task XML ID's
+    @ Output: Void. The output file ptree oject is filled
+
+    NOTES: -> Fields:
             - Decomposition
-                - Task Instances
-    */
+            - Task Instances
+*/
+void output_mission_decompositions(pt::ptree& output_file, std::vector<std::vector<std::pair<int,ATNode>>> valid_mission_decompositions, std::map<std::string,std::string> task_id_map) {
     output_file.put("mission_decompositions","");
 
     int decomposition_counter = 0;
@@ -473,13 +528,19 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
 
         decomposition_counter++;
     }
-
-    string output_filename = "xml/OutputTest.xml";
-
-    pt::xml_writer_settings<string> settings(' ',4);
-    pt::write_xml(output_filename, output_file, std::locale(), settings);
 }
 
+/*
+    Function: find_predicate_mapping
+    Objective: Find a semantic mapping involving a given predicate
+
+    @ Input 1: The predicate to be evaluated
+    @ Input 2: The vector of semantic mappings
+    @ Input 3: The sorts map, where objects are declared
+    @ Input 4: The var mappings between HDDL and OCL goal model variables
+    @ Input 5: The sort definitions
+    @ Output: A pair containing the semantic mapping and a boolean flag indicating if a mapping was found
+*/
 pair<SemanticMapping, bool> find_predicate_mapping(variant<ground_literal,literal> predicate, vector<SemanticMapping> semantic_mappings, map<string,set<string>> sorts,
                                                     map<string,string> vars, vector<sort_definition> sort_definitions) {
     SemanticMapping prec_mapping;
@@ -583,6 +644,17 @@ pair<SemanticMapping, bool> find_predicate_mapping(variant<ground_literal,litera
     return make_pair(prec_mapping, found_mapping);
 }
 
+/*
+    Function: generate_valid_mission_decompositions
+    Objective: Generate the valid mission decompositions based on constraints and on the world knowledge. This
+    function iniatilizes variables based on the root node and calls a recursive function that performs the generation
+
+    @ Input 1: The Task Graph as an ATGraph object
+    @ Input 2: The vector of constraints
+    @ Input 3: The world state
+    @ Output: The valid mission decompositions vector. A mission decomposition is a vector of pairs of the 
+    form ([task_id],[task_node])
+*/
 vector<vector<pair<int,ATNode>>> generate_valid_mission_decompositions(ATGraph mission_decomposition, vector<Constraint> mission_constraints, vector<ground_literal> world_state) {
     vector<pair<vector<pair<int,ATNode>>,vector<ground_literal>>> valid_mission_decompositions;
 
@@ -620,6 +692,20 @@ vector<vector<pair<int,ATNode>>> generate_valid_mission_decompositions(ATGraph m
     return final_valid_mission_decompositions;
 }
 
+/*
+    Function: recursive_valid_mission_decomposition
+    Objective: Generate the valid mission decompositions based on constraints and on the world knowledge. This is the
+    recursive function that in fact generates them.
+
+    @ Input 1: The Task Graph as an ATGraph object
+    @ Input 2: The initial world state before visiting the task nodes
+    @ Input 3: The vector of constraints
+    @ Input 4: The last operation found in the recursive calls
+    @ Input 5: A reference to the mission queue
+    @ Input 6: The vector of valid mission decompositions
+    @ Input 7: The possible conflicts that need to be analyzed
+    @ Output: Void. The valid mission decompositions will be generated
+*/
 void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector<ground_literal> initial_world_state, vector<Constraint> mission_constraints, string last_op,
                                             queue<pair<int,ATNode>>& mission_queue, vector<pair<vector<pair<int,ATNode>>,vector<ground_literal>>>& valid_mission_decompositions,
                                                 vector<pair<int,ATNode>>& possible_conflicts) {
@@ -920,8 +1006,9 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
 
                 if(!valid_task_decomposition) {
                     AbstractTask at = get<AbstractTask>(current_node.second.content);
-                    cout << "NO VALID DECOMPOSITIONS FOR TASK " << at.id << ": " << at.name << endl;
-                    exit(1);
+                    std::string invalid_task_decomposition_error = "NO VALID DECOMPOSITIONS FOR TASK " + at.id + ": " + at.name;
+                    
+                    throw std::runtime_error(invalid_task_decomposition_error);
                 }
             }
 
@@ -1021,8 +1108,9 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
 
             if(!at_least_one_decomposition_valid) {
                 AbstractTask at = get<AbstractTask>(current_node.second.content);
-                cout << "NO VALID DECOMPOSITIONS FOR TASK " << at.id << ": " << at.name << endl;
-                exit(1);
+                std::string invalid_task_decomposition_error = "NO VALID DECOMPOSITIONS FOR TASK " + at.id + ": " + at.name;
+                
+                throw std::runtime_error(invalid_task_decomposition_error);
             }
         }
 
@@ -1032,6 +1120,13 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
    }
 }
 
+/*
+    Function: generate_mission_queue
+    Objective: Generate the mission queue based on the Task Graph
+
+    @ Input: The Task Graph as an ATGraph object
+    @ Output: The generated mission queue
+*/
 queue<pair<int,ATNode>> generate_mission_queue(ATGraph mission_decomposition) {
     auto nodes = vertices(mission_decomposition);
 
@@ -1079,6 +1174,13 @@ queue<pair<int,ATNode>> generate_mission_queue(ATGraph mission_decomposition) {
     return mission_queue;
 }
 
+/*
+    Function: generate_at_constraints
+    Objective: Generate all mission constraints, including parallel ones
+
+    @ Input 1: The task graph as an ATGraph object
+    @ Output: The vector with all of the mission constraints
+*/
 vector<Constraint> generate_at_constraints(ATGraph mission_decomposition) {
     queue<pair<int,ATNode>> mission_queue = generate_mission_queue(mission_decomposition);
 
@@ -1514,19 +1616,23 @@ vector<Constraint> generate_at_constraints(ATGraph mission_decomposition) {
     return mission_constraints; 
 }
 
+/*
+    Function: transform_at_constraints
+    Objective: Here we will create the final constraints involving the decompositions and not the abstract tasks
+
+    @ Input 1: The Task Graph as an ATGraph object
+    @ Input 2: The vector of constraints
+    @ Input 3: The goal model as a GMGraph object
+    @ Output: The final constraint vector of the mission
+
+    NOTES:  -> For now we will only return the sequential constraints since they define precedence. Parallel constraints are not considered
+            -> One note is that parallel constraints where we have Context Dependencies will be transformed into sequential
+            -> We have to check for Context Dependencies
+                - If we find that a node has Context Dependencies we have to check with who it has
+                    * If it has with a high-level node (like a goal) we have to find all of the instances it has this dependency
+                    * If a parallel dependency between these tasks exist, change to sequential. If it is already sequential, nothing needs to be done
+*/
 vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vector<Constraint> mission_constraints, GMGraph gm) {
-    /*
-        Here we will create the final constraints involving the decompositions and not the abstract tasks
-
-        -> For now we will only return the sequential constraints since they define precedence. Parallel constraints are not considered
-        -> One note is that parallel constraints where we have Context Dependencies will be transformed into sequential
-
-        We have to check for Context Dependencies
-
-        -> If we find that a node has Context Dependencies we have to check with who it has
-            - If it has with a high-level node (like a goal) we have to find all of the instances it has this dependency
-            - If a parallel dependency between these tasks exist, change to sequential. If it is already sequential, nothing needs to be done
-    */
     vector<Constraint> transformed_constraints;
     map<int,vector<pair<int,ATNode>>> constraint_nodes_decompositions;
 
@@ -1691,6 +1797,14 @@ vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vecto
     return transformed_constraints;
 }  
 
+/*
+    Function: generate_noncoop_constraints
+    Objective: Generate execution constraints present in the mission
+
+    @ Input 1: A reference to the vector of constraints
+    @ Input 2: The Task Graph as an ATGraph object
+    @ Output: Void. The execution constraints will be added to the constraint vector
+*/
 void generate_noncoop_constraints(vector<Constraint>& mission_constraints, ATGraph mission_decomposition) {
     map<int,set<int>> non_coop_constraint_map;
     map<int,vector<pair<int,ATNode>>> constraint_nodes_decompositions;
