@@ -159,13 +159,6 @@ std::map<std::string,std::string> output_tasks(pt::ptree& output_file, vector<De
         task_attr = task_name + ".location";
         output_file.put(task_attr,instance.at.location.first);
 
-        /*
-            Robots number, preconditions and effects are to be dealt with later
-
-            -> Robots number depends on cardinality, on inference through HDDL, etc
-            -> Preconditions and effects need to be transformed in some way so we can deal directly with an atribute and not with a predicate
-            in the allocation step
-        */
         task_attr = task_name + ".robots_num.<xmlattr>.fixed";
         if(instance.at.fixed_robot_num) {
             output_file.put(task_attr,"True");
@@ -176,8 +169,6 @@ std::map<std::string,std::string> output_tasks(pt::ptree& output_file, vector<De
             output_file.put(task_attr,"False");
 
             pair<int,int> robot_range = get<pair<int,int>>(instance.at.robot_num);
-            //string r_num = to_string(robot_range.first) + " " + to_string(robot_range.second);
-            //output_file.put(task_attr,r_num);
 
             task_attr = task_name + ".robots_num.<xmlattr>.min";
             output_file.put(task_attr,to_string(robot_range.first));
@@ -665,6 +656,10 @@ vector<vector<pair<int,ATNode>>> generate_valid_mission_decompositions(ATGraph m
 
         -> Go through the queue and recursively build the decompositions (valid ones)
         -> The initial state of the world will be updated depending if we have a sequential or a parallel operator
+        
+        -> When we find an operator, we need to establish the relation between previous found nodes
+        -> If the operator succeeds another operator, we know that we need to relate a task with task already involved in another constraint
+        -> If the operator succeds a task, we know that this operator relates to the last two tasks
     */
     vector<pair<int,ATNode>> possible_conflicts;
     recursive_valid_mission_decomposition(mission_decomposition, world_state, mission_constraints, "", mission_queue, valid_mission_decompositions, possible_conflicts);
@@ -674,19 +669,19 @@ vector<vector<pair<int,ATNode>>> generate_valid_mission_decompositions(ATGraph m
         final_valid_mission_decompositions.push_back(mission_decomposition.first);
     }
 
-    cout << "Valid Mission Decompositions: " << endl;
+    std::cout << "Valid Mission Decompositions: " << std::endl;
     for(auto mission_decomposition : final_valid_mission_decompositions) {
-        cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << endl;
+        std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl;
         unsigned int index = 1;
         for(pair<int,ATNode> node : mission_decomposition) {
             if(index == mission_decomposition.size()) {
-                cout << get<Decomposition>(node.second.content).id << endl;
+                std::cout << get<Decomposition>(node.second.content).id << std::endl;
             } else {
-                cout << get<Decomposition>(node.second.content).id << " -> ";
+                std::cout << get<Decomposition>(node.second.content).id << " -> ";
             }
             index++;
         }
-        cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << endl << endl;
+        std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl << std::endl;
     }
 
     return final_valid_mission_decompositions;
@@ -710,9 +705,7 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
                                             queue<pair<int,ATNode>>& mission_queue, vector<pair<vector<pair<int,ATNode>>,vector<ground_literal>>>& valid_mission_decompositions,
                                                 vector<pair<int,ATNode>>& possible_conflicts) {
     /*
-        Here we will get the current node and:
-
-        -> Check whether it is an operator or an Abstract Task
+        Here we will get the current node and check whether it is an operator or an Abstract Task
     */
    pair<int,ATNode> current_node = mission_queue.front();
    mission_queue.pop();
@@ -724,8 +717,18 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
             -> The behavior is different depending on which operator we are dealing with
        */
         string op = get<string>(current_node.second.content);
+
         if(op == "#") {
+            /*
+                If the operator is parallel we:
+
+                -> Go through the queue while the next node in the queue is a child of this operator
+                    - This is done checking the out edges of the parallel operator node and verifying if the
+                    node in the queue is present
+                -> For each child we recursively perform decomposition
+            */
             bool checking_children = true;
+
             while(checking_children) {
                 if(mission_queue.size() == 0) {
                     break;
@@ -740,10 +743,16 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
                     int target = boost::target(*ei,mission_decomposition);
                     auto edge = boost::edge(source,target,mission_decomposition).first;
 
+                    int children_num = 0;
+                    ATGraph::out_edge_iterator target_ei, target_ei_end;
+                    for(boost::tie(target_ei,target_ei_end) = out_edges(target,mission_decomposition);target_ei != target_ei_end;++target_ei) {
+                        children_num++;
+                    }
+
                     /*
                         If we have a goal node as child we have to search its children for the next node
                     */
-                    if(mission_decomposition[target].node_type == GOALNODE) {
+                    if(mission_decomposition[target].node_type == GOALNODE || (mission_decomposition[target].node_type == OP && children_num < 2)) {
                         bool goal_node = true;
                         int child_id = target;
                         while(goal_node) {
@@ -792,10 +801,18 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
         } else if(op == ";") {
             /*
                 Here we have to deal with the possible conflicts and then erase them
-
-                -> Dealing with them is still a TODO
             */
-            possible_conflicts.clear();
+            if(possible_conflicts.size() > 0) {
+                std::cout << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&" << std::endl;
+                std::cout << "Resolving conflicts..." << std::endl;
+                std::cout << "Possible conflicts: " << std::endl;
+                for(pair<int,ATNode> t : possible_conflicts) {
+                    std::cout << std::get<AbstractTask>(t.second.content).name << std::endl;
+                }
+                std::cout << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&" << std::endl;
+                resolve_conflicts(valid_mission_decompositions, possible_conflicts, mission_decomposition, mission_constraints);
+                possible_conflicts.clear();
+            }
 
             bool checking_children = true;
             while(checking_children) {
@@ -816,8 +833,6 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
                     for(boost::tie(target_ei,target_ei_end) = out_edges(target,mission_decomposition);target_ei != target_ei_end;++target_ei) {
                         children_num++;
                     }
-
-                    //cout << "CHILDREN NUM: " << children_num << endl;
 
                     if(mission_decomposition[target].node_type == GOALNODE || (mission_decomposition[target].node_type == OP && children_num < 2)) {
                         bool goal_node = true;
@@ -866,7 +881,7 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
                 }
             }
         }
-   } else {
+    } else {
        /*
             If we have an AT we have to do the following for each decomposition
 
@@ -883,9 +898,7 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
 
         ATGraph::out_edge_iterator ei, ei_end;
         for(boost::tie(ei,ei_end) = out_edges(current_node.first,mission_decomposition);ei != ei_end;++ei) {
-            //int source = boost::source(*ei,mission_decomposition);
             int target = boost::target(*ei,mission_decomposition);
-            //auto edge = boost::edge(source,target,mission_decomposition).first;
 
             if(mission_decomposition[target].node_type == DECOMPOSITION) {
                 ATNode d = mission_decomposition[target];
@@ -951,8 +964,6 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
                             -> If we have a parallel operator we do not update the world state and add the AT to the possible conflicts
                             -> If we have a sequential operator we update the world state and put it into the valid mission decomposition
                         */
-                        pair<vector<pair<int,ATNode>>,vector<ground_literal>> new_valid_mission;
-
                         mission_decomposition.push_back(task_decomposition);
 
                         if(last_op == "#") {
@@ -1103,7 +1114,7 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
 
                     valid_mission_decompositions.push_back(new_valid_mission);
                     at_least_one_decomposition_valid = true;
-                }
+                } 
             }
 
             if(!at_least_one_decomposition_valid) {
@@ -1133,16 +1144,10 @@ queue<pair<int,ATNode>> generate_mission_queue(ATGraph mission_decomposition) {
     int graph_size = *nodes.second - *nodes.first;
 
     /*
-        Go through the graph and put nodes in a queue
+        Go through the graph in a DFS order and put nodes in a queue
 
         -> Goal Nodes are not considered
         -> Operator nodes with only one child are not considered
-
-        When we fill up the task, go through it
-
-        -> When we find an operator, we need to establish the relation
-        -> If the operator succeeds another operator, we know that we need to relate a task with task already involved in another constraint
-        -> If the operator succeds a task, we know that this operator relates the last two tasks
     */
     queue<pair<int,ATNode>> mission_queue;
 
@@ -1154,7 +1159,7 @@ queue<pair<int,ATNode>> generate_mission_queue(ATGraph mission_decomposition) {
             int out_edge_num = 0;
             ATGraph::out_edge_iterator ei, ei_end;
 
-            //Only insert OP nodes that have more than one outer edge of normal type
+            //Only insert OP nodes that have more than one outer edge of normal type (more than one child)
             for(boost::tie(ei,ei_end) = out_edges(i,mission_decomposition);ei != ei_end;++ei) {
                 auto source = boost::source(*ei,mission_decomposition);
                 auto target = boost::target(*ei,mission_decomposition);
@@ -1165,9 +1170,21 @@ queue<pair<int,ATNode>> generate_mission_queue(ATGraph mission_decomposition) {
                 }
             }
 
-            if(out_edge_num > 1) { //If more than one child for this operator
+            if(out_edge_num > 1) {
                 mission_queue.push(make_pair(i,mission_decomposition[i]));
             }
+        }
+    }
+
+    queue<pair<int,ATNode>> queue_copy = mission_queue;
+    std::cout << "Mission Queue" << std::endl;
+    while(!queue_copy.empty()) {
+        pair<int,ATNode> node = queue_copy.front();
+        queue_copy.pop(); 
+        if(node.second.node_type == ATASK) {
+            std::cout << "ATASK: " << get<AbstractTask>(node.second.content).id << " - " << get<AbstractTask>(node.second.content).name << std::endl;
+        } else {
+            std::cout << "OPERATOR: " << get<std::string>(node.second.content) << std::endl;
         }
     }
 
@@ -1178,7 +1195,7 @@ queue<pair<int,ATNode>> generate_mission_queue(ATGraph mission_decomposition) {
     Function: generate_at_constraints
     Objective: Generate all mission constraints, including parallel ones
 
-    @ Input 1: The task graph as an ATGraph object
+    @ Input: The task graph as an ATGraph object
     @ Output: The vector with all of the mission constraints
 */
 vector<Constraint> generate_at_constraints(ATGraph mission_decomposition) {
@@ -1780,18 +1797,18 @@ vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vecto
         }
     }
 
-    cout << endl;
-    cout << "Transformed constraints size: " << transformed_constraints.size() << endl;
-    cout << "Transformed Constraints:" << endl; 
+    std::cout << std::endl;
+    std::cout << "Transformed constraints size: " << transformed_constraints.size() << std::endl;
+    std::cout << "Transformed Constraints:" << std::endl; 
     for(Constraint c : transformed_constraints) {
-        cout << get<Decomposition>(c.nodes_involved.first.second.content).id;
+        std::cout << get<Decomposition>(c.nodes_involved.first.second.content).id;
         if(c.type == PAR) {
-            cout << " # ";
+            std::cout << " # ";
         } else {
-            cout << " ; ";
+            std::cout << " ; ";
         }
-        cout << get<Decomposition>(c.nodes_involved.second.second.content).id;
-        cout << endl;
+        std::cout << get<Decomposition>(c.nodes_involved.second.second.content).id;
+        std::cout << std::endl;
     }
 
     return transformed_constraints;
@@ -1871,14 +1888,178 @@ void generate_noncoop_constraints(vector<Constraint>& mission_constraints, ATGra
         }
     }
 
-    cout << endl;
-    cout << "Non Coop constraints size: " << non_coop_constraints.size() << endl;
-    cout << "Non Coop Constraints:" << endl; 
+    std::cout << std::endl;
+    std::cout << "Non Coop constraints size: " << non_coop_constraints.size() << std::endl;
+    std::cout << "Non Coop Constraints:" << std::endl; 
     for(Constraint c : non_coop_constraints) {
-        cout << get<Decomposition>(c.nodes_involved.first.second.content).id;
-        cout << " NC ";
-        cout << get<Decomposition>(c.nodes_involved.second.second.content).id;
-        cout << endl;
+        std::cout << get<Decomposition>(c.nodes_involved.first.second.content).id;
+        std::cout << " NC ";
+        std::cout << get<Decomposition>(c.nodes_involved.second.second.content).id;
+        std::cout << std::endl;
     }
-    cout << endl;
+    std::cout << std::endl;
+}
+
+/*
+    Function: resolve_conflicts
+    Objective: Resolve possible conflicts and add actual conflicts to the conflicts vector. If conflicts appears
+    we must need to remove valid decompositions that contain conflicting tasks
+
+    @ Input 1: 
+    @ Input 2: 
+    @ Input 3: 
+    @ Output: 
+
+    NOTES: Here we do not consider conditional effects yet!
+*/
+
+void resolve_conflicts(vector<pair<vector<pair<int,ATNode>>,vector<ground_literal>>>& valid_mission_decompositions, vector<pair<int,ATNode>> possible_conflicts,
+                        ATGraph mission_decomposition, vector<Constraint> mission_constraints) {
+    vector<pair<pair<int,ATNode>,pair<int,ATNode>>> actual_conflicts;
+
+    for(unsigned int i = 0; i < possible_conflicts.size()-1; i++) {
+        for(unsigned int j = i+1; j < possible_conflicts.size(); j++) {
+            pair<int,ATNode> t1 = possible_conflicts.at(i);
+            pair<int,ATNode> t2 = possible_conflicts.at(j);
+
+            vector<pair<int,ATNode>> t1_decompositions;
+            ATGraph::out_edge_iterator ei, ei_end;
+            for(boost::tie(ei,ei_end) = out_edges(t1.first,mission_decomposition);ei != ei_end;++ei) {
+                int target = boost::target(*ei,mission_decomposition);
+
+                if(mission_decomposition[target].node_type == DECOMPOSITION) {
+                    ATNode d = mission_decomposition[target];
+
+                    t1_decompositions.push_back(make_pair(target,d));
+                }
+            }
+
+            vector<pair<int,ATNode>> t2_decompositions;
+            for(boost::tie(ei,ei_end) = out_edges(t2.first,mission_decomposition);ei != ei_end;++ei) {
+                int target = boost::target(*ei,mission_decomposition);
+
+                if(mission_decomposition[target].node_type == DECOMPOSITION) {
+                    ATNode d = mission_decomposition[target];
+
+                    t2_decompositions.push_back(make_pair(target,d));
+                }
+            }
+
+            for(unsigned int k1 = 0; k1 < t1_decompositions.size(); k1++) {
+                for(unsigned int k2 = 0; k2 < t2_decompositions.size(); k2++) {
+                    pair<int,Decomposition> d1 = make_pair(t1_decompositions.at(k1).first, std::get<Decomposition>(t1_decompositions.at(k1).second.content));
+                    pair<int,Decomposition> d2 = make_pair(t2_decompositions.at(k2).first, std::get<Decomposition>(t2_decompositions.at(k2).second.content));
+
+                    bool is_non_divisible_or_non_group = false;
+                    //TODO: verify if we have execution constraints between these instances
+                    for(Constraint c : mission_constraints) {
+                        if(c.type == NC) {
+                            if(c.nodes_involved.first.first == d1.first) {
+                                if(c.nodes_involved.second.first == d2.first) {
+                                    if(!c.group || !c.divisible) {
+                                        is_non_divisible_or_non_group = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    /*
+                        We need to check:
+                            -> ground_literal effects for every decomposition pair
+                            -> robot-related literal effects if is_non_divisible_or_non_group is true 
+
+                        How do we check if effects have the same arguments?
+                            - If it is constant, no problem
+                            - If it is a variable and it is robottype or robot:
+                                * Evaluate is_non_divisible_or_non_group and then
+                                proceed to verify equality
+                    */
+                    bool has_conflict = false;
+                    for(auto eff1 : d1.second.eff) {
+                        for(auto eff2 : d2.second.eff) {
+                            if(holds_alternative<ground_literal>(eff1)) {
+                                if(holds_alternative<ground_literal>(eff2)) {
+                                    ground_literal e1 = std::get<ground_literal>(eff1);
+                                    ground_literal e2 = std::get<ground_literal>(eff2);
+
+                                    if(e1.predicate == e2.predicate) {
+                                        bool equal_args = true;
+                                        for(unsigned int arg_index = 0; arg_index < e1.args.size(); arg_index++) {
+                                            if(e1.args.at(arg_index) != e2.args.at(arg_index)) {
+                                                equal_args = false;
+                                                break;
+                                            }
+                                        }
+                                        if(equal_args) {
+                                            if(e1.positive != e2.positive) {
+                                                has_conflict = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            } else if(holds_alternative<literal>(eff1)) {
+                                if(holds_alternative<literal>(eff2)) {
+                                    literal e1 = std::get<literal>(eff1);
+                                    literal e2 = std::get<literal>(eff2);
+
+                                    if(e1.predicate == e2.predicate) {
+                                        bool equal_args = true;
+                                        for(unsigned int arg_index = 0; arg_index < e1.arguments.size(); arg_index++) {
+                                            if(e1.arguments.at(arg_index).rfind("?",0) == 0) { // Argument is variable
+                                                if(e2.arguments.at(arg_index).rfind("?",0) == 0) {
+                                                    // Find argument in abstract task definition
+                                                    task at_def = d1.second.at.at;
+                                                    for(pair<string,string> var : at_def.vars) {
+                                                        if(var.first == e1.arguments.at(arg_index)) {
+                                                            if(var.second == "robot" || var.second == "robotteam") {
+                                                                if(!is_non_divisible_or_non_group) {
+                                                                    equal_args = false;
+                                                                }
+                                                            }
+                                                            break;
+                                                        }
+                                                    }
+                                                    if(!equal_args) {
+                                                        break;
+                                                    }
+                                                }
+                                            } else {
+                                                if(e1.arguments.at(arg_index) != e2.arguments.at(arg_index)) {
+                                                    equal_args = false;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        if(equal_args) {
+                                            if(e1.positive != e2.positive) {
+                                                has_conflict = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if(has_conflict) {
+                            actual_conflicts.push_back(make_pair(t1_decompositions.at(k1),t2_decompositions.at(k2)));
+                            break;
+                        }
+                    }
+                }
+            }
+
+            /*
+                With the actual conflicts found, we have to check the valid decompositions
+            */
+            if(actual_conflicts.size() > 0) {
+                std::cout << "Has conflicts!" << std::endl;
+            } else {
+                std::cout << "No conflicts found!" << std::endl;
+            }
+        }
+    }
 }

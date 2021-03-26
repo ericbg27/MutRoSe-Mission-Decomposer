@@ -53,4 +53,7 @@ void generate_noncoop_constraints(vector<Constraint>& mission_constraints, ATGra
 pair<SemanticMapping,bool> find_predicate_mapping(variant<ground_literal,literal> predicate, vector<SemanticMapping> semantic_mappings, map<string,set<string>> sorts,
                                                     map<string,string> vars, vector<sort_definition> sort_definitions);
 
+void resolve_conflicts(vector<pair<vector<pair<int,ATNode>>,vector<ground_literal>>>& valid_mission_decompositions, vector<pair<int,ATNode>> possible_conflicts, ATGraph mission_decomposition,
+                        vector<Constraint> mission_constraints);
+
 #endif
