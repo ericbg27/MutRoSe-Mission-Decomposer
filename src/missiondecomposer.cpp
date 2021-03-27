@@ -121,6 +121,8 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
 			e.edge_type = NORMAL;
 			e.source = parent;
 			e.target = node_id;
+
+			mission_decomposition[node_id].parent = parent;
 			
 			boost::add_edge(boost::vertex(parent, mission_decomposition), boost::vertex(node_id, mission_decomposition), e, mission_decomposition);
 		}
@@ -216,6 +218,8 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
 		e.edge_type = NORMAL;
 		e.source = parent;
 		e.target = node_id;
+
+		mission_decomposition[node_id].parent = parent;
 		
 		boost::add_edge(boost::vertex(parent, mission_decomposition), boost::vertex(node_id, mission_decomposition), e, mission_decomposition);
 
@@ -257,6 +261,8 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
 			e.edge_type = NORMAL;
 			e.source = node_id;
 			e.target = dnode_id;
+
+			mission_decomposition[dnode_id].parent = node_id;
 
 			boost::add_edge(boost::vertex(node_id, mission_decomposition), boost::vertex(dnode_id, mission_decomposition), d_edge, mission_decomposition);
 		}

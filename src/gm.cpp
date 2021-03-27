@@ -22,9 +22,7 @@ vector<int> get_dfs_gm_nodes(GMGraph gm) {
     DFSVisitor vis;
     boost::depth_first_search(gm, vis, colormap, 0);
 
-    std::vector<int> vctr = vis.GetVector();
-
-    return vctr;
+    return vis.GetVector();
 }
 
 /*

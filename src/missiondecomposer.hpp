@@ -35,6 +35,7 @@ struct ATNode {
     bool non_coop;
     bool group;
     bool divisible;
+    int parent;
 };
 
 enum at_edge_type {NORMAL,CDEPEND,NONCOOP};

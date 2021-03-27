@@ -4,9 +4,24 @@
 
 #include <boost/property_tree/xml_parser.hpp>
 
+/*
+    Function: generate_instances_output
+    Objective: This function generates the XML output with all task instances, constraints, actions and valid mission
+    decompositions. By valid we mean that are viable given the knowledge that we have about the world. Robot-related
+    predicates are not resolved and are left as attributes to be evaluated
+
+    @ Input 1: The Task Graph as an ATGraph object
+    @ Input 2: The goal model as a GMGraph object
+    @ Input 3: The output file name and path
+    @ Input 4: The world state
+    @ Input 5: The semantic mappings vector
+	@ Input 6: The sorts map, where we have our objects
+	@ Input 7: The sort definitions
+	@ Input 8: The predicates definitions
+    @ Output: Void. The output file is generated in the given relative path
+*/
 void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<string,string> output, vector<ground_literal> world_state, vector<SemanticMapping> semantic_mapping,
                                 map<string,set<string>> sorts, vector<sort_definition> sort_definitions, vector<predicate_definition> predicate_definitions) {
-    //Generate all mission constraints, including parallel ones
     vector<Constraint> mission_constraints = generate_at_constraints(mission_decomposition);
 
     /*
@@ -20,21 +35,12 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
 
     generate_noncoop_constraints(final_mission_constraints,mission_decomposition);
 
-    /*
-        With the final constraints and the mission decomposition graph we generate our output
+    // With the final constraints and the mission decomposition graph we generate our output
 
-        -> The output file name and path are given in the output variable
-            - For now, only XML is allowed as an output
-    */
     pt::ptree output_file;
 
     vector<vector<pair<int,ATNode>>> valid_mission_decompositions = generate_valid_mission_decompositions(mission_decomposition, final_mission_constraints, world_state);
 
-    /*
-        Insert task instances into the XML output file
-
-        -> Each instance corresponds to a decomposition of an AT
-    */
     vector<Decomposition> task_instances;
     map<string,task> actions;
 
@@ -44,7 +50,7 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
 
     for(int index = 0;index < graph_size;index++) {
         if(mission_decomposition[index].node_type == DECOMPOSITION) {
-            Decomposition d = get<Decomposition>(mission_decomposition[index].content);
+            Decomposition d = std::get<Decomposition>(mission_decomposition[index].content);
 
             for(task a : d.path) {
                 if(actions.find(a.name) == actions.end() && a.name.find(method_precondition_action_name) == std::string::npos) {
@@ -56,13 +62,33 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
         }
     }
 
-    /*
-        Insert Actions into the XML Output file
+    output_actions(output_file, actions);
 
-        -> Fields:
+    std::map<std::string,std::string> task_id_map = output_tasks(output_file, task_instances, semantic_mapping);
+
+    output_constraints(output_file, final_mission_constraints, task_id_map);
+
+    output_mission_decompositions(output_file, valid_mission_decompositions, task_id_map);
+    
+    string output_filename = "xml/OutputTest.xml";
+
+    pt::xml_writer_settings<string> settings(' ',4);
+    pt::write_xml(output_filename, output_file, std::locale(), settings);
+}
+
+/*
+    Function: output_actions
+    Objective: Insert Actions into the XML Output file
+
+    @ Input 1: A reference to the output file ptree object
+    @ Input 2: The map of actions
+    @ Output: Void. The output file ptree oject is filled
+
+    NOTES: -> Fields:
             - Name
             - Capabilities
-    */
+*/
+void output_actions(pt::ptree& output_file, map<string,task> actions) {
     output_file.put("actions","");
 
     map<string,string>actions_id_map;
@@ -91,19 +117,28 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
 
         actions_counter++;
         actions_id_map[actions_it->first] = action_name;
-    }
+    }    
+}
 
-    /*
-        Insert Task Decompositions into the XML Output file
+/*
+    Function: output_tasks
+    Objective: Insert Task Decompositions into the XML Output file
 
-        -> Fields:
+    @ Input 1: A reference to the output file ptree object
+    @ Input 2: The vector of task_decompositions
+    @ Input 3: The vector of semantic mappings
+    @ Output: A map with the tasks XML ID's. Also, the output file ptree oject is filled
+
+    NOTES: -> Fields:
             - ID
             - Name
             - Location
             - Preconditions
             - Effects
             - Decomposition (Into actions)
-    */
+           -> Each instance corresponds to a decomposition of an AT
+*/
+std::map<std::string,std::string> output_tasks(pt::ptree& output_file, vector<Decomposition> task_instances, vector<SemanticMapping> semantic_mapping) {
     map<string,string> task_id_map;
 
     output_file.put("tasks","");
@@ -124,13 +159,6 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
         task_attr = task_name + ".location";
         output_file.put(task_attr,instance.at.location.first);
 
-        /*
-            Robots number, preconditions and effects are to be dealt with later
-
-            -> Robots number depends on cardinality, on inference through HDDL, etc
-            -> Preconditions and effects need to be transformed in some way so we can deal directly with an atribute and not with a predicate
-            in the allocation step
-        */
         task_attr = task_name + ".robots_num.<xmlattr>.fixed";
         if(instance.at.fixed_robot_num) {
             output_file.put(task_attr,"True");
@@ -141,8 +169,6 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
             output_file.put(task_attr,"False");
 
             pair<int,int> robot_range = get<pair<int,int>>(instance.at.robot_num);
-            //string r_num = to_string(robot_range.first) + " " + to_string(robot_range.second);
-            //output_file.put(task_attr,r_num);
 
             task_attr = task_name + ".robots_num.<xmlattr>.min";
             output_file.put(task_attr,to_string(robot_range.first));
@@ -163,31 +189,32 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
             pair<SemanticMapping,bool> prec_mapping = find_predicate_mapping(prec,semantic_mapping,sorts,task_vars,sort_definitions);
 
             if(!prec_mapping.second) {
+                std::string semantic_mapping_error;
                 if(holds_alternative<ground_literal>(prec)) {
                     ground_literal p = get<ground_literal>(prec);
-                    cout << "No Semantic Mapping exists for predicate [" << p.predicate << " ";
+                    semantic_mapping_error += "No Semantic Mapping exists for predicate [" + p.predicate + " ";
                     unsigned int index = 0;
                     for(string arg : p.args) {
                         if(index == p.args.size()-1) {
-                            cout << arg << "] ";
+                            semantic_mapping_error += arg + "] ";
                         } else {
-                            cout << arg << " "; 
+                            semantic_mapping_error += arg + " "; 
                         }
                     }
                 } else {
                     literal p = get<literal>(prec);
-                    cout << "No Semantic Mapping exists for predicate [" << p.predicate << " ";
+                    semantic_mapping_error = "No Semantic Mapping exists for predicate [" + p.predicate + " ";
                     unsigned int index = 0;
                     for(string arg : p.arguments) {
                         if(index == p.arguments.size()-1) {
-                            cout << arg << "] ";
+                            semantic_mapping_error += arg + "] ";
                         } else {
-                            cout << arg << " "; 
+                            semantic_mapping_error += arg + " "; 
                         }
                     }
                 }
-                cout << "when trying to generate output for task " << instance.id << ": " << instance.at.name << endl;
-                exit(1);
+                semantic_mapping_error += "when trying to generate output for task " + instance.id + ": " + instance.at.name;
+                throw std::runtime_error(semantic_mapping_error);
             } else {
                 /*
                     Here we output the predicate as an attribute in the preconditions attribute of the XML
@@ -272,31 +299,32 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
             pair<SemanticMapping,bool> eff_mapping = find_predicate_mapping(eff,semantic_mapping,sorts,task_vars,sort_definitions);
 
             if(!eff_mapping.second) {
+                std::string semantic_mapping_error;
                 if(holds_alternative<ground_literal>(eff)) {
                     ground_literal e = get<ground_literal>(eff);
-                    cout << "No Semantic Mapping exists for predicate [" << e.predicate << " ";
+                    semantic_mapping_error += "No Semantic Mapping exists for predicate [" + e.predicate + " ";
                     unsigned int index = 0;
                     for(string arg : e.args) {
                         if(index == e.args.size()-1) {
-                            cout << arg << "] ";
+                            semantic_mapping_error += arg + "] ";
                         } else {
-                            cout << arg << " "; 
+                            semantic_mapping_error += arg + " "; 
                         }
                     }
                 } else {
                     literal e = get<literal>(eff);
-                    cout << "No Semantic Mapping exists for predicate [" << e.predicate << " ";
+                    semantic_mapping_error += "No Semantic Mapping exists for predicate [" + e.predicate + " ";
                     unsigned int index = 0;
                     for(string arg : e.arguments) {
                         if(index == e.arguments.size()-1) {
-                            cout << arg << "] ";
+                            semantic_mapping_error += arg + "] ";
                         } else {
-                            cout << arg << " "; 
+                            semantic_mapping_error += arg + " "; 
                         }
                     }
                 }
-                cout << "when trying to generate output for task " << instance.id << ": " << instance.at.name << endl;
-                exit(1);
+                semantic_mapping_error += "when trying to generate output for task " + instance.id + ": " + instance.at.name;
+                throw std::runtime_error(semantic_mapping_error);
             } else {
                 /*
                     Here we output the predicate as an attribute in the preconditions attribute of the XML
@@ -397,15 +425,25 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
         task_counter++;
     }
 
-    /*
-        Insert Constraints into the XML Output file
+    return task_id_map;
+}
 
-        -> Fields:
+/*
+    Function: output_constraints
+    Objective: Insert Constraints into the XML Output file
+
+    @ Input 1: A reference to the output file ptree object
+    @ Input 2: The final mission constraints
+    @ Input 3: The map of task XML ID's
+    @ Output: Void. The output file ptree oject is filled
+
+    NOTES: -> Fields:
             - Type
             - Task Instances
             - Group (Important only if constraint is of NC type)
             - Divisible (Important only if constraint is of NC type)
-    */
+*/
+void output_constraints(pt::ptree& output_file, vector<Constraint> final_mission_constraints, std::map<std::string,std::string> task_id_map) {
     output_file.put("constraints","");
     
     int constraint_counter = 0;
@@ -450,14 +488,22 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
         }
         constraint_counter++;
     }
+}
 
-    /*
-        Insert Mission Decompositions into the XML Output file
+/*
+    Function: output_mission_decompositions
+    Objective: Insert Mission Decompositions into the XML Output file
 
-        -> Fields:
+    @ Input 1: A reference to the output file ptree object
+    @ Input 2: The valid mission decompositions
+    @ Input 3: The map of task XML ID's
+    @ Output: Void. The output file ptree oject is filled
+
+    NOTES: -> Fields:
             - Decomposition
-                - Task Instances
-    */
+            - Task Instances
+*/
+void output_mission_decompositions(pt::ptree& output_file, std::vector<std::vector<std::pair<int,ATNode>>> valid_mission_decompositions, std::map<std::string,std::string> task_id_map) {
     output_file.put("mission_decompositions","");
 
     int decomposition_counter = 0;
@@ -473,13 +519,19 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
 
         decomposition_counter++;
     }
-
-    string output_filename = "xml/OutputTest.xml";
-
-    pt::xml_writer_settings<string> settings(' ',4);
-    pt::write_xml(output_filename, output_file, std::locale(), settings);
 }
 
+/*
+    Function: find_predicate_mapping
+    Objective: Find a semantic mapping involving a given predicate
+
+    @ Input 1: The predicate to be evaluated
+    @ Input 2: The vector of semantic mappings
+    @ Input 3: The sorts map, where objects are declared
+    @ Input 4: The var mappings between HDDL and OCL goal model variables
+    @ Input 5: The sort definitions
+    @ Output: A pair containing the semantic mapping and a boolean flag indicating if a mapping was found
+*/
 pair<SemanticMapping, bool> find_predicate_mapping(variant<ground_literal,literal> predicate, vector<SemanticMapping> semantic_mappings, map<string,set<string>> sorts,
                                                     map<string,string> vars, vector<sort_definition> sort_definitions) {
     SemanticMapping prec_mapping;
@@ -583,6 +635,17 @@ pair<SemanticMapping, bool> find_predicate_mapping(variant<ground_literal,litera
     return make_pair(prec_mapping, found_mapping);
 }
 
+/*
+    Function: generate_valid_mission_decompositions
+    Objective: Generate the valid mission decompositions based on constraints and on the world knowledge. This
+    function iniatilizes variables based on the root node and calls a recursive function that performs the generation
+
+    @ Input 1: The Task Graph as an ATGraph object
+    @ Input 2: The vector of constraints
+    @ Input 3: The world state
+    @ Output: The valid mission decompositions vector. A mission decomposition is a vector of pairs of the 
+    form ([task_id],[task_node])
+*/
 vector<vector<pair<int,ATNode>>> generate_valid_mission_decompositions(ATGraph mission_decomposition, vector<Constraint> mission_constraints, vector<ground_literal> world_state) {
     vector<pair<vector<pair<int,ATNode>>,vector<ground_literal>>> valid_mission_decompositions;
 
@@ -593,6 +656,10 @@ vector<vector<pair<int,ATNode>>> generate_valid_mission_decompositions(ATGraph m
 
         -> Go through the queue and recursively build the decompositions (valid ones)
         -> The initial state of the world will be updated depending if we have a sequential or a parallel operator
+        
+        -> When we find an operator, we need to establish the relation between previous found nodes
+        -> If the operator succeeds another operator, we know that we need to relate a task with task already involved in another constraint
+        -> If the operator succeds a task, we know that this operator relates to the last two tasks
     */
     vector<pair<int,ATNode>> possible_conflicts;
     recursive_valid_mission_decomposition(mission_decomposition, world_state, mission_constraints, "", mission_queue, valid_mission_decompositions, possible_conflicts);
@@ -602,31 +669,43 @@ vector<vector<pair<int,ATNode>>> generate_valid_mission_decompositions(ATGraph m
         final_valid_mission_decompositions.push_back(mission_decomposition.first);
     }
 
-    cout << "Valid Mission Decompositions: " << endl;
+    std::cout << "Valid Mission Decompositions: " << std::endl;
     for(auto mission_decomposition : final_valid_mission_decompositions) {
-        cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << endl;
+        std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl;
         unsigned int index = 1;
         for(pair<int,ATNode> node : mission_decomposition) {
             if(index == mission_decomposition.size()) {
-                cout << get<Decomposition>(node.second.content).id << endl;
+                std::cout << get<Decomposition>(node.second.content).id << std::endl;
             } else {
-                cout << get<Decomposition>(node.second.content).id << " -> ";
+                std::cout << get<Decomposition>(node.second.content).id << " -> ";
             }
             index++;
         }
-        cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << endl << endl;
+        std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl << std::endl;
     }
 
     return final_valid_mission_decompositions;
 }
 
+/*
+    Function: recursive_valid_mission_decomposition
+    Objective: Generate the valid mission decompositions based on constraints and on the world knowledge. This is the
+    recursive function that in fact generates them.
+
+    @ Input 1: The Task Graph as an ATGraph object
+    @ Input 2: The initial world state before visiting the task nodes
+    @ Input 3: The vector of constraints
+    @ Input 4: The last operation found in the recursive calls
+    @ Input 5: A reference to the mission queue
+    @ Input 6: The vector of valid mission decompositions
+    @ Input 7: The possible conflicts that need to be analyzed
+    @ Output: Void. The valid mission decompositions will be generated
+*/
 void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector<ground_literal> initial_world_state, vector<Constraint> mission_constraints, string last_op,
                                             queue<pair<int,ATNode>>& mission_queue, vector<pair<vector<pair<int,ATNode>>,vector<ground_literal>>>& valid_mission_decompositions,
                                                 vector<pair<int,ATNode>>& possible_conflicts) {
     /*
-        Here we will get the current node and:
-
-        -> Check whether it is an operator or an Abstract Task
+        Here we will get the current node and check whether it is an operator or an Abstract Task
     */
    pair<int,ATNode> current_node = mission_queue.front();
    mission_queue.pop();
@@ -638,8 +717,18 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
             -> The behavior is different depending on which operator we are dealing with
        */
         string op = get<string>(current_node.second.content);
+
         if(op == "#") {
+            /*
+                If the operator is parallel we:
+
+                -> Go through the queue while the next node in the queue is a child of this operator
+                    - This is done checking the out edges of the parallel operator node and verifying if the
+                    node in the queue is present
+                -> For each child we recursively perform decomposition
+            */
             bool checking_children = true;
+
             while(checking_children) {
                 if(mission_queue.size() == 0) {
                     break;
@@ -654,10 +743,16 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
                     int target = boost::target(*ei,mission_decomposition);
                     auto edge = boost::edge(source,target,mission_decomposition).first;
 
+                    int children_num = 0;
+                    ATGraph::out_edge_iterator target_ei, target_ei_end;
+                    for(boost::tie(target_ei,target_ei_end) = out_edges(target,mission_decomposition);target_ei != target_ei_end;++target_ei) {
+                        children_num++;
+                    }
+
                     /*
                         If we have a goal node as child we have to search its children for the next node
                     */
-                    if(mission_decomposition[target].node_type == GOALNODE) {
+                    if(mission_decomposition[target].node_type == GOALNODE || (mission_decomposition[target].node_type == OP && children_num < 2)) {
                         bool goal_node = true;
                         int child_id = target;
                         while(goal_node) {
@@ -706,10 +801,18 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
         } else if(op == ";") {
             /*
                 Here we have to deal with the possible conflicts and then erase them
-
-                -> Dealing with them is still a TODO
             */
-            possible_conflicts.clear();
+            if(possible_conflicts.size() > 1) {
+                std::cout << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&" << std::endl;
+                std::cout << "Resolving conflicts..." << std::endl;
+                std::cout << "Possible conflicts: " << std::endl;
+                for(pair<int,ATNode> t : possible_conflicts) {
+                    std::cout << std::get<AbstractTask>(t.second.content).name << std::endl;
+                }
+                std::cout << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&" << std::endl;
+                resolve_conflicts(valid_mission_decompositions, possible_conflicts, mission_decomposition, mission_constraints);
+                possible_conflicts.clear();
+            }
 
             bool checking_children = true;
             while(checking_children) {
@@ -730,8 +833,6 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
                     for(boost::tie(target_ei,target_ei_end) = out_edges(target,mission_decomposition);target_ei != target_ei_end;++target_ei) {
                         children_num++;
                     }
-
-                    //cout << "CHILDREN NUM: " << children_num << endl;
 
                     if(mission_decomposition[target].node_type == GOALNODE || (mission_decomposition[target].node_type == OP && children_num < 2)) {
                         bool goal_node = true;
@@ -780,7 +881,7 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
                 }
             }
         }
-   } else {
+    } else {
        /*
             If we have an AT we have to do the following for each decomposition
 
@@ -797,9 +898,7 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
 
         ATGraph::out_edge_iterator ei, ei_end;
         for(boost::tie(ei,ei_end) = out_edges(current_node.first,mission_decomposition);ei != ei_end;++ei) {
-            //int source = boost::source(*ei,mission_decomposition);
             int target = boost::target(*ei,mission_decomposition);
-            //auto edge = boost::edge(source,target,mission_decomposition).first;
 
             if(mission_decomposition[target].node_type == DECOMPOSITION) {
                 ATNode d = mission_decomposition[target];
@@ -865,8 +964,6 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
                             -> If we have a parallel operator we do not update the world state and add the AT to the possible conflicts
                             -> If we have a sequential operator we update the world state and put it into the valid mission decomposition
                         */
-                        pair<vector<pair<int,ATNode>>,vector<ground_literal>> new_valid_mission;
-
                         mission_decomposition.push_back(task_decomposition);
 
                         if(last_op == "#") {
@@ -920,8 +1017,9 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
 
                 if(!valid_task_decomposition) {
                     AbstractTask at = get<AbstractTask>(current_node.second.content);
-                    cout << "NO VALID DECOMPOSITIONS FOR TASK " << at.id << ": " << at.name << endl;
-                    exit(1);
+                    std::string invalid_task_decomposition_error = "NO VALID DECOMPOSITIONS FOR TASK " + at.id + ": " + at.name;
+                    
+                    throw std::runtime_error(invalid_task_decomposition_error);
                 }
             }
 
@@ -1016,13 +1114,14 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
 
                     valid_mission_decompositions.push_back(new_valid_mission);
                     at_least_one_decomposition_valid = true;
-                }
+                } 
             }
 
             if(!at_least_one_decomposition_valid) {
                 AbstractTask at = get<AbstractTask>(current_node.second.content);
-                cout << "NO VALID DECOMPOSITIONS FOR TASK " << at.id << ": " << at.name << endl;
-                exit(1);
+                std::string invalid_task_decomposition_error = "NO VALID DECOMPOSITIONS FOR TASK " + at.id + ": " + at.name;
+                
+                throw std::runtime_error(invalid_task_decomposition_error);
             }
         }
 
@@ -1032,22 +1131,23 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
    }
 }
 
+/*
+    Function: generate_mission_queue
+    Objective: Generate the mission queue based on the Task Graph
+
+    @ Input: The Task Graph as an ATGraph object
+    @ Output: The generated mission queue
+*/
 queue<pair<int,ATNode>> generate_mission_queue(ATGraph mission_decomposition) {
     auto nodes = vertices(mission_decomposition);
 
     int graph_size = *nodes.second - *nodes.first;
 
     /*
-        Go through the graph and put nodes in a queue
+        Go through the graph in a DFS order and put nodes in a queue
 
         -> Goal Nodes are not considered
         -> Operator nodes with only one child are not considered
-
-        When we fill up the task, go through it
-
-        -> When we find an operator, we need to establish the relation
-        -> If the operator succeeds another operator, we know that we need to relate a task with task already involved in another constraint
-        -> If the operator succeds a task, we know that this operator relates the last two tasks
     */
     queue<pair<int,ATNode>> mission_queue;
 
@@ -1059,7 +1159,7 @@ queue<pair<int,ATNode>> generate_mission_queue(ATGraph mission_decomposition) {
             int out_edge_num = 0;
             ATGraph::out_edge_iterator ei, ei_end;
 
-            //Only insert OP nodes that have more than one outer edge of normal type
+            //Only insert OP nodes that have more than one outer edge of normal type (more than one child)
             for(boost::tie(ei,ei_end) = out_edges(i,mission_decomposition);ei != ei_end;++ei) {
                 auto source = boost::source(*ei,mission_decomposition);
                 auto target = boost::target(*ei,mission_decomposition);
@@ -1070,15 +1170,34 @@ queue<pair<int,ATNode>> generate_mission_queue(ATGraph mission_decomposition) {
                 }
             }
 
-            if(out_edge_num > 1) { //If more than one child for this operator
+            if(out_edge_num > 1) {
                 mission_queue.push(make_pair(i,mission_decomposition[i]));
             }
+        }
+    }
+
+    queue<pair<int,ATNode>> queue_copy = mission_queue;
+    std::cout << "Mission Queue" << std::endl;
+    while(!queue_copy.empty()) {
+        pair<int,ATNode> node = queue_copy.front();
+        queue_copy.pop(); 
+        if(node.second.node_type == ATASK) {
+            std::cout << "ATASK: " << get<AbstractTask>(node.second.content).id << " - " << get<AbstractTask>(node.second.content).name << std::endl;
+        } else {
+            std::cout << "OPERATOR: " << get<std::string>(node.second.content) << std::endl;
         }
     }
 
     return mission_queue;
 }
 
+/*
+    Function: generate_at_constraints
+    Objective: Generate all mission constraints, including parallel ones
+
+    @ Input: The task graph as an ATGraph object
+    @ Output: The vector with all of the mission constraints
+*/
 vector<Constraint> generate_at_constraints(ATGraph mission_decomposition) {
     queue<pair<int,ATNode>> mission_queue = generate_mission_queue(mission_decomposition);
 
@@ -1514,19 +1633,23 @@ vector<Constraint> generate_at_constraints(ATGraph mission_decomposition) {
     return mission_constraints; 
 }
 
+/*
+    Function: transform_at_constraints
+    Objective: Here we will create the final constraints involving the decompositions and not the abstract tasks
+
+    @ Input 1: The Task Graph as an ATGraph object
+    @ Input 2: The vector of constraints
+    @ Input 3: The goal model as a GMGraph object
+    @ Output: The final constraint vector of the mission
+
+    NOTES:  -> For now we will only return the sequential constraints since they define precedence. Parallel constraints are not considered
+            -> One note is that parallel constraints where we have Context Dependencies will be transformed into sequential
+            -> We have to check for Context Dependencies
+                - If we find that a node has Context Dependencies we have to check with who it has
+                    * If it has with a high-level node (like a goal) we have to find all of the instances it has this dependency
+                    * If a parallel dependency between these tasks exist, change to sequential. If it is already sequential, nothing needs to be done
+*/
 vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vector<Constraint> mission_constraints, GMGraph gm) {
-    /*
-        Here we will create the final constraints involving the decompositions and not the abstract tasks
-
-        -> For now we will only return the sequential constraints since they define precedence. Parallel constraints are not considered
-        -> One note is that parallel constraints where we have Context Dependencies will be transformed into sequential
-
-        We have to check for Context Dependencies
-
-        -> If we find that a node has Context Dependencies we have to check with who it has
-            - If it has with a high-level node (like a goal) we have to find all of the instances it has this dependency
-            - If a parallel dependency between these tasks exist, change to sequential. If it is already sequential, nothing needs to be done
-    */
     vector<Constraint> transformed_constraints;
     map<int,vector<pair<int,ATNode>>> constraint_nodes_decompositions;
 
@@ -1674,23 +1797,31 @@ vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vecto
         }
     }
 
-    cout << endl;
-    cout << "Transformed constraints size: " << transformed_constraints.size() << endl;
-    cout << "Transformed Constraints:" << endl; 
+    std::cout << std::endl;
+    std::cout << "Transformed constraints size: " << transformed_constraints.size() << std::endl;
+    std::cout << "Transformed Constraints:" << std::endl; 
     for(Constraint c : transformed_constraints) {
-        cout << get<Decomposition>(c.nodes_involved.first.second.content).id;
+        std::cout << get<Decomposition>(c.nodes_involved.first.second.content).id;
         if(c.type == PAR) {
-            cout << " # ";
+            std::cout << " # ";
         } else {
-            cout << " ; ";
+            std::cout << " ; ";
         }
-        cout << get<Decomposition>(c.nodes_involved.second.second.content).id;
-        cout << endl;
+        std::cout << get<Decomposition>(c.nodes_involved.second.second.content).id;
+        std::cout << std::endl;
     }
 
     return transformed_constraints;
 }  
 
+/*
+    Function: generate_noncoop_constraints
+    Objective: Generate execution constraints present in the mission
+
+    @ Input 1: A reference to the vector of constraints
+    @ Input 2: The Task Graph as an ATGraph object
+    @ Output: Void. The execution constraints will be added to the constraint vector
+*/
 void generate_noncoop_constraints(vector<Constraint>& mission_constraints, ATGraph mission_decomposition) {
     map<int,set<int>> non_coop_constraint_map;
     map<int,vector<pair<int,ATNode>>> constraint_nodes_decompositions;
@@ -1757,14 +1888,221 @@ void generate_noncoop_constraints(vector<Constraint>& mission_constraints, ATGra
         }
     }
 
-    cout << endl;
-    cout << "Non Coop constraints size: " << non_coop_constraints.size() << endl;
-    cout << "Non Coop Constraints:" << endl; 
+    std::cout << std::endl;
+    std::cout << "Non Coop constraints size: " << non_coop_constraints.size() << std::endl;
+    std::cout << "Non Coop Constraints:" << std::endl; 
     for(Constraint c : non_coop_constraints) {
-        cout << get<Decomposition>(c.nodes_involved.first.second.content).id;
-        cout << " NC ";
-        cout << get<Decomposition>(c.nodes_involved.second.second.content).id;
-        cout << endl;
+        std::cout << get<Decomposition>(c.nodes_involved.first.second.content).id;
+        std::cout << " NC ";
+        std::cout << get<Decomposition>(c.nodes_involved.second.second.content).id;
+        std::cout << std::endl;
     }
-    cout << endl;
+    std::cout << std::endl;
+}
+
+/*
+    Function: resolve_conflicts
+    Objective: Resolve possible conflicts and add actual conflicts to the conflicts vector. If conflicts appears
+    we must remove valid decompositions that contain conflicting tasks
+
+    @ Input 1: A reference to the vector of valid mission decompositions
+    @ Input 2: The vector of possible conflicts
+    @ Input 3: The Task Graph as an ATGraph object
+    @ Input 4: The vector of mission constraints
+    @ Output: Void. The valid mission decompositions may be trimmed
+
+    NOTES: Here we do not consider conditional effects yet!
+*/
+
+void resolve_conflicts(vector<pair<vector<pair<int,ATNode>>,vector<ground_literal>>>& valid_mission_decompositions, vector<pair<int,ATNode>> possible_conflicts,
+                        ATGraph mission_decomposition, vector<Constraint> mission_constraints) {
+    vector<pair<pair<int,ATNode>,pair<int,ATNode>>> actual_conflicts;
+
+    map<int,unsigned int> task_decompositions_number;
+
+    for(unsigned int i = 0; i < possible_conflicts.size()-1; i++) {
+        for(unsigned int j = i+1; j < possible_conflicts.size(); j++) {
+            pair<int,ATNode> t1 = possible_conflicts.at(i);
+            pair<int,ATNode> t2 = possible_conflicts.at(j);
+
+            vector<pair<int,ATNode>> t1_decompositions;
+            ATGraph::out_edge_iterator ei, ei_end;
+            for(boost::tie(ei,ei_end) = out_edges(t1.first,mission_decomposition);ei != ei_end;++ei) {
+                int target = boost::target(*ei,mission_decomposition);
+
+                if(mission_decomposition[target].node_type == DECOMPOSITION) {
+                    ATNode d = mission_decomposition[target];
+
+                    t1_decompositions.push_back(make_pair(target,d));
+                }
+            }
+            task_decompositions_number[t1.first] = t1_decompositions.size();
+
+            vector<pair<int,ATNode>> t2_decompositions;
+            for(boost::tie(ei,ei_end) = out_edges(t2.first,mission_decomposition);ei != ei_end;++ei) {
+                int target = boost::target(*ei,mission_decomposition);
+
+                if(mission_decomposition[target].node_type == DECOMPOSITION) {
+                    ATNode d = mission_decomposition[target];
+
+                    t2_decompositions.push_back(make_pair(target,d));
+                }
+            }
+            task_decompositions_number[t2.first] = t2_decompositions.size();
+
+            for(unsigned int k1 = 0; k1 < t1_decompositions.size(); k1++) {
+                for(unsigned int k2 = 0; k2 < t2_decompositions.size(); k2++) {
+                    pair<int,Decomposition> d1 = make_pair(t1_decompositions.at(k1).first, std::get<Decomposition>(t1_decompositions.at(k1).second.content));
+                    pair<int,Decomposition> d2 = make_pair(t2_decompositions.at(k2).first, std::get<Decomposition>(t2_decompositions.at(k2).second.content));
+
+                    bool is_non_divisible_or_non_group = false;
+                    for(Constraint c : mission_constraints) {
+                        if(c.type == NC) {
+                            if(c.nodes_involved.first.first == d1.first) {
+                                if(c.nodes_involved.second.first == d2.first) {
+                                    if(!c.group || !c.divisible) {
+                                        is_non_divisible_or_non_group = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    /*
+                        We need to check:
+                            -> ground_literal effects for every decomposition pair
+                            -> robot-related literal effects if is_non_divisible_or_non_group is true 
+
+                        How do we check if effects have the same arguments?
+                            - If it is constant, no problem
+                            - If it is a variable and it is robottype or robot:
+                                * Evaluate is_non_divisible_or_non_group and then
+                                proceed to verify equality
+                    */
+                    bool has_conflict = false;
+                    for(auto eff1 : d1.second.eff) {
+                        for(auto eff2 : d2.second.eff) {
+                            if(holds_alternative<ground_literal>(eff1)) {
+                                if(holds_alternative<ground_literal>(eff2)) {
+                                    ground_literal e1 = std::get<ground_literal>(eff1);
+                                    ground_literal e2 = std::get<ground_literal>(eff2);
+
+                                    if(e1.predicate == e2.predicate) {
+                                        bool equal_args = true;
+                                        for(unsigned int arg_index = 0; arg_index < e1.args.size(); arg_index++) {
+                                            if(e1.args.at(arg_index) != e2.args.at(arg_index)) {
+                                                equal_args = false;
+                                                break;
+                                            }
+                                        }
+                                        if(equal_args) {
+                                            if(e1.positive != e2.positive) {
+                                                has_conflict = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            } else if(holds_alternative<literal>(eff1)) {
+                                if(holds_alternative<literal>(eff2)) {
+                                    literal e1 = std::get<literal>(eff1);
+                                    literal e2 = std::get<literal>(eff2);
+
+                                    if(e1.predicate == e2.predicate) {
+                                        bool equal_args = true;
+                                        for(unsigned int arg_index = 0; arg_index < e1.arguments.size(); arg_index++) {
+                                            if(e1.arguments.at(arg_index).rfind("?",0) == 0) { // Argument is variable
+                                                if(e2.arguments.at(arg_index).rfind("?",0) == 0) {
+                                                    // Find argument in abstract task definition
+                                                    task at_def = d1.second.at.at;
+                                                    for(pair<string,string> var : at_def.vars) {
+                                                        if(var.first == e1.arguments.at(arg_index)) {
+                                                            if(var.second == "robot" || var.second == "robotteam") {
+                                                                if(!is_non_divisible_or_non_group) {
+                                                                    equal_args = false;
+                                                                }
+                                                            }
+                                                            break;
+                                                        }
+                                                    }
+                                                    if(!equal_args) {
+                                                        break;
+                                                    }
+                                                }
+                                            } else {
+                                                if(e1.arguments.at(arg_index) != e2.arguments.at(arg_index)) {
+                                                    equal_args = false;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        if(equal_args) {
+                                            if(e1.positive != e2.positive) {
+                                                has_conflict = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if(has_conflict) {
+                            break;
+                        }
+                    }
+                    if(has_conflict) {
+                        actual_conflicts.push_back(make_pair(t1_decompositions.at(k1),t2_decompositions.at(k2)));
+                    }
+                }
+            }
+
+            /*
+                With the actual conflicts found, we have to check the valid decompositions
+            */
+            if(actual_conflicts.size() > 0) {
+                map<int,vector<int>> found_task_decompositions;
+                for(pair<pair<int,ATNode>,pair<int,ATNode>> conflict : actual_conflicts) {
+                    found_task_decompositions[t1.first].push_back(conflict.first.first);
+                    found_task_decompositions[t2.first].push_back(conflict.second.first);
+
+                    if(found_task_decompositions[t1.first].size() == task_decompositions_number[t1.first]) {
+                        // If all the decompositions of a task are in conflict, throw an error
+                        std::string conflict_error = "Cannot solve conflicts with task " + get<AbstractTask>(mission_decomposition[t1.first].content).id + ": " + get<AbstractTask>(mission_decomposition[t1.first].content).name; 
+                        throw std::runtime_error(conflict_error);
+                    } else if(found_task_decompositions[t2.first].size() == task_decompositions_number[t2.first]) {
+                        std::string conflict_error = "Cannot solve conflicts with task " + get<AbstractTask>(mission_decomposition[t2.first].content).id + ": " + get<AbstractTask>(mission_decomposition[t2.first].content).name; 
+                        throw std::runtime_error(conflict_error);
+                    }
+
+                    /*
+                        Delete every mission decomposition that contain these conflicting task instances
+                    */
+                    vector<pair<vector<pair<int,ATNode>>,vector<ground_literal>>>::iterator mission_it;
+                    for(mission_it = valid_mission_decompositions.begin(); mission_it != valid_mission_decompositions.end(); ) {
+                        pair<bool,bool> found_instances = make_pair(false,false);
+                        bool remove_decomposition = false;
+                        for(pair<int,ATNode> t : mission_it->first) {
+                            if(t.first == conflict.first.first) {
+                                found_instances.first = true;
+                            } else if(t.first == conflict.second.first) {
+                                found_instances.second = true;
+                            }
+
+                            if(found_instances.first && found_instances.second) {
+                                remove_decomposition = true;
+                                break;
+                            }
+                        }
+
+                        if(remove_decomposition) {
+                            valid_mission_decompositions.erase(mission_it);
+                        } else {
+                            ++mission_it;
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
