@@ -54,7 +54,7 @@
         <location>SanitizationRoom</location>
         <robots_num fixed="True" num="1"/>
         <preconditions>
-            <prec0 vars="?r" var_types="robot">?r.is_sanitized</prec0>
+            <prec0 vars="?r" var_types="robot">not ?r.is_sanitized</prec0>
         </preconditions>
         <effects>
             <eff0 vars="?r" var_types="robot">?r.is_sanitized</eff0>
@@ -71,6 +71,9 @@
         <effects>
             <eff0 vars="RoomA" var_types="room">RoomA.is_prepared</eff0>
         </effects>
+        <triggering_events>
+            <event0>E2</event0>
+        </triggering_events>
         <decomposition>
             <action0>move-furniture</action0>
         </decomposition>
@@ -101,7 +104,7 @@
         <location>SanitizationRoom</location>
         <robots_num fixed="True" num="1"/>
         <preconditions>
-            <prec0 vars="?r" var_types="robot">?r.is_sanitized</prec0>
+            <prec0 vars="?r" var_types="robot">not ?r.is_sanitized</prec0>
         </preconditions>
         <effects>
             <eff0 vars="?r" var_types="robot">?r.is_sanitized</eff0>
@@ -118,6 +121,9 @@
         <effects>
             <eff0 vars="RoomB" var_types="room">RoomB.is_prepared</eff0>
         </effects>
+        <triggering_events>
+            <event0>E2</event0>
+        </triggering_events>
         <decomposition>
             <action0>move-furniture</action0>
         </decomposition>
@@ -128,13 +134,13 @@
         <type>SEQ</type>
         <task_instances>
             <id0>task0</id0>
-            <id1>task2</id1>
+            <id1>task1</id1>
         </task_instances>
     </constraint0>
     <constraint1>
         <type>SEQ</type>
         <task_instances>
-            <id0>task1</id0>
+            <id0>task0</id0>
             <id1>task2</id1>
         </task_instances>
     </constraint1>
@@ -142,16 +148,34 @@
         <type>SEQ</type>
         <task_instances>
             <id0>task3</id0>
-            <id1>task5</id1>
+            <id1>task4</id1>
         </task_instances>
     </constraint2>
     <constraint3>
         <type>SEQ</type>
         <task_instances>
-            <id0>task4</id0>
+            <id0>task3</id0>
             <id1>task5</id1>
         </task_instances>
     </constraint3>
+    <constraint4>
+        <type>EC</type>
+        <task_instances>
+            <id0>task0</id0>
+            <id1>task1</id1>
+        </task_instances>
+        <group>True</group>
+        <divisible>False</divisible>
+    </constraint4>
+    <constraint5>
+        <type>EC</type>
+        <task_instances>
+            <id0>task3</id0>
+            <id1>task4</id1>
+        </task_instances>
+        <group>True</group>
+        <divisible>False</divisible>
+    </constraint5>
 </constraints>
 <mission_decompositions>
     <decomposition0>

@@ -802,7 +802,7 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
             /*
                 Here we have to deal with the possible conflicts and then erase them
             */
-            if(possible_conflicts.size() > 0) {
+            if(possible_conflicts.size() > 1) {
                 std::cout << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&" << std::endl;
                 std::cout << "Resolving conflicts..." << std::endl;
                 std::cout << "Possible conflicts: " << std::endl;
@@ -1903,12 +1903,13 @@ void generate_noncoop_constraints(vector<Constraint>& mission_constraints, ATGra
 /*
     Function: resolve_conflicts
     Objective: Resolve possible conflicts and add actual conflicts to the conflicts vector. If conflicts appears
-    we must need to remove valid decompositions that contain conflicting tasks
+    we must remove valid decompositions that contain conflicting tasks
 
-    @ Input 1: 
-    @ Input 2: 
-    @ Input 3: 
-    @ Output: 
+    @ Input 1: A reference to the vector of valid mission decompositions
+    @ Input 2: The vector of possible conflicts
+    @ Input 3: The Task Graph as an ATGraph object
+    @ Input 4: The vector of mission constraints
+    @ Output: Void. The valid mission decompositions may be trimmed
 
     NOTES: Here we do not consider conditional effects yet!
 */
@@ -1916,6 +1917,8 @@ void generate_noncoop_constraints(vector<Constraint>& mission_constraints, ATGra
 void resolve_conflicts(vector<pair<vector<pair<int,ATNode>>,vector<ground_literal>>>& valid_mission_decompositions, vector<pair<int,ATNode>> possible_conflicts,
                         ATGraph mission_decomposition, vector<Constraint> mission_constraints) {
     vector<pair<pair<int,ATNode>,pair<int,ATNode>>> actual_conflicts;
+
+    map<int,unsigned int> task_decompositions_number;
 
     for(unsigned int i = 0; i < possible_conflicts.size()-1; i++) {
         for(unsigned int j = i+1; j < possible_conflicts.size(); j++) {
@@ -1933,6 +1936,7 @@ void resolve_conflicts(vector<pair<vector<pair<int,ATNode>>,vector<ground_litera
                     t1_decompositions.push_back(make_pair(target,d));
                 }
             }
+            task_decompositions_number[t1.first] = t1_decompositions.size();
 
             vector<pair<int,ATNode>> t2_decompositions;
             for(boost::tie(ei,ei_end) = out_edges(t2.first,mission_decomposition);ei != ei_end;++ei) {
@@ -1944,6 +1948,7 @@ void resolve_conflicts(vector<pair<vector<pair<int,ATNode>>,vector<ground_litera
                     t2_decompositions.push_back(make_pair(target,d));
                 }
             }
+            task_decompositions_number[t2.first] = t2_decompositions.size();
 
             for(unsigned int k1 = 0; k1 < t1_decompositions.size(); k1++) {
                 for(unsigned int k2 = 0; k2 < t2_decompositions.size(); k2++) {
@@ -1951,7 +1956,6 @@ void resolve_conflicts(vector<pair<vector<pair<int,ATNode>>,vector<ground_litera
                     pair<int,Decomposition> d2 = make_pair(t2_decompositions.at(k2).first, std::get<Decomposition>(t2_decompositions.at(k2).second.content));
 
                     bool is_non_divisible_or_non_group = false;
-                    //TODO: verify if we have execution constraints between these instances
                     for(Constraint c : mission_constraints) {
                         if(c.type == NC) {
                             if(c.nodes_involved.first.first == d1.first) {
@@ -2043,11 +2047,12 @@ void resolve_conflicts(vector<pair<vector<pair<int,ATNode>>,vector<ground_litera
                                 }
                             }
                         }
-
                         if(has_conflict) {
-                            actual_conflicts.push_back(make_pair(t1_decompositions.at(k1),t2_decompositions.at(k2)));
                             break;
                         }
+                    }
+                    if(has_conflict) {
+                        actual_conflicts.push_back(make_pair(t1_decompositions.at(k1),t2_decompositions.at(k2)));
                     }
                 }
             }
@@ -2056,9 +2061,47 @@ void resolve_conflicts(vector<pair<vector<pair<int,ATNode>>,vector<ground_litera
                 With the actual conflicts found, we have to check the valid decompositions
             */
             if(actual_conflicts.size() > 0) {
-                std::cout << "Has conflicts!" << std::endl;
-            } else {
-                std::cout << "No conflicts found!" << std::endl;
+                map<int,vector<int>> found_task_decompositions;
+                for(pair<pair<int,ATNode>,pair<int,ATNode>> conflict : actual_conflicts) {
+                    found_task_decompositions[t1.first].push_back(conflict.first.first);
+                    found_task_decompositions[t2.first].push_back(conflict.second.first);
+
+                    if(found_task_decompositions[t1.first].size() == task_decompositions_number[t1.first]) {
+                        // If all the decompositions of a task are in conflict, throw an error
+                        std::string conflict_error = "Cannot solve conflicts with task " + get<AbstractTask>(mission_decomposition[t1.first].content).id + ": " + get<AbstractTask>(mission_decomposition[t1.first].content).name; 
+                        throw std::runtime_error(conflict_error);
+                    } else if(found_task_decompositions[t2.first].size() == task_decompositions_number[t2.first]) {
+                        std::string conflict_error = "Cannot solve conflicts with task " + get<AbstractTask>(mission_decomposition[t2.first].content).id + ": " + get<AbstractTask>(mission_decomposition[t2.first].content).name; 
+                        throw std::runtime_error(conflict_error);
+                    }
+
+                    /*
+                        Delete every mission decomposition that contain these conflicting task instances
+                    */
+                    vector<pair<vector<pair<int,ATNode>>,vector<ground_literal>>>::iterator mission_it;
+                    for(mission_it = valid_mission_decompositions.begin(); mission_it != valid_mission_decompositions.end(); ) {
+                        pair<bool,bool> found_instances = make_pair(false,false);
+                        bool remove_decomposition = false;
+                        for(pair<int,ATNode> t : mission_it->first) {
+                            if(t.first == conflict.first.first) {
+                                found_instances.first = true;
+                            } else if(t.first == conflict.second.first) {
+                                found_instances.second = true;
+                            }
+
+                            if(found_instances.first && found_instances.second) {
+                                remove_decomposition = true;
+                                break;
+                            }
+                        }
+
+                        if(remove_decomposition) {
+                            valid_mission_decompositions.erase(mission_it);
+                        } else {
+                            ++mission_it;
+                        }
+                    }
+                }
             }
         }
     }
