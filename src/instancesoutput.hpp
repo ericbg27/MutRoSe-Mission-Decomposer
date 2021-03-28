@@ -12,21 +12,10 @@
 #include <boost/graph/adjacency_list.hpp>
 
 #include "missiondecomposer.hpp"
+#include "constraintmanager.hpp"
 #include "gm.hpp"
 
 using namespace std;
-
-enum constraint_type {SEQ,PAR,NC};
-
-struct Constraint {
-    /*
-        Constraint involving two different abstract tasks/decompositions
-    */
-    constraint_type type;
-    pair<pair<int,ATNode>,pair<int,ATNode>> nodes_involved;
-    bool group = true;
-    bool divisible = true;
-};
 
 void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<string,string> output, vector<ground_literal> world_state, vector<SemanticMapping> semantic_mapping,
                                 map<string,set<string>> sorts, vector<sort_definition> sort_definitions, vector<predicate_definition> predicate_definitions);
@@ -44,14 +33,8 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
 
 queue<pair<int,ATNode>> generate_mission_queue(ATGraph mission_decomposition);
 
-vector<Constraint> generate_at_constraints(ATGraph mission_decomposition);
-
-vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vector<Constraint> mission_constraints, GMGraph gm);
-
-void generate_noncoop_constraints(vector<Constraint>& mission_constraints, ATGraph mission_decomposition);
-
 pair<SemanticMapping,bool> find_predicate_mapping(variant<ground_literal,literal> predicate, vector<SemanticMapping> semantic_mappings, map<string,set<string>> sorts,
-                                                    map<string,string> vars, vector<sort_definition> sort_definitions);
+                                                map<string,string> vars, vector<sort_definition> sort_definitions);
 
 void resolve_conflicts(vector<pair<vector<pair<int,ATNode>>,vector<ground_literal>>>& valid_mission_decompositions, vector<pair<int,ATNode>> possible_conflicts, ATGraph mission_decomposition,
                         vector<Constraint> mission_constraints);
