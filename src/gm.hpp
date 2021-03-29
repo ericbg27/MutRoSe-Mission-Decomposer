@@ -14,6 +14,7 @@
 #include <boost/graph/depth_first_search.hpp>
 
 #include "parsetree.hpp"
+#include "contextmanager.hpp"
 
 using namespace std;
 
@@ -89,11 +90,6 @@ struct QueriedProperty {
     string queried_var;
     pair<string,string> query_var;
     vector<string> query;
-};
-
-struct Context {
-    string type;
-    string condition;
 };
 
 struct VertexData {

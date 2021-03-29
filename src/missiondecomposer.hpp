@@ -11,9 +11,11 @@
 
 #include "gm.hpp"
 #include "at.hpp"
+#include "at_manager.hpp"
 #include "annotmanager.hpp"
 #include "config.hpp"
 #include "knowledgebase.hpp"
+#include "contextmanager.hpp"
 
 using namespace std;
 
@@ -77,11 +79,7 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
                                         map<string, variant<pair<string,string>,pair<vector<string>,string>>>  gm_vars_map, KnowledgeBase world_db, 
                                             vector<SemanticMapping> semantic_mapping,map<string, variant<string,vector<string>>> instantiated_vars);
 
-bool check_path_validity(vector<task> path, vector<ground_literal> world_state, AbstractTask at);
-
 void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_vars_map);
-
-pair<bool,pair<string,predicate_definition>> get_pred_from_context(Context context, vector<SemanticMapping> semantic_mapping);
     
 bool check_context(Context context, vector<ground_literal> world_state, vector<SemanticMapping> semantic_mapping, 
                         map<string, variant<string,vector<string>>> instantiated_vars);
