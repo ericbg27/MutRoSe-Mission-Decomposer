@@ -512,3 +512,79 @@ void print_at_paths_info(map<string,vector<vector<task>>> at_decomposition_paths
 		cout << endl;
 	}
 }
+
+/*
+    Function: check_path_validity
+    Objective: Check if a path of tasks is valid given a world state
+
+    @ Input 1: The path to be checked
+	@ Input 2: The world state used for the evaluation
+	@ Input 3: The abstract task that originates the path of decomposition
+    @ Output: A boolean value indicating if the path is valid or not
+*/
+bool check_path_validity(vector<task> path, vector<ground_literal> world_state, AbstractTask at) {
+	bool valid_path = true;
+	for(task t : path) {
+		bool prec_satistfied = true;
+		for(literal prec : t.prec) {
+			/*
+				Check if predicate involves an instantiated variable that belongs to the variable mapping of the AT
+			*/
+			bool instantiated_prec = true;
+			vector<pair<string,string>> arg_map;
+			for(string arg : prec.arguments) {
+				bool found_arg = false;
+				string mapped_var;
+				for(pair<string,string> var_map : at.variable_mapping) {
+					if(arg == var_map.second) {
+						found_arg = true;
+						mapped_var = var_map.first;
+						break;
+					}
+				}
+
+				if(!found_arg) {
+					instantiated_prec = false;
+					break;
+				}
+
+				arg_map.push_back(make_pair(arg,mapped_var));
+			}
+
+			if(instantiated_prec) {
+				ground_literal inst_prec;
+				inst_prec.positive = prec.positive;
+				inst_prec.predicate = prec.predicate;
+				for(pair<string,string> arg_inst : arg_map) {
+					inst_prec.args.push_back(arg_inst.second);
+				}
+
+				for(ground_literal state : world_state) {
+					if(state.predicate == inst_prec.predicate) {
+						bool equal_args = true;
+						for(unsigned int arg_index = 0;arg_index < state.args.size();arg_index++) {
+							if(state.args.at(arg_index) != inst_prec.args.at(arg_index)) {
+								equal_args = false;
+								break;
+							}
+						}
+
+						if(equal_args && (prec.positive != state.positive)) {
+							prec_satistfied = false;
+							break;
+						}
+					}
+				}
+
+				if(!prec_satistfied) {
+					valid_path = false;
+					break;
+				}
+			}
+		}
+
+		if(!valid_path) break;
+	}
+
+	return valid_path;
+}
