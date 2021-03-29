@@ -157,8 +157,21 @@ std::map<std::string,std::string> output_tasks(pt::ptree& output_file, vector<De
         task_attr = task_name + ".name";
         output_file.put(task_attr,instance.at.name);
 
-        task_attr = task_name + ".location";
-        output_file.put(task_attr,instance.at.location.first);
+        task_attr = task_name + ".locations";
+        if(holds_alternative<vector<string>>(instance.at.location.first)) {
+            vector<string> locations = get<vector<string>>(instance.at.location.first);
+            int loc_counter = 0;
+            for(string loc : locations) {
+                task_attr += ".t" + to_string(loc_counter);
+                output_file.put(task_attr,loc);
+                
+                loc_counter++;
+            }
+        } else {
+            string location = get<string>(instance.at.location.first);
+            task_attr += ".t0";
+            output_file.put(task_attr,location);
+        }
 
         task_attr = task_name + ".robots_num.<xmlattr>.fixed";
         if(instance.at.fixed_robot_num) {

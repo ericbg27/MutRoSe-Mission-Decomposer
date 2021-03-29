@@ -29,7 +29,9 @@
     <task0>
         <id>AT1_1|1</id>
         <name>RoomCleaning</name>
-        <location>RoomA</location>
+        <locations>
+            <t0>RoomA</t0>
+        </locations>
         <robots_num fixed="True" num="1"/>
         <preconditions>
             <prec0 vars="RoomA" var_types="room">not RoomA.door_open</prec0>
@@ -51,7 +53,6 @@
     <task1>
         <id>AT2_1|1</id>
         <name>RobotSanitization</name>
-        <location>SanitizationRoom</location>
         <robots_num fixed="True" num="1"/>
         <preconditions>
             <prec0 vars="?r" var_types="robot">not ?r.is_sanitized</prec0>
@@ -66,7 +67,9 @@
     <task2>
         <id>AT3_1|1</id>
         <name>FurnitureMoving</name>
-        <location>RoomA</location>
+        <locations>
+            <t0>RoomA</t0>
+        </locations>
         <robots_num fixed="False" min="2" max="4"/>
         <effects>
             <eff0 vars="RoomA" var_types="room">RoomA.is_prepared</eff0>
@@ -81,7 +84,9 @@
     <task3>
         <id>AT1_2|1</id>
         <name>RoomCleaning</name>
-        <location>RoomB</location>
+        <locations>
+            <t0>RoomB</t0>
+        </locations>
         <robots_num fixed="True" num="1"/>
         <preconditions>
             <prec0 vars="RoomB" var_types="room">RoomB.door_open</prec0>
@@ -101,7 +106,6 @@
     <task4>
         <id>AT2_2|1</id>
         <name>RobotSanitization</name>
-        <location>SanitizationRoom</location>
         <robots_num fixed="True" num="1"/>
         <preconditions>
             <prec0 vars="?r" var_types="robot">not ?r.is_sanitized</prec0>
@@ -116,7 +120,9 @@
     <task5>
         <id>AT3_2|1</id>
         <name>FurnitureMoving</name>
-        <location>RoomB</location>
+        <locations>
+            <t0>RoomB</t0>
+        </locations>
         <robots_num fixed="False" min="2" max="4"/>
         <effects>
             <eff0 vars="RoomB" var_types="room">RoomB.is_prepared</eff0>

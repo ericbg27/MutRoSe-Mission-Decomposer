@@ -321,7 +321,8 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 
 						at.id = at_def.first + "_" + to_string(at_ids[at_def.first]);
 						at.name = at_def.second;
-						at.location = make_pair(current_val.get<string>("name"),location_var);
+						variant<vector<string>,string> loc = current_val.get<string>("name");
+						at.location = make_pair(loc,location_var);
 						at.at = at_hddl_def;
 						at.fixed_robot_num = gm[v].fixed_robot_num;
 						if(holds_alternative<int>(gm[v].robot_num)) {
@@ -360,7 +361,16 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 
 						at.id = at_def.first + "_" + to_string(at_ids[at_def.first]);
 						at.name = at_def.second;
-						at.location = make_pair(valid_variables[location_var].second.at(0).get<string>("name"), location_var);
+						variant<vector<string>,string> loc;
+						if(valid_variables[location_var].second.size() > 1) {
+							vector<string> aux;
+							for(pt::ptree l : valid_variables[location_var].second) {
+								aux.push_back(l.get<string>("name"));
+							}
+							loc = aux;
+						}
+						//at.location = make_pair(valid_variables[location_var].second.at(0).get<string>("name"), location_var);
+						at.location = make_pair(loc, location_var);
 						at.at = at_hddl_def;
 						at.fixed_robot_num = gm[v].fixed_robot_num;
 						if(holds_alternative<int>(gm[v].robot_num)) {
@@ -409,7 +419,16 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 
 				at.id = at_def.first + "_" + to_string(at_ids[at_def.first]);
 				at.name = at_def.second;
-				at.location = make_pair(valid_variables[location_var].second.at(0).get<string>("name"),location_var);
+				variant<vector<string>,string> loc;
+				if(valid_variables[location_var].second.size() > 1) {
+					vector<string> aux;
+					for(pt::ptree l : valid_variables[location_var].second) {
+						aux.push_back(l.get<string>("name"));
+					}
+					loc = aux;
+				}
+				//at.location = make_pair(valid_variables[location_var].second.at(0).get<string>("name"),location_var);
+				at.location = make_pair(loc, location_var);
 				at.at = at_hddl_def;
 				at.fixed_robot_num = gm[v].fixed_robot_num;
 				if(holds_alternative<int>(gm[v].robot_num)) {
