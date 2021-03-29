@@ -53,6 +53,9 @@
     <task1>
         <id>AT2_1|1</id>
         <name>RobotSanitization</name>
+        <locations>
+            <t0>SanitizationRoom</t0>
+        </locations>
         <robots_num fixed="True" num="1"/>
         <preconditions>
             <prec0 vars="?r" var_types="robot">not ?r.is_sanitized</prec0>
@@ -106,6 +109,9 @@
     <task4>
         <id>AT2_2|1</id>
         <name>RobotSanitization</name>
+        <locations>
+            <t0>SanitizationRoom</t0>
+        </locations>
         <robots_num fixed="True" num="1"/>
         <preconditions>
             <prec0 vars="?r" var_types="robot">not ?r.is_sanitized</prec0>

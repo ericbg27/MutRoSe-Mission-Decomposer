@@ -241,6 +241,13 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 				if(a.has_forAll_expr) {
 					valid_forAll_conditions[depth] = a;
 				}
+
+				vector<pair<string,string>> controlled_vars = std::get<vector<pair<string,string>>>(gm[v].custom_props["Controls"]);
+				for(pair<string,string> var : controlled_vars) {
+					if(var.first == a.get_iteration_var()) {
+						gm_var_map[var.first] = make_pair("",var.second);
+					}
+				}
 			}
 
 			if(gm[v].custom_props.find("CreationCondition") != gm[v].custom_props.end()) {
@@ -322,7 +329,8 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 						at.id = at_def.first + "_" + to_string(at_ids[at_def.first]);
 						at.name = at_def.second;
 						variant<vector<string>,string> loc = current_val.get<string>("name");
-						at.location = make_pair(loc,location_var);
+						string var_type = get<pair<string,string>>(gm_var_map[location_var]).second;
+						at.location = make_pair(loc,make_pair(location_var,var_type));
 						at.at = at_hddl_def;
 						at.fixed_robot_num = gm[v].fixed_robot_num;
 						if(holds_alternative<int>(gm[v].robot_num)) {
@@ -362,15 +370,24 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 						at.id = at_def.first + "_" + to_string(at_ids[at_def.first]);
 						at.name = at_def.second;
 						variant<vector<string>,string> loc;
+						string var_type;
 						if(valid_variables[location_var].second.size() > 1) {
 							vector<string> aux;
 							for(pt::ptree l : valid_variables[location_var].second) {
 								aux.push_back(l.get<string>("name"));
 							}
 							loc = aux;
+							var_type = get<pair<vector<string>,string>>(gm_var_map[location_var]).second;
+						} else {
+							if(valid_variables[location_var].second.size() == 1) {
+								loc = valid_variables[location_var].second.at(0).get<string>("name");
+							} else {
+								loc = "";
+							}
+							var_type = get<pair<string,string>>(gm_var_map[location_var]).second;
 						}
 						//at.location = make_pair(valid_variables[location_var].second.at(0).get<string>("name"), location_var);
-						at.location = make_pair(loc, location_var);
+						at.location = make_pair(loc, make_pair(location_var,var_type));
 						at.at = at_hddl_def;
 						at.fixed_robot_num = gm[v].fixed_robot_num;
 						if(holds_alternative<int>(gm[v].robot_num)) {
@@ -420,15 +437,24 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 				at.id = at_def.first + "_" + to_string(at_ids[at_def.first]);
 				at.name = at_def.second;
 				variant<vector<string>,string> loc;
+				string var_type;
 				if(valid_variables[location_var].second.size() > 1) {
 					vector<string> aux;
 					for(pt::ptree l : valid_variables[location_var].second) {
 						aux.push_back(l.get<string>("name"));
 					}
 					loc = aux;
+					var_type = get<pair<vector<string>,string>>(gm_var_map[location_var]).second;
+				} else {
+					if(valid_variables[location_var].second.size() == 1) {
+						loc = valid_variables[location_var].second.at(0).get<string>("name");
+					} else {
+						loc = "";
+					}
+					var_type = get<pair<string,string>>(gm_var_map[location_var]).second;
 				}
 				//at.location = make_pair(valid_variables[location_var].second.at(0).get<string>("name"),location_var);
-				at.location = make_pair(loc, location_var);
+				at.location = make_pair(loc, make_pair(location_var,var_type));
 				at.at = at_hddl_def;
 				at.fixed_robot_num = gm[v].fixed_robot_num;
 				if(holds_alternative<int>(gm[v].robot_num)) {
@@ -495,6 +521,19 @@ void print_at_instances_info(map<string,vector<AbstractTask>> at_instances) {
 			cout << "Triggering Events:" << endl;
 			for(string event : inst.triggering_events) {
 				cout << event << ", ";
+			}
+			cout << endl;
+			cout << "Location(s):" << endl;
+			cout << "Location(s) Var: " << inst.location.second.first << " : " << inst.location.second.second << endl;
+			cout << "Location(s) Value: " << endl;
+			if(holds_alternative<vector<string>>(inst.location.first)) {
+				vector<string> locs = get<vector<string>>(inst.location.first);
+				for(string loc : locs) {
+					cout << loc << endl;
+				}
+			} else {
+				string loc = get<string>(inst.location.first);
+				cout << loc << endl;
 			}
 			cout << endl;
 		}
