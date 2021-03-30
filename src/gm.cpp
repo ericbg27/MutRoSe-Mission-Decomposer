@@ -103,8 +103,9 @@ string get_node_name(string node_text) {
     @ Output: A standard string representing the given type
 */ 
 string parse_gm_var_type(string var_type) {
-    if(var_type.find("Sequence") != std::string::npos) {
-        return "SEQUENCE";
+    std::transform(var_type.begin(), var_type.end(), var_type.begin(), ::toupper);
+    if(var_type.find("SEQUENCE") != std::string::npos) {
+        return "COLLECTION";
     }
 
     return "VALUE";

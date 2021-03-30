@@ -291,7 +291,7 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map
 				bool can_ground = true;
 				for(string arg : prec.arguments) {
 					bool found_arg = false;
-					for(pair<string,string> var_map : at.variable_mapping) {
+					for(pair<variant<vector<string>,string>,string> var_map : at.variable_mapping) {
 						if(arg == var_map.second) {
 							found_arg = true;
 							break;
@@ -309,10 +309,16 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map
 					inst_prec.positive = prec.positive;
 					inst_prec.predicate = prec.predicate;
 
+					// Here is probably one place where we have to expand collection related predicates
 					for(string arg : prec.arguments) {
-						for(pair<string,string> var_map : at.variable_mapping) {
+						for(pair<variant<vector<string>,string>,string> var_map : at.variable_mapping) {
 							if(arg == var_map.second) {
-								inst_prec.args.push_back(var_map.first);
+								if(holds_alternative<string>(var_map.first)) {
+									inst_prec.args.push_back(std::get<string>(var_map.first));
+								} else {
+									string not_implemented_collection_pred_error = "Collection-related predicates are not supported yet.";
+									throw std::runtime_error(not_implemented_collection_pred_error);
+								}
 							}
 						}
 					}
@@ -329,7 +335,7 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map
 			bool can_ground = true;
 			for(string arg : eff.arguments) {
 				bool found_arg = false;
-				for(pair<string,string> var_map : at.variable_mapping) {
+				for(pair<variant<vector<string>,string>,string> var_map : at.variable_mapping) {
 					if(arg == var_map.second) {
 						found_arg = true;
 						break;
@@ -347,10 +353,16 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map
 				inst_eff.positive = eff.positive;
 				inst_eff.predicate = eff.predicate;
 
+				// Here is probably one place where we have to expand collection related predicates
 				for(string arg : eff.arguments) {
-					for(pair<string,string> var_map : at.variable_mapping) {
+					for(pair<variant<vector<string>,string>,string> var_map : at.variable_mapping) {
 						if(arg == var_map.second) {
-							inst_eff.args.push_back(var_map.first);
+							if(holds_alternative<string>(var_map.first)) {
+								inst_eff.args.push_back(std::get<string>(var_map.first));
+							} else {
+								string not_implemented_collection_pred_error = "Collection-related predicates are not supported yet.";
+								throw std::runtime_error(not_implemented_collection_pred_error);
+							}
 						}
 					}
 				}
@@ -498,10 +510,16 @@ bool check_context_dependency(ATGraph& mission_decomposition, int parent_node, i
 						for(string arg : eff.arguments) {
 							bool found_arg = false;
 							string mapped_var;
-							for(pair<string,string> var_map : at.variable_mapping) {
+							// Here is probably one place where we have to expand collection related predicates
+							for(pair<variant<vector<string>,string>,string> var_map : at.variable_mapping) {
 								if(arg == var_map.second) {
 									found_arg = true;
-									mapped_var = var_map.first;
+									if(holds_alternative<string>(var_map.first)) {
+										mapped_var = std::get<string>(var_map.first);
+									} else {
+										string not_implemented_collection_pred_error = "Collection-related predicates are not supported yet.";
+										throw std::runtime_error(not_implemented_collection_pred_error);
+									}
 									break;
 								}
 							}

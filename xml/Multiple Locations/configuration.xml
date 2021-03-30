@@ -1,0 +1,149 @@
+<configuration>
+    <robots_db>
+        <type>file</type>
+        <file_type>xml</file_type>
+        <path>xml/Robots_db.xml</path>
+        <xml_root>robots_db</xml_root>
+    </robots_db>
+
+    <world_db>
+        <type>file</type>
+        <file_type>xml</file_type>
+        <path>xml/World_db.xml</path>
+        <xml_root>world_db</xml_root>
+    </world_db>
+
+    <output>
+        <file_path>xml/task_output.xml</file_path>
+        <file_type>xml</file_type>
+    </output>
+
+    <location_types>
+        <type>Room</type>
+    </location_type>
+
+    <type_mapping>
+        <mapping>
+            <hddl_type>room</hddl_type>
+            <actual_type>Room</actual_type>
+        </mapping>
+        <mapping>
+            <hddl_type>rooms</hddl_type>
+            <actual_type>Sequence(Room)</actual_type>
+        </mapping>
+    </type_mapping>
+
+    <var_mapping>
+        <mapping>
+            <task_id>AT1</task_id>
+            <gm_var>current_room</gm_var>
+            <hddl_var>?rm</hddl_var>
+        </mapping>
+        <mapping>
+            <task_id>AT2</task_id>
+            <gm_var>sanitization_room</gm_var>
+            <hddl_var>?rm</hddl_var>
+        </mapping>
+        <mapping>
+            <task_id>AT3</task_id>
+            <gm_var>current_room</gm_var>
+            <hddl_var>?rm</hddl_var>
+        </mapping>
+    </var_mapping>
+
+    <!--Here we will map HDDL functions, predicates and everything we need to real elements-->
+    <!--We can also map HDDL types to OCL types used in the Goal Model or even to software classes-->
+    <semantic_mapping>
+        <mapping>
+            <type>attribute</type>
+            <name>is_clean</name>
+            <relation>Room</relation>
+            <belongs_to>world_db</belongs_to>
+            <mapped_type>predicate</mapped_type>
+            <map>
+                <pred>clean</pred> 
+                <arg_sorts number="1">room</arg_sorts>
+            </map>
+        </mapping>
+        <mapping>
+            <type>attribute</type>
+            <name>is_prepared</name>
+            <relation>Room</relation>
+            <belongs_to>world_db</belongs_to>
+            <mapped_type>predicate</mapped_type>
+            <map>
+                <pred>prepared</pred>
+                <arg_sorts number="1">room</arg_sorts>
+            </map>
+        </mapping>
+        <mapping>
+            <type>attribute</type>
+            <name>is_sanitized</name>
+            <relation>robot</relation>
+            <belongs_to>robots_db</belongs_to>
+            <mapped_type>predicate</mapped_type>
+            <map>
+                <pred>sanitized</pred> 
+                <arg_sorts number="1">robot</arg_sorts>
+            </map>
+        </mapping>
+        <mapping>
+            <type>attribute</type>
+            <name>door_open</name>
+            <relation>Room</relation>
+            <belongs_to>world_db</belongs_to>
+            <mapped_type>predicate</mapped_type>
+            <map>
+                <pred>door-open</pred> 
+                <arg_sorts number="1">room</arg_sorts>
+            </map>
+        </mapping>
+        <mapping>
+            <type>attribute</type>
+            <name>is_clean</name>
+            <relation>Rooms</relation>
+            <belongs_to>world_db</belongs_to>
+            <mapped_type>predicate</mapped_type>
+            <map>
+                <pred>clean</pred> 
+                <arg_sorts number="1">rooms</arg_sorts>
+            </map>
+        </mapping>
+    </semantic_mapping>
+    
+    <!--
+        Types here are:
+            - predicate
+            - prob_predicate (This is a single value for one predicate)
+            - prob_predicates (This is the initialization using the probabilistic keyword)
+            - function
+    -->
+    <!--<init>
+        <predicate>
+            <pred></pred>
+            <args></args>
+        </predicate>
+        <prob_predicate>
+            <prob></prob>
+            <pred></pred>
+            <args></args>
+        </prob_predicate>
+        <prob_predicates>
+            <prob_pred>
+                <prob></prob>
+                <pred></pred>
+                <args></args>
+            </prob_pred>
+            <prob_pred>
+                <prob></prob>
+                <pred></pred>
+                <args></args>
+            </prob_pred>
+        </prob_predicates>
+        <function>
+            <func></func>
+            <args></args>
+            <value></value>
+        </function>
+    </init>-->
+</configuration>
