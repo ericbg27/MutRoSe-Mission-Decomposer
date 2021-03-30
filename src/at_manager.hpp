@@ -26,6 +26,6 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 void print_at_instances_info(map<string,vector<AbstractTask>> at_instances);
 void print_at_paths_info(map<string,vector<vector<task>>> at_decomposition_paths);
 
-bool check_path_validity(vector<task> path, vector<ground_literal> world_state, AbstractTask at);
+bool check_path_validity(vector<task> path, vector<ground_literal> world_state, AbstractTask at, vector<SemanticMapping> semantic_mappings);
 
 #endif

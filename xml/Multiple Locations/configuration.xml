@@ -101,9 +101,10 @@
         <mapping>
             <type>attribute</type>
             <name>is_clean</name>
-            <relation>Rooms</relation>
+            <relation>Sequence(Room)</relation>
             <belongs_to>world_db</belongs_to>
             <mapped_type>predicate</mapped_type>
+            <predicate_type>Universal</predicate_type>
             <map>
                 <pred>clean</pred> 
                 <arg_sorts number="1">rooms</arg_sorts>
