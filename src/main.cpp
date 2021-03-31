@@ -269,7 +269,7 @@ int main(int argc, char** argv) {
 	*/
 	check_gm_validity(gm);
 
-	//print_gm_nodes_info(gm);
+	print_gm_nodes_info(gm);
 
 	check_undefined_number_of_robots(gm, abstract_tasks, sort_definitions);
 
@@ -277,7 +277,7 @@ int main(int argc, char** argv) {
 	string location_type = get<vector<string>>(cfg["location_types"]).at(0);
 
 	map<string,vector<AbstractTask>> at_instances;
-		
+	
 	at_instances = generate_at_instances(abstract_tasks, gm, location_type, world_db, gm_var_map, variable_mapping);
 
 	print_at_instances_info(at_instances);
@@ -321,19 +321,19 @@ int main(int argc, char** argv) {
 		at_decomposition_paths[at.name] = t.retrieve_possible_decompositions();
 	}
 
-	//print_at_paths_info(at_decomposition_paths);
+	print_at_paths_info(at_decomposition_paths);
 
 	initialize_objects(world_db, robots_db, sorts, location_type, at_instances, type_mapping);	
 
 	initialize_world_state(robots_db, world_db, init, init_functions, semantic_mapping, type_mapping, sorts);
 
-	//print_world_state(init);
+	print_world_state(init);
 
 	general_annot* gmannot = retrieve_gm_annot(gm, world_db.get_knowledge(), location_type, at_instances);
 
 	rename_at_instances_in_runtime_annot(gmannot, at_instances);
 
-	//print_runtime_annot_from_general_annot(gmannot);		
+	print_runtime_annot_from_general_annot(gmannot);		
 
 	/*
 		We need to associate to trim decomposition paths only to those paths that are allowed

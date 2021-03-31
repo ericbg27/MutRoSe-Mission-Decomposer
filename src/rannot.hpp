@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.4.1.  */
+/* A Bison parser, made by GNU Bison 3.7.  */
 
 /* Bison interface for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2019 Free Software Foundation,
+   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2020 Free Software Foundation,
    Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -31,8 +31,9 @@
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
 
-/* Undocumented macros, especially those whose name start with YY_,
-   are private implementation details.  Do not rely on them.  */
+/* DO NOT RELY ON FEATURES THAT ARE NOT DOCUMENTED in the manual,
+   especially those whose name start with YY_ or yy_.  They are
+   private implementation details that can be changed or removed.  */
 
 #ifndef YY_ZZ_SRC_RANNOT_HPP_INCLUDED
 # define YY_ZZ_SRC_RANNOT_HPP_INCLUDED
@@ -52,26 +53,31 @@
 extern int zzdebug;
 #endif
 
-/* Token type.  */
+/* Token kinds.  */
 #ifndef ZZTOKENTYPE
 # define ZZTOKENTYPE
   enum zztokentype
   {
-    KEY_END_ID = 258,
-    KEY_SEQ = 259,
-    KEY_PAR = 260,
-    KEY_FALLBACK = 261,
-    KEY_OPT = 262,
-    KEY_ALT = 263,
-    STRNAME = 264
+    ZZEMPTY = -2,
+    ZZEOF = 0,                     /* "end of file"  */
+    ZZerror = 256,                 /* error  */
+    ZZUNDEF = 257,                 /* "invalid token"  */
+    KEY_END_ID = 258,              /* KEY_END_ID  */
+    KEY_SEQ = 259,                 /* KEY_SEQ  */
+    KEY_PAR = 260,                 /* KEY_PAR  */
+    KEY_FALLBACK = 261,            /* KEY_FALLBACK  */
+    KEY_OPT = 262,                 /* KEY_OPT  */
+    KEY_ALT = 263,                 /* KEY_ALT  */
+    STRNAME = 264                  /* STRNAME  */
   };
+  typedef enum zztokentype zztoken_kind_t;
 #endif
 
 /* Value type.  */
 #if ! defined ZZSTYPE && ! defined ZZSTYPE_IS_DECLARED
 union ZZSTYPE
 {
-#line 37 "src/rannot.y"
+#line 38 "src/rannot.y"
 
 	bool bval;
 	int ival;
@@ -80,7 +86,7 @@ union ZZSTYPE
     std::vector<std::string>* vstring;
     general_annot* annot;
 
-#line 84 "src/rannot.hpp"
+#line 90 "src/rannot.hpp"
 
 };
 typedef union ZZSTYPE ZZSTYPE;
@@ -116,6 +122,6 @@ int zzparse (void);
   // Declare the scanner.
   YY_DECL;
 
-#line 120 "src/rannot.hpp"
+#line 126 "src/rannot.hpp"
 
 #endif /* !YY_ZZ_SRC_RANNOT_HPP_INCLUDED  */

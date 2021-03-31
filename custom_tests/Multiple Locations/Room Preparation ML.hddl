@@ -9,6 +9,20 @@
     )
     (:capabilities moveobject cleaning sanitize door-opening)
 
+    (:task CheckCleanRooms :parameters (?r - robot ?rms - rooms))
+    (:method check-clean-rooms
+        :parameters (?r - robot ?rms - rooms)
+        :task (CheckCleanRooms ?r ?rms)
+        :ordered-subtasks(and
+            (clean-rooms-check ?r ?rms)
+        )
+    )
+    (:action clean-rooms-check
+        :parameters (?r - robot ?rms - rooms)
+        :precondition (clean ?rms)
+        :effect ()
+    )
+
     (:task RoomCleaning :parameters (?r - CleanerRobot ?rm - room))
     (:method room-cleaning-door-open
         :parameters (?r - CleanerRobot ?rm - room)

@@ -669,7 +669,7 @@ bool check_path_validity(vector<task> path, vector<ground_literal> world_state, 
 						ground_literal p;
 						p.positive = prec.positive;
 						p.predicate = prec.predicate;
-						p.args.push_back(std::get<string>(arg_inst.second));
+						p.args.push_back(std::get<string>(arg_inst.second.first));
 
 						inst_precs.push_back(p);
 					} else {
@@ -723,10 +723,11 @@ bool check_path_validity(vector<task> path, vector<ground_literal> world_state, 
 								prec_evals.push_back(false);
 								if(is_universal) {
 									prec_satistfied = false;
-									break;
 								}
-							} else {
+								break;
+							} else if(equal_args && (prec.positive == state.positive)) {
 								prec_evals.push_back(true);
+								break;
 							}
 						}
 					}
