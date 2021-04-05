@@ -40,11 +40,6 @@ general_annot* retrieve_runtime_annot(string id) {
 */ 
 general_annot* retrieve_gm_annot(GMGraph gm, pt::ptree worlddb, string location_type, map<string,vector<AbstractTask>> at_instances) {
     std::vector<int> vctr = get_dfs_gm_nodes(gm);
-
-    std::cout << "GM DFS Visit:" << std::endl;
-    for(int v : vctr) {
-        std::cout << gm[v].text << std::endl;
-    }
     
     VertexData root = gm[vctr.at(0)];
 

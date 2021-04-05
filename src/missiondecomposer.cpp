@@ -299,7 +299,7 @@ pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decompositi
 	bool found_root = false;
 
 	for(boost::tie(i,end) = vertices(mission_decomposition); i != end; ++i) {
-		if(*i == root) {
+		if(int(*i) == root) {
 			found_root = true;
 		}
 		if(!found_root) {
@@ -312,7 +312,7 @@ pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decompositi
 		ATNode current_node = node;
 		bool found_parent = false;
 
-		if(*i != root) {
+		if(int(*i) != root) {
 			while(!found_parent) {
 				if(ids_map.find(current_node.parent) == ids_map.end()) {
 					current_node = mission_decomposition[current_node.parent];
@@ -346,7 +346,7 @@ pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decompositi
 				}
 				int node_id = boost::add_vertex(node, trimmed_mission_decomposition);
 
-				if(*i != root) {
+				if(int(*i) != root) {
 					ATEdge e;
 					e.edge_type = NORMAL;
 					e.source = ids_map[parent];
@@ -461,7 +461,7 @@ pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decompositi
     @ Output: Void. The decomposition predicates are instantiated
 */
 void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_vars_map) {
-	int task_counter = 1,task_number;
+	int task_counter = 1, task_number;
 
 	task_number = d.path.size();
 

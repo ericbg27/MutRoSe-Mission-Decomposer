@@ -345,42 +345,6 @@ vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition
                     
         current_branch_nodes_stack.pop();
     }
-
-    /*stack<variant<pair<int,ATNode>,Constraint>> nodes_cpy = nodes_stack;
-    std::cout << "Nodes Stack:" << std::endl;
-    while(!nodes_cpy.empty()) {
-        if(holds_alternative<pair<int,ATNode>>(nodes_cpy.top())) {
-            pair<int,ATNode> node = std::get<pair<int,ATNode>>(nodes_cpy.top());
-            if(node.first == -1) {
-                std::cout << "ARTIFICIAL NODE" << std::endl;
-            } else {
-                std::cout << "AT: " << std::get<AbstractTask>(node.second.content).id << std::endl;
-            }
-        } else {
-            Constraint c = std::get<Constraint>(nodes_cpy.top());
-            
-            std::cout << std::get<AbstractTask>(c.nodes_involved.first.second.content).id;
-            if(c.type == PAR) {
-                std::cout << " # ";
-            } else {
-                std::cout << " ; ";
-            }
-            std::cout << std::get<AbstractTask>(c.nodes_involved.second.second.content).id << std::endl;
-        }
-
-        nodes_cpy.pop();
-    }
-
-    std::cout << std::endl;
-
-    stack<pair<int,ATNode>> operators_cpy = operators_stack;
-    std::cout << "Operators Stack:" << std::endl;
-    while(!operators_cpy.empty()) {
-        pair<int,ATNode> op = operators_cpy.top();
-        std::cout << std::get<string>(op.second.content) << std::endl;
-
-        operators_cpy.pop();
-    }*/
     
     /*
         Here we will have the final operators and several constraints and possibly tasks, which we must combine to have all of the constraints of the mission
@@ -746,6 +710,16 @@ vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition
     return mission_constraints; 
 }
 
+/*
+    Function: generate_constraints from stacks
+    Objective: Generate constraints based on an input operators stack and an input nodes stack. Additionally, an existing
+    constraints map is updated since this is an auxiliary function of the generate_at_constraints function
+
+    @ Input 1: The operators stack
+    @ Input 2: The nodes stack
+    @ Input 3: The existing constraints map
+    @ Output: Void. The input structures are updated
+*/
 void generate_constraints_from_stacks(stack<pair<int,ATNode>>& operators_stack, stack<variant<pair<int,ATNode>,Constraint>>& nodes_stack, map<int,set<int>>& existing_constraints) {
     while(!operators_stack.empty()) {
         pair<int,ATNode> current_op = operators_stack.top();
