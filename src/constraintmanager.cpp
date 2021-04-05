@@ -31,22 +31,31 @@ vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition
     boost::depth_first_search(trimmed_mission_decomposition, vis, colormap, 0);
 
     std::vector<int> vctr = vis.GetVector();
+    operators_stack.push(make_pair(vctr.at(0),trimmed_mission_decomposition[vctr.at(0)]));
 
     pair<int,int> current_root_node = make_pair(vctr.at(0),1);
 
-    int index = 0;
-    for(int v : vctr) {
+    unsigned int index;
+    for(index = 1;index < vctr.size();index++) {      
+        int v = index;
+
         pair<int,ATNode> current_node = make_pair(v, trimmed_mission_decomposition[v]);
 
-        if(current_node.second.parent == vctr.at(0) && v != vctr.at(1)) {
+        if(current_node.second.parent == vctr.at(0)) {
             pair<int,ATNode> artificial_node;
             artificial_node.first = -1;
 
-            current_branch_nodes_stack = stack<variant<pair<int,ATNode>,Constraint>>();
-            current_branch_operators_stack = stack<pair<int,ATNode>>();
-
-            nodes_stack.push(artificial_node);
-            current_branch_nodes_stack.push(artificial_node);
+            if(v != vctr.at(1)) {
+                generate_constraints_from_stacks(current_branch_operators_stack, current_branch_nodes_stack, existing_constraints);
+                
+                while(!current_branch_nodes_stack.empty()) {
+                    nodes_stack.push(current_branch_nodes_stack.top());
+                    
+                    current_branch_nodes_stack.pop();
+                }
+                
+                nodes_stack.push(artificial_node);
+            }
 
             current_root_node.first = current_node.first;
             current_root_node.second = index+1;
@@ -54,7 +63,6 @@ vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition
             pair<int,ATNode> artificial_node;
             artificial_node.first = -1;
 
-            nodes_stack.push(artificial_node);
             current_branch_nodes_stack.push(artificial_node);
 
             current_root_node.first = current_node.first;
@@ -63,7 +71,6 @@ vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition
 
         if(current_node.second.node_type == ATASK) {
             current_branch_nodes_stack.push(current_node);
-            nodes_stack.push(current_node);
         
             if(current_branch_operators_stack.size() > 0 && current_branch_nodes_stack.size() >= 2) {
                 bool new_branch = false;
@@ -108,12 +115,11 @@ vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition
                             }
 
                             if(!end_reached) {
-                                temp.push(nodes_stack.top());
-                                nodes_stack.pop();
+                                temp.push(current_branch_nodes_stack.top());
                                 current_branch_nodes_stack.pop();
                             }
 
-                            if(nodes_stack.empty()) {
+                            if(current_branch_nodes_stack.empty()) {
                                 end_reached = true;
                             }
                         }
@@ -173,13 +179,11 @@ vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition
                         }
 
                         while(!old_constraints.empty()) {
-                            nodes_stack.push(old_constraints.top());
                             current_branch_nodes_stack.push(old_constraints.top());
                             old_constraints.pop();
                         }
 
                         while(!new_constraints.empty()) {
-                            nodes_stack.push(new_constraints.top());
                             current_branch_nodes_stack.push(new_constraints.top());
                             new_constraints.pop();
                         }
@@ -202,14 +206,12 @@ vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition
                                     if(get<Constraint>(current_branch_nodes_stack.top()).type == SEQ) {
                                         end_reached = true;
                                         temp.push(current_branch_nodes_stack.top());
-                                        nodes_stack.pop();
                                         current_branch_nodes_stack.pop();
                                     }
                                 }
 
                                 if(!end_reached) {
                                     temp.push(current_branch_nodes_stack.top());
-                                    nodes_stack.pop();
                                     current_branch_nodes_stack.pop();
                                 }
 
@@ -280,13 +282,11 @@ vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition
                             }
 
                             while(!old_constraints.empty()) {
-                                nodes_stack.push(old_constraints.top());
                                 current_branch_nodes_stack.push(old_constraints.top());
                                 old_constraints.pop();
                             }
 
                             while(!new_constraints.empty()) {
-                                nodes_stack.push(new_constraints.top());
                                 current_branch_nodes_stack.push(new_constraints.top());
                                 new_constraints.pop();
                             }
@@ -298,7 +298,6 @@ vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition
                                 -> If we create a constraint with another constraint, we just need to create with the second involved task
                             */
                             pair<int,ATNode> last_task = get<pair<int,ATNode>>(current_branch_nodes_stack.top());
-                            nodes_stack.pop();
                             current_branch_nodes_stack.pop();
 
                             Constraint new_constraint;
@@ -307,7 +306,6 @@ vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition
                             new_constraint.type = SEQ;
                             new_constraint.nodes_involved = make_pair(last_constraint.nodes_involved.second,last_task);
 
-                            nodes_stack.push(new_constraint);
                             current_branch_nodes_stack.push(new_constraint);
                             existing_constraints[last_constraint.nodes_involved.second.first].insert(last_task.first);
                         } else { 
@@ -318,37 +316,72 @@ vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition
 
                             pair<int,ATNode> last_task = get<pair<int,ATNode>>(current_branch_nodes_stack.top());
                             current_branch_nodes_stack.pop();
-                            nodes_stack.pop();
 
                             pair<int,ATNode> other_task = get<pair<int,ATNode>>(current_branch_nodes_stack.top());
                             current_branch_nodes_stack.pop();
-                            nodes_stack.pop();
 
                             c.type = SEQ;
                             c.nodes_involved = make_pair(other_task, last_task);
 
                             current_branch_nodes_stack.push(c);
-                            nodes_stack.push(c);
                             existing_constraints[c.nodes_involved.first.first].insert(c.nodes_involved.second.first);
                         }
 
                         last_op = ";";
                     }
 
-                    operators_stack.pop();
                     current_branch_operators_stack.pop();
                 }
             }
         } else {
-            operators_stack.push(current_node);
             current_branch_operators_stack.push(current_node);
         }
-
-        index++;
     }
 
-    stack<variant<pair<int,ATNode>,Constraint>> nodes_cpy = nodes_stack;
+    generate_constraints_from_stacks(current_branch_operators_stack, current_branch_nodes_stack, existing_constraints);
+    
+    while(!current_branch_nodes_stack.empty()) {
+        nodes_stack.push(current_branch_nodes_stack.top());
+                    
+        current_branch_nodes_stack.pop();
+    }
 
+    /*stack<variant<pair<int,ATNode>,Constraint>> nodes_cpy = nodes_stack;
+    std::cout << "Nodes Stack:" << std::endl;
+    while(!nodes_cpy.empty()) {
+        if(holds_alternative<pair<int,ATNode>>(nodes_cpy.top())) {
+            pair<int,ATNode> node = std::get<pair<int,ATNode>>(nodes_cpy.top());
+            if(node.first == -1) {
+                std::cout << "ARTIFICIAL NODE" << std::endl;
+            } else {
+                std::cout << "AT: " << std::get<AbstractTask>(node.second.content).id << std::endl;
+            }
+        } else {
+            Constraint c = std::get<Constraint>(nodes_cpy.top());
+            
+            std::cout << std::get<AbstractTask>(c.nodes_involved.first.second.content).id;
+            if(c.type == PAR) {
+                std::cout << " # ";
+            } else {
+                std::cout << " ; ";
+            }
+            std::cout << std::get<AbstractTask>(c.nodes_involved.second.second.content).id << std::endl;
+        }
+
+        nodes_cpy.pop();
+    }
+
+    std::cout << std::endl;
+
+    stack<pair<int,ATNode>> operators_cpy = operators_stack;
+    std::cout << "Operators Stack:" << std::endl;
+    while(!operators_cpy.empty()) {
+        pair<int,ATNode> op = operators_cpy.top();
+        std::cout << std::get<string>(op.second.content) << std::endl;
+
+        operators_cpy.pop();
+    }*/
+    
     /*
         Here we will have the final operators and several constraints and possibly tasks, which we must combine to have all of the constraints of the mission
     */
@@ -711,6 +744,352 @@ vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition
     }
 
     return mission_constraints; 
+}
+
+void generate_constraints_from_stacks(stack<pair<int,ATNode>>& operators_stack, stack<variant<pair<int,ATNode>,Constraint>>& nodes_stack, map<int,set<int>>& existing_constraints) {
+    while(!operators_stack.empty()) {
+        pair<int,ATNode> current_op = operators_stack.top();
+        operators_stack.pop();
+
+        stack<variant<pair<int,ATNode>,Constraint>> considered_nodes;
+        pair<bool,bool> changed_branch = make_pair(false,false);
+        while(!changed_branch.second && !nodes_stack.empty()) {
+            if(holds_alternative<pair<int,ATNode>>(nodes_stack.top())) {
+                pair<int,ATNode> node = std::get<pair<int,ATNode>>(nodes_stack.top());
+                if(node.first == -1) {
+                    if(changed_branch.first) {
+                        changed_branch.second = true;
+                    } else {
+                        changed_branch.first = true;
+                        considered_nodes.push(node);
+                        nodes_stack.pop();
+                    }
+                } else {
+                    considered_nodes.push(node);
+                    nodes_stack.pop();
+                }
+            } else {
+                Constraint node = std::get<Constraint>(nodes_stack.top());
+                nodes_stack.pop();
+                considered_nodes.push(node);
+            }
+        }
+
+        stack<variant<pair<int,ATNode>,Constraint>> aux_stack = considered_nodes;
+        while(!aux_stack.empty()) {
+            if(holds_alternative<Constraint>(aux_stack.top())) {
+                nodes_stack.push(std::get<Constraint>(aux_stack.top()));
+            }
+
+            aux_stack.pop();
+        }
+
+        if(get<string>(current_op.second.content) == "#") {
+            /*
+                If we have a parallel operator we need to create parallel constraints for all tasks that are not in the existing constraints map
+            */
+            vector<vector<Constraint>> constraint_branches;
+            vector<Constraint> aux;
+            while(!considered_nodes.empty()) {
+                if(holds_alternative<pair<int,ATNode>>(considered_nodes.top())) {
+                    pair<int,ATNode> top_node = std::get<pair<int,ATNode>>(considered_nodes.top());
+                    if(top_node.first == -1) {
+                        // Artificial node
+                        constraint_branches.push_back(aux);
+                        aux.clear();
+                    } else {
+                        // Abstract Task node
+                        Constraint c;
+                        c.type = PAR;
+                        c.nodes_involved.first = top_node;
+                        pair<int,ATNode> artificial_node;
+                        artificial_node.first = -1;
+                        c.nodes_involved.second = artificial_node;
+
+                        aux.push_back(c);
+                    }
+                } else {
+                    Constraint top_node = std::get<Constraint>(considered_nodes.top());
+                    aux.push_back(top_node);
+                }
+
+                considered_nodes.pop();
+
+                if(considered_nodes.empty() && aux.size() > 0) {
+                    constraint_branches.push_back(aux);
+                }
+            }
+
+            if(constraint_branches.size() > 1) {
+                unsigned int i,j;
+                for(i=0;i<constraint_branches.size()-1;i++) {
+                    for(j=i+1;j<constraint_branches.size();j++) {
+                        unsigned int index1, index2;
+                        vector<Constraint> v1 = constraint_branches.at(i);
+                        vector<Constraint> v2 = constraint_branches.at(j);
+
+                        for(index1=0;index1<v1.size();index1++) {
+                            for(index2=0;index2<v2.size();index2++) {
+                                Constraint c1,c2;
+
+                                c1 = v1.at(index1);
+                                c2 = v2.at(index2);
+
+                                Constraint nc1,nc2,nc3,nc4;
+
+                                nc1.type = PAR;
+                                nc1.nodes_involved = make_pair(c1.nodes_involved.first,c2.nodes_involved.first);
+
+                                if(c2.nodes_involved.second.first != -1) {
+                                    nc2.type = PAR;
+                                    nc2.nodes_involved = make_pair(c1.nodes_involved.first,c2.nodes_involved.second);
+                                } else {
+                                    nc2.type = NEX;
+                                }
+
+                                if(c1.nodes_involved.second.first != -1) {
+                                    nc3.type = PAR;
+                                    nc3.nodes_involved = make_pair(c1.nodes_involved.second,c2.nodes_involved.first);
+                                } else {
+                                    nc3.type = NEX;
+                                }
+
+                                if(c1.nodes_involved.second.first != -1 && c2.nodes_involved.second.first != -1) {
+                                    nc4.type = PAR;
+                                    nc4.nodes_involved = make_pair(c1.nodes_involved.second,c2.nodes_involved.second);
+                                } else {
+                                    nc4.type = NEX;
+                                }
+
+                                if(existing_constraints[nc1.nodes_involved.first.first].find(nc1.nodes_involved.second.first) == existing_constraints[nc1.nodes_involved.first.first].end()) {
+                                    nodes_stack.push(nc1);
+                                
+                                    existing_constraints[nc1.nodes_involved.first.first].insert(nc1.nodes_involved.second.first);
+                                }
+    
+                                if(nc2.type != NEX) {
+                                    if(existing_constraints[nc2.nodes_involved.first.first].find(nc2.nodes_involved.second.first) == existing_constraints[nc2.nodes_involved.first.first].end()) {
+                                        nodes_stack.push(nc2);
+
+                                        existing_constraints[nc2.nodes_involved.first.first].insert(nc2.nodes_involved.second.first);
+                                    }
+                                }
+
+                                if(nc3.type != NEX) {
+                                    if(existing_constraints[nc3.nodes_involved.first.first].find(nc3.nodes_involved.second.first) == existing_constraints[nc3.nodes_involved.first.first].end()) {
+                                        nodes_stack.push(nc3);
+
+                                        existing_constraints[nc3.nodes_involved.first.first].insert(nc3.nodes_involved.second.first);
+                                    }
+                                }
+
+                                if(nc4.type != NEX) {
+                                    if(existing_constraints[nc4.nodes_involved.first.first].find(nc4.nodes_involved.second.first) == existing_constraints[nc4.nodes_involved.first.first].end()) {
+                                        nodes_stack.push(nc4);
+
+                                        existing_constraints[nc4.nodes_involved.first.first].insert(nc4.nodes_involved.second.first);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else if(get<string>(current_op.second.content) == ";") {
+            /*
+                If we have a sequential operator, we just need to create additional constraints between the constraints that are between artificial nodes
+            */
+            vector<vector<Constraint>> constraint_branches;
+            vector<Constraint> aux;
+            while(!considered_nodes.empty()) {
+                if(holds_alternative<pair<int,ATNode>>(considered_nodes.top())) {
+                    pair<int,ATNode> top_node = std::get<pair<int,ATNode>>(considered_nodes.top());
+                    if(top_node.first == -1) {
+                        //Artificial node
+                        constraint_branches.push_back(aux);
+                        aux.clear();
+                    } else {
+                        /*
+                            Abstract Task Node
+                        */
+                        Constraint c;
+                        c.type = PAR;
+                        c.nodes_involved.first = top_node;
+                        pair<int,ATNode> artificial_node;
+                        artificial_node.first = -1;
+                        c.nodes_involved.second = artificial_node;
+
+                        aux.push_back(c);
+                    }
+                } else {
+                    Constraint top_node = std::get<Constraint>(considered_nodes.top());
+                    aux.push_back(top_node);
+                }
+
+                considered_nodes.pop();
+
+                if(considered_nodes.empty() && aux.size() > 0) {
+                    constraint_branches.push_back(aux);
+                }
+            }
+
+            if(constraint_branches.size() > 1) {
+                unsigned int i,j;
+                for(i=0;i<constraint_branches.size()-1;i++) {
+                    for(j=i+1;j<constraint_branches.size();j++) {
+                        vector<Constraint> vc1, vc2;
+
+                        vc1 = constraint_branches.at(i);
+                        vc2 = constraint_branches.at(i+1);
+
+                        unsigned int index1, index2;
+                        for(index1=0;index1<vc1.size();index1++) {
+                            for(index2=0;index2<vc2.size();index2++) {
+                                Constraint c1 = vc1.at(index1);
+                                Constraint c2 = vc2.at(index2);
+
+                                vector<Constraint> c;
+                                if(c1.type == SEQ) {
+                                    pair<int,ATNode> node;
+                                    if(c1.nodes_involved.second.first == -1) {
+                                        node = c1.nodes_involved.first;
+                                    } else {
+                                        node = c1.nodes_involved.second;
+                                    }
+                                    if(c2.type == SEQ) {
+                                        Constraint ct;
+
+                                        ct.type = SEQ;
+                                        ct.nodes_involved = make_pair(node, c2.nodes_involved.first);
+
+                                        c.push_back(ct);
+                                    } else {
+                                        unsigned int k;
+                                        if(c2.nodes_involved.second.first == -1) {
+                                            Constraint ct;
+
+                                            ct.type = SEQ;
+                                            ct.nodes_involved = make_pair(node, c2.nodes_involved.first);
+
+                                            c.push_back(ct);
+                                        } else {
+                                            for(k = 0;k < 2;k++) {
+                                                Constraint ct;
+
+                                                ct.type = SEQ;
+                                                if(k == 0) {
+                                                    ct.nodes_involved = make_pair(node, c2.nodes_involved.first);
+                                                } else {
+                                                    ct.nodes_involved = make_pair(node, c2.nodes_involved.second);
+                                                }
+
+                                                c.push_back(ct);
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    if(c2.type == SEQ) {
+                                        unsigned int k;
+                                        if(c1.nodes_involved.second.first == -1) {
+                                            Constraint ct;
+                                            
+                                            ct.type = SEQ;
+                                            ct.nodes_involved = make_pair(c1.nodes_involved.first, c2.nodes_involved.first);
+
+                                            c.push_back(ct);
+                                        } else {
+                                            for(k = 0;k < 2;k++) {
+                                                Constraint ct;
+
+                                                ct.type = SEQ;
+                                                if(k == 0) {
+                                                    ct.nodes_involved = make_pair(c1.nodes_involved.first, c2.nodes_involved.first);
+                                                } else {
+                                                    ct.nodes_involved = make_pair(c1.nodes_involved.second, c2.nodes_involved.first);
+                                                }
+
+                                                c.push_back(ct);
+                                            }
+                                        }
+                                    } else {
+                                        if(c1.nodes_involved.second.first == -1) {
+                                            unsigned int k;
+                                            if(c2.nodes_involved.second.first == -1) { 
+                                                Constraint ct;
+
+                                                ct.type = SEQ;
+                                                ct.nodes_involved = make_pair(c1.nodes_involved.first, c2.nodes_involved.first);
+
+                                                c.push_back(ct);
+                                            } else {
+                                                for(k = 0;k < 2;k++) {
+                                                    Constraint ct;
+
+                                                    ct.type = SEQ;
+                                                    if(k == 0) {
+                                                        ct.nodes_involved = make_pair(c1.nodes_involved.first, c2.nodes_involved.first);
+                                                    } else {
+                                                        ct.nodes_involved = make_pair(c1.nodes_involved.first, c2.nodes_involved.second);
+                                                    }
+
+                                                    c.push_back(ct);
+                                                }
+                                            }
+                                        } else {
+                                            unsigned int k;
+                                            if(c2.nodes_involved.second.first == -1) {
+                                                for(k = 0;k < 2;k++) {
+                                                    Constraint ct;
+
+                                                    ct.type = SEQ;
+                                                    if(k == 0) {
+                                                        ct.nodes_involved = make_pair(c1.nodes_involved.first, c2.nodes_involved.first);
+                                                    } else {
+                                                        ct.nodes_involved = make_pair(c1.nodes_involved.second, c2.nodes_involved.first);
+                                                    }
+
+                                                    c.push_back(ct);
+                                                }
+                                            } else {
+                                                for(k = 0;k < 4;k++) {
+                                                    Constraint ct;
+
+                                                    ct.type = SEQ;
+                                                    switch(k) {
+                                                        case 0:
+                                                            ct.nodes_involved = make_pair(c1.nodes_involved.first, c2.nodes_involved.first);
+                                                            break;
+                                                        case 1:
+                                                            ct.nodes_involved = make_pair(c1.nodes_involved.first, c2.nodes_involved.second);
+                                                            break;
+                                                        case 2:
+                                                            ct.nodes_involved = make_pair(c1.nodes_involved.second, c2.nodes_involved.first);
+                                                            break;
+                                                        case 3:
+                                                            ct.nodes_involved = make_pair(c1.nodes_involved.second, c2.nodes_involved.second);
+                                                    }
+
+                                                    c.push_back(ct);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                for(Constraint ct : c) {
+                                    if(existing_constraints[ct.nodes_involved.first.first].find(ct.nodes_involved.second.first) == existing_constraints[ct.nodes_involved.first.first].end()) {
+                                        nodes_stack.push(ct);
+
+                                        existing_constraints[ct.nodes_involved.first.first].insert(ct.nodes_involved.second.first);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 /*

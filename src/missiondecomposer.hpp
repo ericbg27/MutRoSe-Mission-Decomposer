@@ -16,6 +16,7 @@
 #include "config.hpp"
 #include "knowledgebase.hpp"
 #include "contextmanager.hpp"
+#include "knowledgemanager.hpp"
 
 using namespace std;
 

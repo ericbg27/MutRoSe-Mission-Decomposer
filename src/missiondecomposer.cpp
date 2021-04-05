@@ -235,20 +235,10 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
 			create_non_coop_edges(mission_decomposition,node_id);
 		}
 
-		//Now we need to insert valid decompositions
-		map<string,vector<vector<task>>> valid_decomposition_paths;
-
 		AbstractTask at = std::get<AbstractTask>(node.content);
-		for(vector<task> path : at_decomposition_paths[at.name]) {
-			bool is_valid = check_path_validity(path, world_state, at, semantic_mapping);
-
-			if(is_valid) {
-				valid_decomposition_paths[at.name].push_back(path);
-			}
-		}
 
 		int path_id = 1;
-		for(vector<task> path : valid_decomposition_paths[at.name]) {
+		for(vector<task> path : at_decomposition_paths[at.name]) {
 			ATNode path_node;
 			path_node.node_type = DECOMPOSITION;
 			path_node.non_coop = true;

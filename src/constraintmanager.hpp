@@ -27,6 +27,7 @@ struct Constraint {
 vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition);
 vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vector<Constraint> mission_constraints, GMGraph gm);
 
+void generate_constraints_from_stacks(stack<pair<int,ATNode>>& operators_stack, stack<variant<pair<int,ATNode>,Constraint>>& nodes_stack, map<int,set<int>>& existing_constraints);
 void generate_noncoop_constraints(vector<Constraint>& mission_constraints, ATGraph mission_decomposition);
 
 #endif
