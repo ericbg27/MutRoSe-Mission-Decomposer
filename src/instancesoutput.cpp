@@ -176,8 +176,8 @@ std::map<std::string,std::string> output_tasks(pt::ptree& output_file, vector<De
             vector<string> locations = get<vector<string>>(instance.at.location.first);
             int loc_counter = 0;
             for(string loc : locations) {
-                task_attr += ".t" + to_string(loc_counter);
-                output_file.put(task_attr,loc);
+                string aux = task_attr + ".t" + to_string(loc_counter);
+                output_file.put(aux,loc);
                 
                 loc_counter++;
             }

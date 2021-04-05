@@ -487,25 +487,41 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map
 				}
 
 				if(can_ground) {
-					ground_literal inst_prec;
-					inst_prec.positive = prec.positive;
-					inst_prec.predicate = prec.predicate;
+					vector<ground_literal> inst_prec;
+					//inst_prec.positive = prec.positive;
+					//inst_prec.predicate = prec.predicate;
 
 					// Here is probably one place where we have to expand collection related predicates
 					for(string arg : prec.arguments) {
 						for(pair<pair<variant<vector<string>,string>,string>,string> var_map : at.variable_mapping) {
 							if(arg == var_map.second) {
 								if(holds_alternative<string>(var_map.first.first)) {
-									inst_prec.args.push_back(std::get<string>(var_map.first.first));
+									ground_literal p;
+									p.positive = prec.positive;
+									p.predicate = prec.predicate; 
+									p.args.push_back(std::get<string>(var_map.first.first));
+
+									inst_prec.push_back(p);
 								} else {
-									string not_implemented_collection_pred_error = "Collection-related predicates are not supported yet.";
-									throw std::runtime_error(not_implemented_collection_pred_error);
+									vector<string> prec_vars = std::get<vector<string>>(var_map.first.first);
+									for(string var : prec_vars) {
+										ground_literal p;
+										p.positive = prec.positive;
+										p.predicate = prec.predicate; 
+										p.args.push_back(var);
+
+										inst_prec.push_back(p);
+									}
+									//string not_implemented_collection_pred_error = "Collection-related predicates are not supported yet.";
+									//throw std::runtime_error(not_implemented_collection_pred_error);
 								}
 							}
 						}
 					}
 
-					d.prec.push_back(inst_prec);
+					for(ground_literal p : inst_prec) {
+						d.prec.push_back(p);
+					}
 				} else {
 					d.prec.push_back(prec);
 				}
@@ -531,19 +547,33 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map
 			}
 		
 			if(can_ground) {
-				ground_literal inst_eff;
-				inst_eff.positive = eff.positive;
-				inst_eff.predicate = eff.predicate;
+				vector<ground_literal> inst_eff;
+				//inst_eff.positive = eff.positive;
+				//inst_eff.predicate = eff.predicate;
 
 				// Here is probably one place where we have to expand collection related predicates
 				for(string arg : eff.arguments) {
 					for(pair<pair<variant<vector<string>,string>,string>,string> var_map : at.variable_mapping) {
 						if(arg == var_map.second) {
 							if(holds_alternative<string>(var_map.first.first)) {
-								inst_eff.args.push_back(std::get<string>(var_map.first.first));
+								ground_literal e;
+								e.positive = eff.positive;
+								e.predicate = eff.predicate;
+								e.args.push_back(std::get<string>(var_map.first.first));
+
+								inst_eff.push_back(e);
 							} else {
-								string not_implemented_collection_pred_error = "Collection-related predicates are not supported yet.";
-								throw std::runtime_error(not_implemented_collection_pred_error);
+								vector<string> eff_vars = std::get<vector<string>>(var_map.first.first);
+								for(string var : eff_vars) {
+									ground_literal e;
+									e.positive = eff.positive;
+									e.predicate = eff.predicate;
+									e.args.push_back(var);
+
+									inst_eff.push_back(e);
+								}
+								//string not_implemented_collection_pred_error = "Collection-related predicates are not supported yet.";
+								//throw std::runtime_error(not_implemented_collection_pred_error);
 							}
 						}
 					}
@@ -553,30 +583,34 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map
 				for(unsigned int i = 0;i < combined_effects.size();i++) {
 					if(holds_alternative<ground_literal>(combined_effects.at(i))) {
 						ground_literal ceff = std::get<ground_literal>(combined_effects.at(i));
-						if(inst_eff.predicate == ceff.predicate) {
-							bool equal_args = true;
-							int index = 0;
-							for(auto arg : inst_eff.args) {
-								if(arg != ceff.args.at(index)) {
-									equal_args = false;
+						for(ground_literal e : inst_eff) {
+							if(e.predicate == ceff.predicate) {
+								bool equal_args = true;
+								int index = 0;
+								for(auto arg : e.args) {
+									if(arg != ceff.args.at(index)) {
+										equal_args = false;
+										break;
+									}
+									index++;
+								}
+
+								if(equal_args) {
+									if(e.positive != ceff.positive) {
+										combined_effects.at(i) = e;
+									}
+									applied_effect = true;
 									break;
 								}
-								index++;
-							}
-
-							if(equal_args) {
-								if(inst_eff.positive != ceff.positive) {
-									combined_effects.at(i) = inst_eff;
-								}
-								applied_effect = true;
-								break;
 							}
 						}
 					}
 				}
 
 				if(!applied_effect) {
-					combined_effects.push_back(inst_eff);
+					for(ground_literal e : inst_eff) {
+						combined_effects.push_back(e);
+					}
 				}
 			} else {
 				bool applied_effect = false;

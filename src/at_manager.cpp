@@ -223,7 +223,7 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 				string var_name = std::get<vector<pair<string,string>>>(gm[v].custom_props["Controls"]).at(0).first;
 				string var_type = std::get<vector<pair<string,string>>>(gm[v].custom_props["Controls"]).at(0).second;
 
-				valid_variables[var_name] = make_pair(q.query_var.second,aux);
+				valid_variables[var_name] = make_pair(var_type,aux);
 				
 				string gm_var_type = parse_gm_var_type(var_type);
 				if(gm_var_type == "VALUE") {
@@ -494,7 +494,10 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 						if(valid_variables.find(var.get_gm_var()) != valid_variables.end()) {
 							std::pair<std::pair<std::variant<std::vector<std::string>,std::string>,std::string>,std::string> new_var_mapping;
 							std::string var_type = valid_variables[var.get_gm_var()].first;
+							std::cout << "GM VAR FOR AT " << at.name << ": " << var.get_gm_var() << std::endl;
+							std::cout << "VAR TYPE FOR AT " << at.name << ": " << var_type << std::endl;
 							if(parse_gm_var_type(var_type) == "COLLECTION") {
+								std::cout << "COLLECTION MAPPING FOR AT " << at.name << std::endl;
 								std::vector<std::string> var_values;
 								for(pt::ptree v : valid_variables[var.get_gm_var()].second) {
 									var_values.push_back(v.get<std::string>("name"));
