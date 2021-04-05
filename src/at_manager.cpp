@@ -27,7 +27,6 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 														KnowledgeBase world_db, map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map,
 															vector<VariableMapping> var_mapping) {
 	std::vector<int> vctr = get_dfs_gm_nodes(gm);
-
 	/*
 		Get the world knowledge ptree. We disconsider the root key, if any, since we expect it to be
 		just a name like world_db or similar
@@ -70,6 +69,8 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 
 	for(int v : vctr) {
 		current = v;
+
+		std::cout << "Current Node: " << gm[v].text << std::endl;
 
 		/*
 			If the last visited vertex is not the same as the current we verify:
@@ -460,6 +461,7 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 
 				at.id = at_def.first + "_" + to_string(at_ids[at_def.first]);
 				at.name = at_def.second;
+
 				variant<vector<string>,string> loc;
 				string var_type;
 				if(valid_variables[location_var].second.size() > 1) {

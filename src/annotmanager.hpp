@@ -32,6 +32,8 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int> &vctr,
                                         map<string,pair<string,vector<pt::ptree>>>& valid_variables, map<int,AchieveCondition> valid_forAll_conditions, 
                                         map<int,int>& node_depths);
 
+void recursive_fill_up_runtime_annot(general_annot* rannot, VertexData gm_node);
+
 void recursive_child_replacement(general_annot* copy, general_annot* original);
 
 void rename_at_instances_in_runtime_annot(general_annot* gmannot, map<string,vector<AbstractTask>> at_instances);

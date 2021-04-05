@@ -19,7 +19,7 @@
     )
     (:action clean-rooms-check
         :parameters (?r - robot ?rms - rooms)
-        :precondition (clean ?rms)
+        :precondition (not (clean ?rms))
         :effect ()
     )
 

@@ -269,6 +269,8 @@ int main(int argc, char** argv) {
 	*/
 	check_gm_validity(gm);
 
+	print_gm(gm);
+
 	print_gm_nodes_info(gm);
 
 	check_undefined_number_of_robots(gm, abstract_tasks, sort_definitions);
@@ -277,7 +279,7 @@ int main(int argc, char** argv) {
 	string location_type = get<vector<string>>(cfg["location_types"]).at(0);
 
 	map<string,vector<AbstractTask>> at_instances;
-	
+
 	at_instances = generate_at_instances(abstract_tasks, gm, location_type, world_db, gm_var_map, variable_mapping);
 
 	print_at_instances_info(at_instances);
@@ -354,7 +356,7 @@ int main(int argc, char** argv) {
 
 	ATGraph mission_decomposition = build_at_graph(at_instances, at_decomposition_paths, gmannot, gm, init, gm_var_map, world_db, semantic_mapping);
 
-	print_mission_decomposition(mission_decomposition);
+	print_mission_decomposition(mission_decomposition); 
 
 	generate_instances_output(mission_decomposition,gm,output,init,semantic_mapping,sorts,sort_definitions,predicate_definitions);
 }

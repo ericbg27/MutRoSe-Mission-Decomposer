@@ -22,8 +22,22 @@
 */
 void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<string,string> output, vector<ground_literal> world_state, vector<SemanticMapping> semantic_mapping,
                                 map<string,set<string>> sorts, vector<sort_definition> sort_definitions, vector<predicate_definition> predicate_definitions) {
-    queue<pair<int,ATNode>> mission_queue = generate_mission_queue(mission_decomposition);                            
-    vector<Constraint> mission_constraints = generate_at_constraints(mission_decomposition, mission_queue);
+    pair<ATGraph,map<int,int>> trimmed_mission_decomposition = generate_trimmed_at_graph(mission_decomposition);  
+
+    vector<Constraint> mission_constraints = generate_at_constraints(trimmed_mission_decomposition.first);
+
+    for(Constraint& c : mission_constraints) {
+        pair<int,ATNode> n1 = c.nodes_involved.first;
+        pair<int,ATNode> n2 = c.nodes_involved.second;
+
+        n1.second.parent = trimmed_mission_decomposition.second[n1.second.parent];
+        n1.first = trimmed_mission_decomposition.second[n1.first];
+        n2.second.parent = trimmed_mission_decomposition.second[n2.second.parent];
+        n2.first = trimmed_mission_decomposition.second[n2.first];
+
+        c.nodes_involved.first = n1;
+        c.nodes_involved.second = n2;
+    }
 
     /*
         Generate final mission constraints
