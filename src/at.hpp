@@ -14,8 +14,9 @@ struct AbstractTask  {
     task at;
     bool fixed_robot_num;
     std::variant<int,std::pair<int,int>> robot_num;
-    std::pair<std::string,std::string> location;
-    std::vector<std::pair<std::string,std::string>> variable_mapping;
+    std::pair<std::variant<std::vector<std::string>,std::string>,std::pair<std::string,std::string>> location;
+    std::vector<std::pair<std::pair<std::variant<std::vector<std::string>,std::string>,std::string>,std::string>> variable_mapping;
+    //std::vector<std::pair<std::string,std::string>> variable_mapping;
     std::vector<std::string> triggering_events;
 };
 

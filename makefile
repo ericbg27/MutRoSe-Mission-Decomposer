@@ -38,7 +38,7 @@ src/rannot-token.cpp: src/rannot.cpp src/rannot-token.l
 
 src/rannot.cpp: src/rannot.y
 	bison -v -d -o src/rannot.cpp src/rannot.y
-
+	
 src/rannot.hpp: src/rannot.cpp
 
 clear:

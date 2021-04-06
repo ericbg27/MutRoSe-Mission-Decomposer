@@ -66,6 +66,7 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
 										vector<SemanticMapping> semantic_mapping, map<string, variant<string,vector<string>>> instantiated_vars) {
 	ATNode node;
 	int node_id;
+
 	if(rannot->type == OPERATOR || rannot->type == MEANSEND) {
 		bool active_context = true;
 		Context context;
@@ -82,7 +83,7 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
 
 			gm_node = gm[gm_node_id];
 			if(gm_node.custom_props.find("CreationCondition") != gm_node.custom_props.end()) {
-				context = get<Context>(gm_node.custom_props["CreationCondition"]);
+				context = std::get<Context>(gm_node.custom_props["CreationCondition"]);
 
 				if(context.type == "condition") {
 					active_context = check_context(context, world_state, semantic_mapping, instantiated_vars);
@@ -100,8 +101,8 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
 			gm_node = gm[gm_node_id];
 
 			is_forAll = true;
-			monitored_var = get<vector<pair<string,string>>>(gm_node.custom_props["Monitors"]).at(0);
-			controlled_var = get<vector<pair<string,string>>>(gm_node.custom_props["Controls"]).at(0);
+			monitored_var = std::get<vector<pair<string,string>>>(gm_node.custom_props["Monitors"]).at(0);
+			controlled_var = std::get<vector<pair<string,string>>>(gm_node.custom_props["Controls"]).at(0);
 		}
 		
 		node.non_coop = rannot->non_coop;
@@ -113,6 +114,7 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
 			node.node_type = OP;
 		}
 		node.content = rannot->content;
+		node.parent = parent;
 
 		node_id = boost::add_vertex(node, mission_decomposition);
 
@@ -122,7 +124,7 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
 			e.source = parent;
 			e.target = node_id;
 
-			mission_decomposition[node_id].parent = parent;
+			//mission_decomposition[node_id].parent = parent;
 			
 			boost::add_edge(boost::vertex(parent, mission_decomposition), boost::vertex(node_id, mission_decomposition), e, mission_decomposition);
 		}
@@ -143,7 +145,7 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
 					- If we have a parallel decomposition which is not completely parallel since we have a context dependency
 			*/
 			bool resolved_context = check_context_dependency(mission_decomposition, parent, node_id, context, rannot, world_state, instantiated_vars, at_decomposition_paths, semantic_mapping);
-			
+
 			if(!resolved_context) {
 				std::string bad_context_err = "COULD NOT RESOLVE CONTEXT FOR NODE: " + gm_node.text; 
 				throw std::runtime_error(bad_context_err);
@@ -161,12 +163,12 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
 		unsigned int child_index = 0;
 		if(is_forAll) {
 			/*
-				- Controlled variable in forAll needs to be of container type
-				- Monitored variable in forAll needs to be of value type
+				- Controlled variable in forAll needs to be of value type
+				- Monitored variable in forAll needs to be of container type
 			*/
 			int value_index = 0;
 			for(general_annot* child : rannot->children) {
-				pair<vector<string>,string> var_map = get<pair<vector<string>,string>>(gm_vars_map[monitored_var.first]);
+				pair<vector<string>,string> var_map = std::get<pair<vector<string>,string>>(gm_vars_map[monitored_var.first]);
 				instantiated_vars[controlled_var.first] = var_map.first.at(value_index);
 				value_index++;
 
@@ -190,6 +192,7 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
 	} else if(rannot->type == TASK) {
 		node.non_coop = true;
 		node.node_type = ATASK;
+		node.parent = parent;
 		
 		//Find AT instance that corresponds to this node and put it in the content
 		bool found_at = false;
@@ -212,6 +215,11 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
 			if(found_at) break;
 		}
 
+		if(!found_at) {
+			std::string at_not_found_error = "Could not find AT " + rannot->content.substr(0,rannot->content.find("_")) + " definition";
+			throw std::runtime_error(at_not_found_error);
+		}
+
 		node_id = boost::add_vertex(node, mission_decomposition);
 
 		ATEdge e;
@@ -227,23 +235,14 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
 			create_non_coop_edges(mission_decomposition,node_id);
 		}
 
-		//Now we need to insert valid decompositions
-		map<string,vector<vector<task>>> valid_decomposition_paths;
-
-		AbstractTask at = get<AbstractTask>(node.content);
-		for(vector<task> path : at_decomposition_paths[at.name]) {
-			bool is_valid = check_path_validity(path, world_state, at);
-
-			if(is_valid) {
-				valid_decomposition_paths[at.name].push_back(path);
-			}
-		}
+		AbstractTask at = std::get<AbstractTask>(node.content);
 
 		int path_id = 1;
-		for(vector<task> path : valid_decomposition_paths[at.name]) {
+		for(vector<task> path : at_decomposition_paths[at.name]) {
 			ATNode path_node;
 			path_node.node_type = DECOMPOSITION;
 			path_node.non_coop = true;
+			path_node.parent = parent;
 
 			Decomposition d;
 			d.id = at.id + "|" + to_string(path_id);
@@ -269,6 +268,189 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
 	}
 }
 
+pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decomposition) {
+	ATGraph trimmed_mission_decomposition;
+
+	map<int,int> ids_map, reverse_ids_map;
+
+	ATGraph::vertex_iterator i, end;
+
+	int root = 0;
+	for(boost::tie(i,end) = vertices(mission_decomposition); i != end; ++i) {
+		int out_edge_num = 0;
+		ATGraph::out_edge_iterator ei, ei_end;
+
+		for(boost::tie(ei,ei_end) = out_edges(*i,mission_decomposition);ei != ei_end;++ei) {
+			auto source = boost::source(*ei,mission_decomposition);
+			auto target = boost::target(*ei,mission_decomposition);
+			auto edge = boost::edge(source,target,mission_decomposition);
+
+			if(mission_decomposition[edge.first].edge_type == NORMAL) {
+				out_edge_num++;
+			}
+		}
+
+		if(out_edge_num > 1) {
+			root = *i;
+			break;
+		}
+	}
+
+	bool found_root = false;
+
+	for(boost::tie(i,end) = vertices(mission_decomposition); i != end; ++i) {
+		if(int(*i) == root) {
+			found_root = true;
+		}
+		if(!found_root) {
+			continue;
+		}
+		ATGraph::out_edge_iterator ai, a_end;
+		ATNode node = mission_decomposition[*i];
+
+		int parent = -1;
+		ATNode current_node = node;
+		bool found_parent = false;
+
+		if(int(*i) != root) {
+			while(!found_parent) {
+				if(ids_map.find(current_node.parent) == ids_map.end()) {
+					current_node = mission_decomposition[current_node.parent];
+				} else {
+					parent = current_node.parent;
+					found_parent = true;
+				}
+			}
+		}
+
+		if(node.node_type == OP) {
+			int out_edge_num = 0;
+			ATGraph::out_edge_iterator ei, ei_end;
+
+			//Only insert OP nodes that have more than one outer edge of normal type (more than one child)
+			for(boost::tie(ei,ei_end) = out_edges(*i,mission_decomposition);ei != ei_end;++ei) {
+				auto source = boost::source(*ei,mission_decomposition);
+				auto target = boost::target(*ei,mission_decomposition);
+				auto edge = boost::edge(source,target,mission_decomposition);
+
+				if(mission_decomposition[edge.first].edge_type == NORMAL) {
+					out_edge_num++;
+				}
+			}
+
+			if(out_edge_num > 1) {
+				if(parent != mission_decomposition[root].parent) {
+					node.parent = ids_map[parent];
+				} else { 
+					node.parent = mission_decomposition[root].parent;
+				}
+				int node_id = boost::add_vertex(node, trimmed_mission_decomposition);
+
+				if(int(*i) != root) {
+					ATEdge e;
+					e.edge_type = NORMAL;
+					e.source = ids_map[parent];
+					e.target = node_id;
+
+					boost::add_edge(boost::vertex(ids_map[parent], trimmed_mission_decomposition), boost::vertex(node_id, trimmed_mission_decomposition), e, trimmed_mission_decomposition);
+				}
+
+				ids_map[*i] = node_id;
+				reverse_ids_map[node_id] = *i;
+				
+				for(boost::tie(ai,a_end) = out_edges(*i,mission_decomposition); ai != a_end;++ai) {
+					auto source = boost::source(*ai,mission_decomposition);
+					auto target = boost::target(*ai,mission_decomposition);
+					auto edge = boost::edge(source,target,mission_decomposition);
+					
+					ATNode a_node = mission_decomposition[target];
+					if(parent != mission_decomposition[root].parent) {
+						a_node.parent = ids_map[parent];
+					} else {
+						a_node.parent = mission_decomposition[root].parent;
+					}
+
+					if(mission_decomposition[edge.first].edge_type == NORMAL) {
+						if(a_node.node_type == ATASK) {
+							int task_id = boost::add_vertex(a_node, trimmed_mission_decomposition);
+							
+							ATEdge e;
+							e.edge_type = NORMAL;
+							e.source = node_id;
+							e.target = task_id;
+
+							reverse_ids_map[task_id] = target;
+							reverse_ids_map[a_node.parent] = source;
+
+							boost::add_edge(boost::vertex(node_id, trimmed_mission_decomposition), boost::vertex(task_id, trimmed_mission_decomposition), e, trimmed_mission_decomposition);
+						}
+					}
+				}
+			} else {
+				for(boost::tie(ai,a_end) = out_edges(*i,mission_decomposition); ai != a_end;++ai) {
+					auto source = boost::source(*ai,mission_decomposition);
+					auto target = boost::target(*ai,mission_decomposition);
+					auto edge = boost::edge(source,target,mission_decomposition);
+					
+					ATNode a_node = mission_decomposition[target];
+					if(parent != mission_decomposition[root].parent) {
+						a_node.parent = ids_map[parent];
+					} else {
+						a_node.parent = mission_decomposition[root].parent;
+					}
+
+					if(mission_decomposition[edge.first].edge_type == NORMAL) {
+						if(a_node.node_type == ATASK) {
+							int task_id = boost::add_vertex(a_node, trimmed_mission_decomposition);
+							
+							ATEdge e;
+							e.edge_type = NORMAL;
+							e.source = parent;
+							e.target = task_id;
+
+							reverse_ids_map[task_id] = target;
+							reverse_ids_map[a_node.parent] = source;
+
+							boost::add_edge(boost::vertex(ids_map[parent], trimmed_mission_decomposition), boost::vertex(task_id, trimmed_mission_decomposition), e, trimmed_mission_decomposition);
+						}
+					}
+				}
+			}
+		} else if(node.node_type == GOALNODE) {
+			for(boost::tie(ai,a_end) = out_edges(*i,mission_decomposition); ai != a_end;++ai) {
+				auto source = boost::source(*ai,mission_decomposition);
+				auto target = boost::target(*ai,mission_decomposition);
+				auto edge = boost::edge(source,target,mission_decomposition);
+
+				ATNode a_node = mission_decomposition[target];
+				if(parent != mission_decomposition[root].parent) {
+					a_node.parent = ids_map[parent];
+				} else {
+					a_node.parent = mission_decomposition[root].parent;
+				}
+
+				if(mission_decomposition[edge.first].edge_type == NORMAL) {
+					if(a_node.node_type == ATASK) {
+						int task_id = boost::add_vertex(a_node, trimmed_mission_decomposition);
+							
+						ATEdge e;
+						e.edge_type = NORMAL;
+						e.source = parent;
+						e.target = task_id;
+
+						reverse_ids_map[task_id] = target;
+						reverse_ids_map[a_node.parent] = source;
+
+						boost::add_edge(boost::vertex(ids_map[parent], trimmed_mission_decomposition), boost::vertex(task_id, trimmed_mission_decomposition), e, trimmed_mission_decomposition);
+					}
+				}
+			}
+		}
+	}
+
+	return make_pair(trimmed_mission_decomposition, reverse_ids_map);
+}
+
 /*
     Function: instantiate_decomposition_predicates
     Objective: Ground as many predicates as possible for some decomposition of an abstract task
@@ -279,7 +461,7 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
     @ Output: Void. The decomposition predicates are instantiated
 */
 void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_vars_map) {
-	int task_counter = 1,task_number;
+	int task_counter = 1, task_number;
 
 	task_number = d.path.size();
 
@@ -291,7 +473,7 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map
 				bool can_ground = true;
 				for(string arg : prec.arguments) {
 					bool found_arg = false;
-					for(pair<string,string> var_map : at.variable_mapping) {
+					for(pair<pair<variant<vector<string>,string>,string>,string> var_map : at.variable_mapping) {
 						if(arg == var_map.second) {
 							found_arg = true;
 							break;
@@ -305,19 +487,41 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map
 				}
 
 				if(can_ground) {
-					ground_literal inst_prec;
-					inst_prec.positive = prec.positive;
-					inst_prec.predicate = prec.predicate;
+					vector<ground_literal> inst_prec;
+					//inst_prec.positive = prec.positive;
+					//inst_prec.predicate = prec.predicate;
 
+					// Here is probably one place where we have to expand collection related predicates
 					for(string arg : prec.arguments) {
-						for(pair<string,string> var_map : at.variable_mapping) {
+						for(pair<pair<variant<vector<string>,string>,string>,string> var_map : at.variable_mapping) {
 							if(arg == var_map.second) {
-								inst_prec.args.push_back(var_map.first);
+								if(holds_alternative<string>(var_map.first.first)) {
+									ground_literal p;
+									p.positive = prec.positive;
+									p.predicate = prec.predicate; 
+									p.args.push_back(std::get<string>(var_map.first.first));
+
+									inst_prec.push_back(p);
+								} else {
+									vector<string> prec_vars = std::get<vector<string>>(var_map.first.first);
+									for(string var : prec_vars) {
+										ground_literal p;
+										p.positive = prec.positive;
+										p.predicate = prec.predicate; 
+										p.args.push_back(var);
+
+										inst_prec.push_back(p);
+									}
+									//string not_implemented_collection_pred_error = "Collection-related predicates are not supported yet.";
+									//throw std::runtime_error(not_implemented_collection_pred_error);
+								}
 							}
 						}
 					}
 
-					d.prec.push_back(inst_prec);
+					for(ground_literal p : inst_prec) {
+						d.prec.push_back(p);
+					}
 				} else {
 					d.prec.push_back(prec);
 				}
@@ -329,7 +533,7 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map
 			bool can_ground = true;
 			for(string arg : eff.arguments) {
 				bool found_arg = false;
-				for(pair<string,string> var_map : at.variable_mapping) {
+				for(pair<pair<variant<vector<string>,string>,string>,string> var_map : at.variable_mapping) {
 					if(arg == var_map.second) {
 						found_arg = true;
 						break;
@@ -343,14 +547,34 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map
 			}
 		
 			if(can_ground) {
-				ground_literal inst_eff;
-				inst_eff.positive = eff.positive;
-				inst_eff.predicate = eff.predicate;
+				vector<ground_literal> inst_eff;
+				//inst_eff.positive = eff.positive;
+				//inst_eff.predicate = eff.predicate;
 
+				// Here is probably one place where we have to expand collection related predicates
 				for(string arg : eff.arguments) {
-					for(pair<string,string> var_map : at.variable_mapping) {
+					for(pair<pair<variant<vector<string>,string>,string>,string> var_map : at.variable_mapping) {
 						if(arg == var_map.second) {
-							inst_eff.args.push_back(var_map.first);
+							if(holds_alternative<string>(var_map.first.first)) {
+								ground_literal e;
+								e.positive = eff.positive;
+								e.predicate = eff.predicate;
+								e.args.push_back(std::get<string>(var_map.first.first));
+
+								inst_eff.push_back(e);
+							} else {
+								vector<string> eff_vars = std::get<vector<string>>(var_map.first.first);
+								for(string var : eff_vars) {
+									ground_literal e;
+									e.positive = eff.positive;
+									e.predicate = eff.predicate;
+									e.args.push_back(var);
+
+									inst_eff.push_back(e);
+								}
+								//string not_implemented_collection_pred_error = "Collection-related predicates are not supported yet.";
+								//throw std::runtime_error(not_implemented_collection_pred_error);
+							}
 						}
 					}
 				}
@@ -358,37 +582,41 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map
 				bool applied_effect = false;
 				for(unsigned int i = 0;i < combined_effects.size();i++) {
 					if(holds_alternative<ground_literal>(combined_effects.at(i))) {
-						ground_literal ceff = get<ground_literal>(combined_effects.at(i));
-						if(inst_eff.predicate == ceff.predicate) {
-							bool equal_args = true;
-							int index = 0;
-							for(auto arg : inst_eff.args) {
-								if(arg != ceff.args.at(index)) {
-									equal_args = false;
+						ground_literal ceff = std::get<ground_literal>(combined_effects.at(i));
+						for(ground_literal e : inst_eff) {
+							if(e.predicate == ceff.predicate) {
+								bool equal_args = true;
+								int index = 0;
+								for(auto arg : e.args) {
+									if(arg != ceff.args.at(index)) {
+										equal_args = false;
+										break;
+									}
+									index++;
+								}
+
+								if(equal_args) {
+									if(e.positive != ceff.positive) {
+										combined_effects.at(i) = e;
+									}
+									applied_effect = true;
 									break;
 								}
-								index++;
-							}
-
-							if(equal_args) {
-								if(inst_eff.positive != ceff.positive) {
-									combined_effects.at(i) = inst_eff;
-								}
-								applied_effect = true;
-								break;
 							}
 						}
 					}
 				}
 
 				if(!applied_effect) {
-					combined_effects.push_back(inst_eff);
+					for(ground_literal e : inst_eff) {
+						combined_effects.push_back(e);
+					}
 				}
 			} else {
 				bool applied_effect = false;
 				for(unsigned int i = 0;i < combined_effects.size();i++) {
 					if(holds_alternative<literal>(combined_effects.at(i))) {
-						literal ceff = get<literal>(combined_effects.at(i));
+						literal ceff = std::get<literal>(combined_effects.at(i));
 						if(eff.predicate == ceff.predicate) {
 							bool equal_args = true;
 							int index = 0;
@@ -464,7 +692,7 @@ bool check_context_dependency(ATGraph& mission_decomposition, int parent_node, i
 	for(int v : vctr) {
 		//Go through the valid paths of an AbstractTask and create ContextDependency links
 		if(mission_decomposition[v].node_type == ATASK) {
-			AbstractTask at = get<AbstractTask>(mission_decomposition[v].content);
+			AbstractTask at = std::get<AbstractTask>(mission_decomposition[v].content);
 
 			/*
 				-> When we have them we need to verify the effects related to the variable in the var_map
@@ -489,7 +717,7 @@ bool check_context_dependency(ATGraph& mission_decomposition, int parent_node, i
 			
 			for(int d_id : decompositions) {
 				bool context_satisfied = false;
-				vector<task> path = get<Decomposition>(mission_decomposition[d_id].content).path;
+				vector<task> path = std::get<Decomposition>(mission_decomposition[d_id].content).path;
 				vector<ground_literal> world_state_copy = world_state;
 				for(task t : path) {
 					for(literal eff : t.eff) {
@@ -498,10 +726,16 @@ bool check_context_dependency(ATGraph& mission_decomposition, int parent_node, i
 						for(string arg : eff.arguments) {
 							bool found_arg = false;
 							string mapped_var;
-							for(pair<string,string> var_map : at.variable_mapping) {
+							// Here is probably one place where we have to expand collection related predicates
+							for(pair<pair<variant<vector<string>,string>,string>,string> var_map : at.variable_mapping) {
 								if(arg == var_map.second) {
 									found_arg = true;
-									mapped_var = var_map.first;
+									if(holds_alternative<string>(var_map.first.first)) {
+										mapped_var = std::get<string>(var_map.first.first);
+									} else {
+										string not_implemented_collection_pred_error = "Collection-related predicates are not supported yet.";
+										throw std::runtime_error(not_implemented_collection_pred_error);
+									}
 									break;
 								}
 							}
@@ -553,7 +787,7 @@ bool check_context_dependency(ATGraph& mission_decomposition, int parent_node, i
 				*/
 				ground_literal context_pred;
 				context_pred.predicate = var_and_pred.second.second.name;
-				string var_name = get<string>(instantiated_vars[var_and_pred.second.first]);
+				string var_name = std::get<string>(instantiated_vars[var_and_pred.second.first]);
 				context_pred.args.push_back(var_name);
 				context_pred.positive = var_and_pred.first;
 
@@ -583,7 +817,7 @@ bool check_context_dependency(ATGraph& mission_decomposition, int parent_node, i
 				
 					boost::add_edge(boost::vertex(d_id, mission_decomposition), boost::vertex(current_node, mission_decomposition), e, mission_decomposition);
 
-					cout << "Context satisfied with task " << get<Decomposition>(mission_decomposition[d_id].content).id << ": " << at.name << endl;
+					cout << "Context satisfied with task " << std::get<Decomposition>(mission_decomposition[d_id].content).id << ": " << at.name << endl;
 
 					//For now we create the dependency between the first AT that satisfies its context
 					found_at = true;
@@ -764,12 +998,12 @@ bool can_unite_decompositions(Decomposition d1, Decomposition d2, bool non_coop_
 
 		for(auto& state : initial_state) {
 			if(holds_alternative<literal>(state)) {
-				literal s = get<literal>(state);
+				literal s = std::get<literal>(state);
 				int found_eff = -1;
 
 				for(unsigned int i = 0;i < d1_eff.size();i++) {
 					if(holds_alternative<literal>(d1_eff.at(i))) {
-						literal eff = get<literal>(d1_eff.at(i));
+						literal eff = std::get<literal>(d1_eff.at(i));
 						if(eff.predicate == s.predicate) {
 							bool equal_args = true;
 
@@ -801,11 +1035,11 @@ bool can_unite_decompositions(Decomposition d1, Decomposition d2, bool non_coop_
 					d1_eff.erase(d1_eff.begin()+found_eff);
 				}
 			} else {
-				ground_literal s = get<ground_literal>(state);
+				ground_literal s = std::get<ground_literal>(state);
 				int found_eff = -1;
 				for(unsigned int i = 0;i < d1_eff.size();i++) {
 					if(holds_alternative<ground_literal>(d1_eff.at(i))) {
-						ground_literal eff = get<ground_literal>(d1_eff.at(i));
+						ground_literal eff = std::get<ground_literal>(d1_eff.at(i));
 						if(eff.predicate == s.predicate) {
 							bool equal_args = true;
 
@@ -842,16 +1076,16 @@ bool can_unite_decompositions(Decomposition d1, Decomposition d2, bool non_coop_
 		int index = 0;
 		for(auto prec : d2_prec) {
 			if(holds_alternative<literal>(prec)) {
-				literal p = get<literal>(prec);
-				literal p1 = get<literal>(initial_state.at(index));
+				literal p = std::get<literal>(prec);
+				literal p1 = std::get<literal>(initial_state.at(index));
 
 				if(p.positive != p1.positive) {
 					can_unite = false;
 					break;
 				}
 			} else {
-				ground_literal p = get<ground_literal>(prec);
-				ground_literal p1 = get<ground_literal>(initial_state.at(index));
+				ground_literal p = std::get<ground_literal>(prec);
+				ground_literal p1 = std::get<ground_literal>(initial_state.at(index));
 
 				if(p.positive != p1.positive) {
 					can_unite = false;
@@ -865,7 +1099,7 @@ bool can_unite_decompositions(Decomposition d1, Decomposition d2, bool non_coop_
 		vector<ground_literal> initial_state;
 		for(auto prec : d2_prec) {
 			if(holds_alternative<ground_literal>(prec)) {
-				initial_state.push_back(get<ground_literal>(prec));
+				initial_state.push_back(std::get<ground_literal>(prec));
 			}
 		}
 
@@ -873,7 +1107,7 @@ bool can_unite_decompositions(Decomposition d1, Decomposition d2, bool non_coop_
 			int found_eff = -1;
 			for(unsigned int i = 0;i < d1_eff.size();i++) {
 				if(holds_alternative<ground_literal>(d1_eff.at(i))) {
-					ground_literal eff = get<ground_literal>(d1_eff.at(i));
+					ground_literal eff = std::get<ground_literal>(d1_eff.at(i));
 					if(eff.predicate == state.predicate) {
 						bool equal_args = true;
 
@@ -907,7 +1141,7 @@ bool can_unite_decompositions(Decomposition d1, Decomposition d2, bool non_coop_
 		int index = 0;
 		for(auto prec : d2_prec) {
 			if(holds_alternative<ground_literal>(prec)) {
-				ground_literal p = get<ground_literal>(prec);
+				ground_literal p = std::get<ground_literal>(prec);
 				if(p.positive != initial_state.at(index).positive) {
 					can_unite = false;
 					break;
@@ -935,21 +1169,21 @@ void print_mission_decomposition(ATGraph mission_decomposition) {
 	for(boost::tie(i,end) = vertices(mission_decomposition); i != end; ++i) {
 		ATNode node = mission_decomposition[*i];
 		if(holds_alternative<AbstractTask>(node.content)) {
-			std::cout << get<AbstractTask>(node.content).id << " --> ";
+			std::cout << std::get<AbstractTask>(node.content).id << "(" << *i << ")" << "(" << node.parent << ")" << " --> ";
 		} else if(holds_alternative<string>(node.content)) {
-			std::cout << get<string>(node.content) << " --> ";
+			std::cout << std::get<string>(node.content) << "(" << *i << ")" << "(" << node.parent << ")" << " --> ";
 		} else {
-			std::cout << get<Decomposition>(node.content).id << " --> ";	
+			std::cout << std::get<Decomposition>(node.content).id << "(" << *i << ")" << "(" << node.parent << ")" << " --> ";	
 		}
 
 		for(boost::tie(ai,a_end) = adjacent_vertices(*i,mission_decomposition); ai != a_end;++ai) {
 			ATNode a_node = mission_decomposition[*ai];
 			if(holds_alternative<AbstractTask>(a_node.content)) {
-				std::cout << get<AbstractTask>(a_node.content).id << " ";
+				std::cout << std::get<AbstractTask>(a_node.content).id << "(" << *ai << ")" << "(" << a_node.parent << ")" << " ";
 			} else if(holds_alternative<string>(a_node.content)) {
-				std::cout << get<string>(a_node.content) << " ";
+				std::cout << std::get<string>(a_node.content) << "(" << *ai << ")" << "(" << a_node.parent << ")" << " ";
 			} else {
-				std::cout << get<Decomposition>(a_node.content).id << " ";
+				std::cout << std::get<Decomposition>(a_node.content).id << "(" << *ai << ")" << "(" << a_node.parent << ")" << " ";
 			}
 		}	
 		std::cout << std::endl;

@@ -59,7 +59,12 @@ string VariableMapping::get_gm_var() {
 }
 
 variant<string,predicate_definition> SemanticMapping::get_prop(string prop) {
-    return this->mapping_props[prop];
+    if(this->mapping_props.find(prop) != this->mapping_props.end()) {
+        return this->mapping_props[prop];
+    } else {
+        string no_prop_error = "No property " + prop + " found in semantic mapping";
+        throw std::runtime_error(no_prop_error);
+    }
 }
 
 void SemanticMapping::operator=(SemanticMapping sm) {
@@ -181,6 +186,11 @@ map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>,
                 }
 
                 if(mapped_type == "predicate") {
+                    boost::optional<string> p_type = mapping.second.get_optional<string>("predicate_type");
+                    if(p_type) {
+                        sm.add_prop("predicate_type", p_type.get());
+                    }
+
                     predicate_definition pred;
 
                     pt::ptree map = mapping.second.get_child("map"); 

@@ -174,5 +174,53 @@ int find_gm_node_by_id(string id, GMGraph gm);
 
 void print_gm_nodes_info(GMGraph gm);
 void print_gm_var_map_info(map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map);
+void print_gm(GMGraph gm);
+
+struct sort_by_id {
+    inline bool operator() (const pair<int,VertexData> v1, const pair<int,VertexData> v2) {
+        string v1_id = get_node_name(v1.second.text);
+        string v2_id = get_node_name(v2.second.text);
+
+        bool v1_goal, v2_goal;
+        v1_goal = (v1_id.rfind("G",0) == 0);
+        v2_goal = (v2_id.rfind("G",0) == 0);
+
+        if(v1_goal && !v2_goal) {
+            return true;
+        } else if(!v1_goal && v2_goal) {
+            return false;
+        } else {
+            if(v1_goal && v2_goal) {
+                v1_id = v1_id.substr(1);
+                v2_id = v2_id.substr(1);
+
+                int v1_i, v2_i;
+                v1_i = std::stoi(v1_id);
+                v2_i = std::stoi(v2_id);
+
+                return v1_i < v2_i;
+            } else {
+                v1_id = v1_id.substr(2);
+                v2_id = v2_id.substr(2);
+
+                int v1_i, v2_i;
+                v1_i = std::stoi(v1_id);
+                v2_i = std::stoi(v2_id);
+
+                return v1_i < v2_i;
+            }
+        }
+    }
+};
+
+struct sort_edges {
+    inline bool operator() (const pair<pair<int,int>, EdgeData> e1, const pair<pair<int,int>, EdgeData> e2) {
+        if(e1.first.first == e2.first.first) {
+            return e1.first.second < e2.first.second;
+        } else {
+            return e1.first.first < e2.first.first;
+        }
+    }
+};
 
 #endif

@@ -39,30 +39,13 @@ general_annot* retrieve_runtime_annot(string id) {
     @ Output: The goal model runtime annotation
 */ 
 general_annot* retrieve_gm_annot(GMGraph gm, pt::ptree worlddb, string location_type, map<string,vector<AbstractTask>> at_instances) {
-    auto indexmap = boost::get(boost::vertex_index, gm);
-    auto colormap = boost::make_vector_property_map<boost::default_color_type>(indexmap);
-
-    DFSVisitor vis;
-    boost::depth_first_search(gm, vis, colormap, 0);
-
-    std::vector<int> vctr = vis.GetVector();
+    std::vector<int> vctr = get_dfs_gm_nodes(gm);
     
     VertexData root = gm[vctr.at(0)];
 
     general_annot* root_annot = retrieve_runtime_annot(root.text);
 
-    if(!gm[vctr.at(0)].group || (gm[vctr.at(0)].group && !gm[vctr.at(0)].divisible)) {
-        root_annot->non_coop = true;
-    } else {
-        root_annot->non_coop = false;
-    }
-
-    if(!gm[vctr.at(0)].group) {
-        root_annot->group = false;
-    }
-    if(!gm[vctr.at(0)].divisible) {
-        root_annot->divisible = false;
-    }
+    recursive_fill_up_runtime_annot(root_annot, gm[vctr.at(0)]);
 
     map<string,pair<string,vector<pt::ptree>>> valid_variables;
 
@@ -207,7 +190,7 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
             }
         }
     } else {
-        if((!gm[vctr.at(0)].group) || (gm[vctr.at(0)].group && !gm[vctr.at(0)].divisible)) {
+        /*if((!gm[vctr.at(0)].group) || (gm[vctr.at(0)].group && !gm[vctr.at(0)].divisible)) {
             node_annot->non_coop = true;
         } else {
             node_annot->non_coop = false;
@@ -218,7 +201,9 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
         }
         if(!gm[vctr.at(0)].divisible) {
             node_annot->divisible = false;
-        }
+        }*/
+        recursive_fill_up_runtime_annot(node_annot, gm[vctr.at(0)]);
+
         if(gm[vctr.at(0)].children.size() == 0) { //Leaf Node
             vctr.erase(vctr.begin());
             return;
@@ -336,6 +321,29 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
     }
 }
 
+void recursive_fill_up_runtime_annot(general_annot* rannot, VertexData gm_node) {
+    if(!gm_node.group || (gm_node.group && !gm_node.divisible)) {
+        rannot->non_coop = true;
+    } else {
+        rannot->non_coop = false;
+    }
+
+    if(!gm_node.group) {
+        rannot->group = false;
+    }
+    if(!gm_node.divisible) {
+        rannot->divisible = false;
+    }
+
+    rannot->related_goal = get_node_name(gm_node.text);
+
+    for(general_annot* child : rannot->children) {
+        if(child->type == OPERATOR) {
+            recursive_fill_up_runtime_annot(child, gm_node);
+        }
+    }
+}
+
 /*
     Function: recursive_child_replacement
     Objective: Replacing the children nodes of a given annotation, since we are dealing with references.
@@ -417,12 +425,12 @@ void recursive_at_instances_renaming(general_annot* rannot, map<string,int>& at_
 
     if(op_it == operators.end()) { //If we have a task
         if(rannot->type == TASK) {
-            if(in_forAll) {
-                string aux = rannot->content;
-                rannot->content = rannot->content + "_" + to_string(at_instances_counter[rannot->content]);
+            //if(in_forAll) {
+            string aux = rannot->content;
+            rannot->content = rannot->content + "_" + to_string(at_instances_counter[rannot->content]);
 
-                at_instances_counter[aux]++;
-            }
+            at_instances_counter[aux]++;
+            //}
         } else {
             if(rannot->type == MEANSEND) {
                 general_annot* child = rannot->children.at(0);

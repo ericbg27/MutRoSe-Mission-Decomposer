@@ -16,6 +16,7 @@
 #include "config.hpp"
 #include "knowledgebase.hpp"
 #include "contextmanager.hpp"
+#include "knowledgemanager.hpp"
 
 using namespace std;
 
@@ -78,6 +79,8 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
                                     map<string,vector<vector<task>>> at_decomposition_paths, general_annot* gmannot, int parent, GMGraph gm, bool non_coop,
                                         map<string, variant<pair<string,string>,pair<vector<string>,string>>>  gm_vars_map, KnowledgeBase world_db, 
                                             vector<SemanticMapping> semantic_mapping,map<string, variant<string,vector<string>>> instantiated_vars);
+
+pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decomposition);
 
 void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_vars_map);
     

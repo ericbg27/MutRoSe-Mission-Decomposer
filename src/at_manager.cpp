@@ -27,7 +27,6 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 														KnowledgeBase world_db, map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map,
 															vector<VariableMapping> var_mapping) {
 	std::vector<int> vctr = get_dfs_gm_nodes(gm);
-
 	/*
 		Get the world knowledge ptree. We disconsider the root key, if any, since we expect it to be
 		just a name like world_db or similar
@@ -70,6 +69,8 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 
 	for(int v : vctr) {
 		current = v;
+
+		std::cout << "Current Node: " << gm[v].text << std::endl;
 
 		/*
 			If the last visited vertex is not the same as the current we verify:
@@ -222,13 +223,13 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 				string var_name = std::get<vector<pair<string,string>>>(gm[v].custom_props["Controls"]).at(0).first;
 				string var_type = std::get<vector<pair<string,string>>>(gm[v].custom_props["Controls"]).at(0).second;
 
-				valid_variables[var_name] = make_pair(q.query_var.second,aux);
+				valid_variables[var_name] = make_pair(var_type,aux);
 				
 				string gm_var_type = parse_gm_var_type(var_type);
 				if(gm_var_type == "VALUE") {
 					//We assume everything has a name attribute
 					gm_var_map[var_name] = make_pair(aux.at(0).get<string>("name"),var_type); 
-				} else if(gm_var_type == "SEQUENCE") {
+				} else if(gm_var_type == "COLLECTION") {
 					vector<string> var_value;
 					for(pt::ptree t : aux) {
 						var_value.push_back(t.get<string>("name"));
@@ -240,6 +241,13 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 				AchieveCondition a = std::get<AchieveCondition>(gm[v].custom_props["AchieveCondition"]);
 				if(a.has_forAll_expr) {
 					valid_forAll_conditions[depth] = a;
+				}
+
+				vector<pair<string,string>> controlled_vars = std::get<vector<pair<string,string>>>(gm[v].custom_props["Controls"]);
+				for(pair<string,string> var : controlled_vars) {
+					if(var.first == a.get_iteration_var()) {
+						gm_var_map[var.first] = make_pair("",var.second);
+					}
 				}
 			}
 
@@ -321,7 +329,9 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 
 						at.id = at_def.first + "_" + to_string(at_ids[at_def.first]);
 						at.name = at_def.second;
-						at.location = make_pair(current_val.get<string>("name"),location_var);
+						variant<vector<string>,string> loc = current_val.get<string>("name");
+						string var_type = get<pair<string,string>>(gm_var_map[location_var]).second;
+						at.location = make_pair(loc,make_pair(location_var,var_type));
 						at.at = at_hddl_def;
 						at.fixed_robot_num = gm[v].fixed_robot_num;
 						if(holds_alternative<int>(gm[v].robot_num)) {
@@ -333,10 +343,23 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 						for(VariableMapping var : var_mapping) {
 							if(var.get_task_id() == at_def.first) {
 								if(var.get_gm_var() == forAll_iteration_var) {
-									at.variable_mapping.push_back(make_pair(current_val.get<string>("name"),var.get_hddl_var()));
+									std::string var_type = valid_variables[forAll_iteration_var].first;
+									std::string var_value = current_val.get<string>("name");
+									at.variable_mapping.push_back(make_pair(make_pair(var_value,var_type),var.get_hddl_var()));
 								} else {
+									std::pair<std::pair<std::variant<std::vector<std::string>,std::string>,std::string>,std::string> new_var_mapping;
 									if(valid_variables.find(var.get_gm_var()) != valid_variables.end()) {
-										std::pair<std::string,std::string> new_var_mapping = make_pair(valid_variables[var.get_gm_var()].second.at(0).get<std::string>("name"),var.get_hddl_var());
+										std::string var_type = valid_variables[var.get_gm_var()].first;
+										if(parse_gm_var_type(var_type) == "COLLECTION") {
+											std::vector<std::string> var_values;
+											for(pt::ptree v : valid_variables[var.get_gm_var()].second) {
+												var_values.push_back(v.get<std::string>("name"));
+											}
+											new_var_mapping = make_pair(make_pair(var_values,var_type),var.get_hddl_var());
+										} else {
+											std::string var_value = valid_variables[var.get_gm_var()].second.at(0).get<std::string>("name");
+											new_var_mapping = make_pair(make_pair(var_value,var_type),var.get_hddl_var());
+										}
 										at.variable_mapping.push_back(new_var_mapping);
 									} else { 
 										std::string var_mapping_error = "Could not find variable mapping for task " + at.name;
@@ -360,7 +383,25 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 
 						at.id = at_def.first + "_" + to_string(at_ids[at_def.first]);
 						at.name = at_def.second;
-						at.location = make_pair(valid_variables[location_var].second.at(0).get<string>("name"), location_var);
+						variant<vector<string>,string> loc;
+						string var_type;
+						if(valid_variables[location_var].second.size() > 1) {
+							vector<string> aux;
+							for(pt::ptree l : valid_variables[location_var].second) {
+								aux.push_back(l.get<string>("name"));
+							}
+							loc = aux;
+							var_type = get<pair<vector<string>,string>>(gm_var_map[location_var]).second;
+						} else {
+							if(valid_variables[location_var].second.size() == 1) {
+								loc = valid_variables[location_var].second.at(0).get<string>("name");
+							} else {
+								loc = "";
+							}
+							var_type = get<pair<string,string>>(gm_var_map[location_var]).second;
+						}
+						//at.location = make_pair(valid_variables[location_var].second.at(0).get<string>("name"), location_var);
+						at.location = make_pair(loc, make_pair(location_var,var_type));
 						at.at = at_hddl_def;
 						at.fixed_robot_num = gm[v].fixed_robot_num;
 						if(holds_alternative<int>(gm[v].robot_num)) {
@@ -369,16 +410,27 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 							at.robot_num = get<pair<int,int>>(gm[v].robot_num);
 						}
 
-						std::cout << "Variable Mappings for at: " << at.name << std::endl;
 						for(VariableMapping var : var_mapping) {
 							if(var.get_task_id() == at_def.first) {
 								if(var.get_gm_var() == forAll_iteration_var) {
-									at.variable_mapping.push_back(make_pair(valid_variables[forAll_iteration_var].second.at(0).get<string>("name"),var.get_hddl_var()));
-									std::cout << valid_variables[forAll_iteration_var].second.at(0).get<string>("name") << " : " << var.get_hddl_var() << std::endl;
+									std::string var_type = valid_variables[forAll_iteration_var].first;
+									std::string var_value = valid_variables[forAll_iteration_var].second.at(0).get<string>("name");
+									at.variable_mapping.push_back(make_pair(make_pair(var_value,var_type),var.get_hddl_var()));
 								} else {
+									std::pair<std::pair<std::variant<std::vector<std::string>,std::string>,std::string>,std::string> new_var_mapping;
 									if(valid_variables.find(var.get_gm_var()) != valid_variables.end()) {
-										at.variable_mapping.push_back(make_pair(valid_variables[var.get_gm_var()].second.at(0).get<string>("name"),var.get_hddl_var()));
-										std::cout << valid_variables[var.get_gm_var()].second.at(0).get<string>("name") << " : " << var.get_hddl_var() << std::endl;
+										std::string var_type = valid_variables[var.get_gm_var()].first;
+										if(parse_gm_var_type(var_type) == "COLLECTION") {
+											std::vector<std::string> var_values;
+											for(pt::ptree v : valid_variables[var.get_gm_var()].second) {
+												var_values.push_back(v.get<std::string>("name"));
+											}
+											new_var_mapping = make_pair(make_pair(var_values,var_type),var.get_hddl_var());
+										} else {
+											std::string var_value = valid_variables[var.get_gm_var()].second.at(0).get<std::string>("name");
+											new_var_mapping = make_pair(make_pair(var_value,var_type),var.get_hddl_var());
+										}
+										at.variable_mapping.push_back(new_var_mapping);
 									} else { 
 										std::string var_mapping_error = "Could not find variable mapping for task " + at.name;
 										throw std::runtime_error(var_mapping_error);
@@ -409,7 +461,26 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 
 				at.id = at_def.first + "_" + to_string(at_ids[at_def.first]);
 				at.name = at_def.second;
-				at.location = make_pair(valid_variables[location_var].second.at(0).get<string>("name"),location_var);
+
+				variant<vector<string>,string> loc;
+				string var_type;
+				if(valid_variables[location_var].second.size() > 1) {
+					vector<string> aux;
+					for(pt::ptree l : valid_variables[location_var].second) {
+						aux.push_back(l.get<string>("name"));
+					}
+					loc = aux;
+					var_type = get<pair<vector<string>,string>>(gm_var_map[location_var]).second;
+				} else {
+					if(valid_variables[location_var].second.size() == 1) {
+						loc = valid_variables[location_var].second.at(0).get<string>("name");
+					} else {
+						loc = "";
+					}
+					var_type = get<pair<string,string>>(gm_var_map[location_var]).second;
+				}
+				//at.location = make_pair(valid_variables[location_var].second.at(0).get<string>("name"),location_var);
+				at.location = make_pair(loc, make_pair(location_var,var_type));
 				at.at = at_hddl_def;
 				at.fixed_robot_num = gm[v].fixed_robot_num;
 				if(holds_alternative<int>(gm[v].robot_num)) {
@@ -421,7 +492,22 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 				for(VariableMapping var : var_mapping) {
 					if(var.get_task_id() == at_def.first) {
 						if(valid_variables.find(var.get_gm_var()) != valid_variables.end()) {
-							at.variable_mapping.push_back(make_pair(valid_variables[var.get_gm_var()].second.at(0).get<string>("name"),var.get_hddl_var()));
+							std::pair<std::pair<std::variant<std::vector<std::string>,std::string>,std::string>,std::string> new_var_mapping;
+							std::string var_type = valid_variables[var.get_gm_var()].first;
+							std::cout << "GM VAR FOR AT " << at.name << ": " << var.get_gm_var() << std::endl;
+							std::cout << "VAR TYPE FOR AT " << at.name << ": " << var_type << std::endl;
+							if(parse_gm_var_type(var_type) == "COLLECTION") {
+								std::cout << "COLLECTION MAPPING FOR AT " << at.name << std::endl;
+								std::vector<std::string> var_values;
+								for(pt::ptree v : valid_variables[var.get_gm_var()].second) {
+									var_values.push_back(v.get<std::string>("name"));
+								}
+								new_var_mapping = make_pair(make_pair(var_values,var_type),var.get_hddl_var());
+							} else {
+								string var_value = valid_variables[var.get_gm_var()].second.at(0).get<std::string>("name");
+								new_var_mapping = make_pair(make_pair(var_value,var_type),var.get_hddl_var());
+							}
+							at.variable_mapping.push_back(new_var_mapping);
 						} else {
 							std::string var_mapping_error = "Could not find variable mapping for task " + at.name;
 							throw std::runtime_error(var_mapping_error);
@@ -471,11 +557,37 @@ void print_at_instances_info(map<string,vector<AbstractTask>> at_instances) {
 			cout << "Name: " << inst.name << endl;
 			cout << "Variable Mappings:" << endl;
 			for(auto var_map : inst.variable_mapping) {
-				cout << var_map.second << ": " << var_map.first << endl;
+				if(holds_alternative<string>(var_map.first.first)) {
+					cout << var_map.second << ": " << std::get<string>(var_map.first.first) << endl;
+				} else {
+					vector<string> map_values = std::get<vector<string>>(var_map.first.first);
+					cout << var_map.second << ": [";
+					unsigned int index = 0;
+					for(string val : map_values) {
+						if(index == map_values.size()-1) {
+							cout << val << "]" << endl;
+						} else {
+							cout << val << ",";
+						}
+					}
+				}
 			}
 			cout << "Triggering Events:" << endl;
 			for(string event : inst.triggering_events) {
 				cout << event << ", ";
+			}
+			cout << endl;
+			cout << "Location(s):" << endl;
+			cout << "Location(s) Var: " << inst.location.second.first << " : " << inst.location.second.second << endl;
+			cout << "Location(s) Value: " << endl;
+			if(holds_alternative<vector<string>>(inst.location.first)) {
+				vector<string> locs = get<vector<string>>(inst.location.first);
+				for(string loc : locs) {
+					cout << loc << endl;
+				}
+			} else {
+				string loc = get<string>(inst.location.first);
+				cout << loc << endl;
 			}
 			cout << endl;
 		}
@@ -520,9 +632,10 @@ void print_at_paths_info(map<string,vector<vector<task>>> at_decomposition_paths
     @ Input 1: The path to be checked
 	@ Input 2: The world state used for the evaluation
 	@ Input 3: The abstract task that originates the path of decomposition
+	@ Input 4: The semantic mappings defined in the configuration file
     @ Output: A boolean value indicating if the path is valid or not
 */
-bool check_path_validity(vector<task> path, vector<ground_literal> world_state, AbstractTask at) {
+bool check_path_validity(vector<task> path, vector<ground_literal> world_state, AbstractTask at, vector<SemanticMapping> semantic_mappings) {
 	bool valid_path = true;
 	for(task t : path) {
 		bool prec_satistfied = true;
@@ -531,11 +644,11 @@ bool check_path_validity(vector<task> path, vector<ground_literal> world_state, 
 				Check if predicate involves an instantiated variable that belongs to the variable mapping of the AT
 			*/
 			bool instantiated_prec = true;
-			vector<pair<string,string>> arg_map;
+			vector<pair<string,pair<variant<vector<string>,string>,string>>> arg_map;
 			for(string arg : prec.arguments) {
 				bool found_arg = false;
-				string mapped_var;
-				for(pair<string,string> var_map : at.variable_mapping) {
+				pair<variant<vector<string>,string>,string> mapped_var;
+				for(pair<pair<variant<vector<string>,string>,string>,string> var_map : at.variable_mapping) {
 					if(arg == var_map.second) {
 						found_arg = true;
 						mapped_var = var_map.first;
@@ -552,27 +665,89 @@ bool check_path_validity(vector<task> path, vector<ground_literal> world_state, 
 			}
 
 			if(instantiated_prec) {
-				ground_literal inst_prec;
-				inst_prec.positive = prec.positive;
-				inst_prec.predicate = prec.predicate;
-				for(pair<string,string> arg_inst : arg_map) {
-					inst_prec.args.push_back(arg_inst.second);
-				}
+				vector<ground_literal> inst_precs;
+				bool is_universal = true;
 
-				for(ground_literal state : world_state) {
-					if(state.predicate == inst_prec.predicate) {
-						bool equal_args = true;
-						for(unsigned int arg_index = 0;arg_index < state.args.size();arg_index++) {
-							if(state.args.at(arg_index) != inst_prec.args.at(arg_index)) {
-								equal_args = false;
-								break;
+				// Here is probably one place where we have to expand the predicate if we have a collection mapping
+				for(pair<string,pair<variant<vector<string>,string>,string>> arg_inst : arg_map) {
+					if(holds_alternative<string>(arg_inst.second.first)) {
+						ground_literal p;
+						p.positive = prec.positive;
+						p.predicate = prec.predicate;
+						p.args.push_back(std::get<string>(arg_inst.second.first));
+
+						inst_precs.push_back(p);
+					} else {
+						vector<string> arg_values = std::get<vector<string>>(arg_inst.second.first);
+						string var_ocl_type = arg_inst.second.second; 
+						std::transform(var_ocl_type.begin(),var_ocl_type.end(),var_ocl_type.begin(),::toupper);
+						for(SemanticMapping sm : semantic_mappings) {
+							predicate_definition sm_pred = std::get<predicate_definition>(sm.get_prop("map"));
+							if(sm_pred.name == prec.predicate) {
+								string relation_type = std::get<string>(sm.get_prop("relation"));
+								std::transform(relation_type.begin(),relation_type.end(),relation_type.begin(),::toupper);
+								if(relation_type == var_ocl_type) {
+									map<string, variant<string, predicate_definition>> sm_props = sm.get_mapping_props();
+									if(sm_props.find("predicate_type") != sm_props.end()) {
+										string sm_pred_type = std::get<string>(sm.get_prop("predicate_type"));
+										std::transform(sm_pred_type.begin(),sm_pred_type.end(),sm_pred_type.begin(),::toupper);
+										if(sm_pred_type == "EXISTENTIAL") {
+											is_universal = false;
+										}
+									}
+
+									break;
+								}
 							}
 						}
 
-						if(equal_args && (prec.positive != state.positive)) {
-							prec_satistfied = false;
+						for(string arg_val : arg_values) {
+							ground_literal p;
+							p.positive = prec.positive;
+							p.predicate = prec.predicate;
+							p.args.push_back(arg_val);
+
+							inst_precs.push_back(p);
+						}
+					}
+				}
+
+				vector<bool> prec_evals;
+				for(ground_literal inst_prec : inst_precs) {
+					for(ground_literal state : world_state) {
+						if(state.predicate == inst_prec.predicate) {
+							bool equal_args = true;
+							for(unsigned int arg_index = 0;arg_index < state.args.size();arg_index++) {
+								if(state.args.at(arg_index) != inst_prec.args.at(arg_index)) {
+									equal_args = false;
+									break;
+								}
+							}
+
+							if(equal_args && (prec.positive != state.positive)) {
+								prec_evals.push_back(false);
+								if(is_universal) {
+									prec_satistfied = false;
+								}
+								break;
+							} else if(equal_args && (prec.positive == state.positive)) {
+								prec_evals.push_back(true);
+								break;
+							}
+						}
+					}
+				}
+
+				if(!is_universal) {
+					bool at_least_one_eval_true = false;
+					for(bool eval : prec_evals) {
+						if(eval) {
+							at_least_one_eval_true = true;
 							break;
 						}
+					}
+					if(!at_least_one_eval_true) {
+						prec_satistfied = false;
 					}
 				}
 

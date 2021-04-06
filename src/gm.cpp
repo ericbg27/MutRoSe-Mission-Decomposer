@@ -92,6 +92,8 @@ string get_node_name(string node_text) {
         node_name = node_text.substr(0,pos);
     }
 
+    std::transform(node_name.begin(),node_name.end(),node_name.begin(),::toupper);
+
     return node_name;
 }
 
@@ -103,8 +105,9 @@ string get_node_name(string node_text) {
     @ Output: A standard string representing the given type
 */ 
 string parse_gm_var_type(string var_type) {
-    if(var_type.find("Sequence") != std::string::npos) {
-        return "SEQUENCE";
+    std::transform(var_type.begin(), var_type.end(), var_type.begin(), ::toupper);
+    if(var_type.find("SEQUENCE") != std::string::npos) {
+        return "COLLECTION";
     }
 
     return "VALUE";
@@ -245,7 +248,7 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
 vector<pair<int,VertexData>> parse_gm_nodes(pt::ptree nodes) {
     vector<pair<int,VertexData>> vertex;
 
-    int cnt = 0; 
+    int cnt = 0;
     BOOST_FOREACH(pt::ptree::value_type& node, nodes) {
         VertexData v;
         v.id = node.second.get<string>("id");
@@ -279,6 +282,8 @@ vector<pair<int,VertexData>> parse_gm_nodes(pt::ptree nodes) {
             cnt++;
         }
     }
+
+    std::sort(vertex.begin(), vertex.end(), sort_by_id());
 
     return vertex;
 }
@@ -327,6 +332,8 @@ vector<pair<pair<int,int>, EdgeData>> parse_gm_edges(pt::ptree links, GMGraph& g
         edges.push_back(make_pair(make_pair(s,t),e));
     }
 
+    std::sort(edges.begin(), edges.end(), sort_edges());
+
     return edges;
 }
 
@@ -357,16 +364,16 @@ GMGraph graph_from_property_tree(pt::ptree root) {
 		}
 	}
 
-    vector<pair<int,VertexData>> vertex;
+    vector<pair<int,VertexData>> vertices;
 
-    vertex = parse_gm_nodes(nodes);
+    vertices = parse_gm_nodes(nodes);
 
     //Retrieve edges from Goal Model
     links = root.get_child("links");
 
     vector<pair<pair<int,int>, EdgeData>> edges;
 
-    edges = parse_gm_edges(links, gm, vertex);
+    edges = parse_gm_edges(links, gm, vertices);
 
     vector<pair<pair<int,int>, EdgeData>>::iterator edges_it;
     for(edges_it = edges.begin();edges_it != edges.end();++edges_it) {
@@ -866,5 +873,22 @@ void print_gm_var_map_info(map<string, variant<pair<string,string>,pair<vector<s
 			cout << "Mapping: " << get<pair<string,string>>(gm_var_it->second).first << endl << endl;
 		}
 	}
+}
 
+void print_gm(GMGraph gm) {
+    GMGraph::vertex_iterator i, end;
+	GMGraph::adjacency_iterator ai, a_end;
+
+	for(boost::tie(i,end) = vertices(gm); i != end; ++i) {
+		VertexData node = gm[*i];
+		std::cout << get_node_name(node.text) << "(" << *i << ") " << " --> ";
+
+		for(boost::tie(ai,a_end) = adjacent_vertices(*i,gm); ai != a_end;++ai) {
+			VertexData a_node = gm[*ai];
+			std::cout << get_node_name(a_node.text) << "(" << *ai << ")" << " ";
+		}	
+		std::cout << std::endl;
+	}
+
+	std::cout << std::endl;
 }
