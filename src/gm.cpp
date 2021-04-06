@@ -6,7 +6,9 @@
 #include <sstream>
 #include <set>
 
-const std::set<std::string> default_props{"Description", "QueriedProperty", "FailureCondition", "AchieveCondition"};
+using namespace std;
+
+const set<string> default_props{"Description", "QueriedProperty", "FailureCondition", "AchieveCondition"};
 
 /*
     Function: get_dfs_gm_nodes
@@ -14,7 +16,7 @@ const std::set<std::string> default_props{"Description", "QueriedProperty", "Fai
 
     @ Input 1: The GMGraph representing the GM
     @ Output: The vertices indexes based on DFS visit
-*/ 
+*/  
 vector<int> get_dfs_gm_nodes(GMGraph gm) {
     auto indexmap = boost::get(boost::vertex_index, gm);
     auto colormap = boost::make_vector_property_map<boost::default_color_type>(indexmap);
@@ -35,18 +37,18 @@ vector<int> get_dfs_gm_nodes(GMGraph gm) {
     @ Output: Void. We only throw errors
 */ 
 void check_gm_validity(GMGraph gm) {
-    std::vector<int> vctr = get_dfs_gm_nodes(gm);
+    vector<int> vctr = get_dfs_gm_nodes(gm);
 
     for(int v : vctr) {
-        std::string goal_type = get<std::string>(gm[v].custom_props["GoalType"]);
-        std::vector<std::pair<std::string,std::string>> controlled_vars;
-        if(holds_alternative<std::vector<std::pair<std::string,std::string>>>(gm[v].custom_props["Controls"])) {
-            controlled_vars = std::get<std::vector<std::pair<std::string,std::string>>>(gm[v].custom_props["Controls"]);
+        string goal_type = get<string>(gm[v].custom_props["GoalType"]);
+        vector<pair<string,string>> controlled_vars;
+        if(holds_alternative<vector<pair<string,string>>>(gm[v].custom_props["Controls"])) {
+            controlled_vars = std::get<vector<pair<string,string>>>(gm[v].custom_props["Controls"]);
         }
         if(goal_type == "Achieve") {
-            std::vector<std::pair<std::string,std::string>> monitored_vars;
-            if(holds_alternative<std::vector<std::pair<std::string,std::string>>>(gm[v].custom_props["Monitors"])) {
-                monitored_vars = std::get<std::vector<std::pair<std::string,std::string>>>(gm[v].custom_props["Monitors"]);
+            vector<pair<string,string>> monitored_vars;
+            if(holds_alternative<vector<pair<string,string>>>(gm[v].custom_props["Monitors"])) {
+                monitored_vars = std::get<vector<pair<string,string>>>(gm[v].custom_props["Monitors"]);
             }
 
             AchieveCondition ac = std::get<AchieveCondition>(gm[v].custom_props["AchieveCondition"]);
@@ -59,7 +61,7 @@ void check_gm_validity(GMGraph gm) {
                 }
             }
             if(!found_iterated_var) {
-                std::string iterated_var_err = "Did not find iterated variable " + ac.get_iterated_var() + " in " + get_node_name(gm[v].text) + "'s controlled variables list";
+                string iterated_var_err = "Did not find iterated variable " + ac.get_iterated_var() + " in " + get_node_name(gm[v].text) + "'s controlled variables list";
                 throw std::runtime_error(iterated_var_err);
             }
 
@@ -71,7 +73,7 @@ void check_gm_validity(GMGraph gm) {
                 }
             }
             if(!found_iteration_var) {
-                std::string iteration_var_err = "Did not find iteration variable " + ac.get_iteration_var() + " in " + get_node_name(gm[v].text) + "'s monitored variables list";
+                string iteration_var_err = "Did not find iteration variable " + ac.get_iteration_var() + " in " + get_node_name(gm[v].text) + "'s monitored variables list";
                 throw std::runtime_error(iteration_var_err);
             }
         }
@@ -88,7 +90,7 @@ void check_gm_validity(GMGraph gm) {
 string get_node_name(string node_text) {
     size_t pos = node_text.find(":");
     string node_name;
-    if(pos != std::string::npos) {
+    if(pos != string::npos) {
         node_name = node_text.substr(0,pos);
     }
 
@@ -106,7 +108,7 @@ string get_node_name(string node_text) {
 */ 
 string parse_gm_var_type(string var_type) {
     std::transform(var_type.begin(), var_type.end(), var_type.begin(), ::toupper);
-    if(var_type.find("SEQUENCE") != std::string::npos) {
+    if(var_type.find("SEQUENCE") != string::npos) {
         return "COLLECTION";
     }
 
@@ -151,7 +153,7 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
     v.group = true;
     v.divisible = true;
     //v.non_cooperative = false;
-    std::string s = "";
+    string s = "";
 
     map<string,string>::iterator cp_it;
     for(cp_it = custom_props.begin();cp_it != custom_props.end();++cp_it) {
@@ -186,9 +188,9 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
             size_t pos2 = cp_it->second.find('\"',pos1+1);
             c.condition = cp_it->second.substr(pos1+1,pos2);
             c.condition = c.condition.substr(0,c.condition.size()-1);   
-            if(cp_it->second.find("trigger") != std::string::npos) {
+            if(cp_it->second.find("trigger") != string::npos) {
                 c.type = "trigger";
-            } else if(cp_it->second.find("condition") != std::string::npos) {
+            } else if(cp_it->second.find("condition") != string::npos) {
                 c.type = "condition";
             }
             v.custom_props[cp_it->first] = c;
@@ -199,7 +201,7 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
             v.robot_num = parse_robot_number(cp_it->second);
         } else {
             if(default_props.find(cp_it->first) == default_props.end()) {
-                std::string error_str = "Invalid property " + cp_it->first + " in vertex " + v.text;
+                string error_str = "Invalid property " + cp_it->first + " in vertex " + v.text;
                 throw std::runtime_error(error_str);
             }
         }
@@ -315,7 +317,7 @@ vector<pair<pair<int,int>, EdgeData>> parse_gm_edges(pt::ptree links, GMGraph& g
 
         boost::graph_traits <GMGraph>::vertex_iterator i, end;
 
-        int s, t;
+        int s = 0, t = 0;
 
         for(boost::tie(i, end) = vertices(gm); i != end; ++i) {
             if(gm[*i].id == e.source) {
@@ -481,7 +483,7 @@ vector<pair<string,string>> parse_vars(string var_decl) {
         vars.push_back(make_pair(var_name,var_type));
 
         if(var_name == "") {
-            std::string var_err = "Invalid variable declaration " + substr + " in GM.";
+            string var_err = "Invalid variable declaration " + substr + " in GM.";
             throw std::runtime_error(var_err);
         }
     }
@@ -534,7 +536,7 @@ vector<string> parse_forAll_expr(string expr) {
     }
 
     if(res.at(0) == "" || res.at(1) == "" || error) {
-        std::string forAll_err = "Invalid forAll statement " + expr + " in GM.";
+        string forAll_err = "Invalid forAll statement " + expr + " in GM.";
         throw std::runtime_error(forAll_err);
     }
 
@@ -551,7 +553,7 @@ vector<string> parse_forAll_expr(string expr) {
 */ 
 AchieveCondition parse_achieve_condition(string cond) {
     AchieveCondition a;
-    if(cond.find("forAll") != std::string::npos) {
+    if(cond.find("forAll") != string::npos) {
         a.has_forAll_expr = true;
     } else {
         a.has_forAll_expr = false;
@@ -587,7 +589,7 @@ IterationRule parse_iterate_expr(string expr) {
     regex_search(aux,m,e1);
     it.iteration_var = m[0];
 
-    if(ss.str().find(":") == std::string::npos) {
+    if(ss.str().find(":") == string::npos) {
         getline(ss, aux, '=');
         regex_search(aux,m,e1);
         it.result_var.first = m[0];
@@ -654,7 +656,7 @@ QueriedProperty parse_select_expr(string expr) {
     regex_search(aux,m,e1);
     q.query_var.first = m[0];
 
-    if(ss.str().find(":") == std::string::npos) {
+    if(ss.str().find(":") == string::npos) {
         q.query_var.second = "";
     } else {
         getline(ss, aux, '|');
@@ -664,7 +666,7 @@ QueriedProperty parse_select_expr(string expr) {
 
     regex e2("[!a-zA-Z]{1}[a-zA-Z_.0-9]*");
     regex e3("[a-zA-Z]{1}[a-zA-Z_.0-9]*");
-    if((ss.str().find("==") == std::string::npos) && (ss.str().find("!=") == std::string::npos)) {
+    if((ss.str().find("==") == string::npos) && (ss.str().find("!=") == string::npos)) {
         getline(ss, aux, ')');
         regex_search(aux,m,e2);
         q.query.push_back(m[0]);
@@ -673,7 +675,7 @@ QueriedProperty parse_select_expr(string expr) {
         regex_search(aux,m,e3);
         q.query.push_back(m[0]);
         
-        if(ss.str().find("==") != std::string::npos) {
+        if(ss.str().find("==") != string::npos) {
             q.query.push_back("==");
         } else {
             q.query.push_back("!=");
@@ -685,7 +687,7 @@ QueriedProperty parse_select_expr(string expr) {
     }
 
     if(error == true) {
-        std::string select_err = "Invalid select statement " + expr + " in GM.";
+        string select_err = "Invalid select statement " + expr + " in GM.";
         throw std::runtime_error(select_err);
     }
 

@@ -4,6 +4,8 @@
 
 #include <boost/foreach.hpp>
 
+using namespace std;
+
 /*
     Function: build_at_graph
     Objective: Call the recursive Task Graph building structure, which generates an ATGraph object. This graph is the
@@ -147,7 +149,7 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
 			bool resolved_context = check_context_dependency(mission_decomposition, parent, node_id, context, rannot, world_state, instantiated_vars, at_decomposition_paths, semantic_mapping);
 
 			if(!resolved_context) {
-				std::string bad_context_err = "COULD NOT RESOLVE CONTEXT FOR NODE: " + gm_node.text; 
+				string bad_context_err = "COULD NOT RESOLVE CONTEXT FOR NODE: " + gm_node.text; 
 				throw std::runtime_error(bad_context_err);
 			}
 		}
@@ -216,7 +218,7 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
 		}
 
 		if(!found_at) {
-			std::string at_not_found_error = "Could not find AT " + rannot->content.substr(0,rannot->content.find("_")) + " definition";
+			string at_not_found_error = "Could not find AT " + rannot->content.substr(0,rannot->content.find("_")) + " definition";
 			throw std::runtime_error(at_not_found_error);
 		}
 
@@ -678,7 +680,7 @@ bool check_context_dependency(ATGraph& mission_decomposition, int parent_node, i
     DFSATVisitor vis;
     boost::depth_first_search(mission_decomposition, vis, colormap, parent_node);
 
-    std::vector<int> vctr = vis.GetVector();
+    vector<int> vctr = vis.GetVector();
 
 	/*
 		Go through the goal model and verify effects of abstract tasks that are children of it
