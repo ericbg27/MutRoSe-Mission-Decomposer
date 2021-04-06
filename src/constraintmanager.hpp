@@ -23,11 +23,12 @@ struct Constraint {
     bool divisible = true;
 };
 
-//vector<Constraint> generate_at_constraints(ATGraph mission_decomposition, queue<pair<int,ATNode>> mission_queue);
-vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition);
-vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vector<Constraint> mission_constraints, GMGraph gm);
+std::vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition);
+std::vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, std::vector<Constraint> mission_constraints, GMGraph gm);
 
-void generate_constraints_from_stacks(stack<pair<int,ATNode>>& operators_stack, stack<variant<pair<int,ATNode>,Constraint>>& nodes_stack, map<int,set<int>>& existing_constraints);
-void generate_noncoop_constraints(vector<Constraint>& mission_constraints, ATGraph mission_decomposition);
+void generate_constraints_from_stacks(std::stack<std::pair<int,ATNode>>& operators_stack, std::stack<std::variant<std::pair<int,ATNode>,Constraint>>& nodes_stack, std::map<int,std::set<int>>& existing_constraints);
+void generate_noncoop_constraints(std::vector<Constraint>& mission_constraints, ATGraph mission_decomposition);
+
+Constraint generate_constraint(std::pair<int,ATNode> n1, std::pair<int,ATNode> n2, constraint_type type);
 
 #endif
