@@ -18,23 +18,21 @@
 #include "contextmanager.hpp"
 #include "knowledgemanager.hpp"
 
-using namespace std;
-
 namespace pt = boost::property_tree;
 
 struct Decomposition {
-    string id;
+    std::string id;
     AbstractTask at;
-    vector<task> path;
-    vector<variant<ground_literal,literal>> prec;
-    vector<variant<ground_literal,literal>> eff;
+    std::vector<task> path;
+    std::vector<std::variant<ground_literal,literal>> prec;
+    std::vector<std::variant<ground_literal,literal>> eff;
 };
 
 enum at_node_type {ATASK,OP,DECOMPOSITION,GOALNODE};
 
 struct ATNode {
     at_node_type node_type;
-    variant<AbstractTask,string,Decomposition> content;
+    std::variant<AbstractTask,std::string,Decomposition> content;
     bool non_coop;
     bool group;
     bool divisible;
@@ -71,29 +69,29 @@ class DFSATVisitor : public boost::default_dfs_visitor {
     boost::shared_ptr<std::vector<int> > vv;
 };
 
-ATGraph build_at_graph(map<string,vector<AbstractTask>> at_instances, map<string,vector<vector<task>>> at_decomposition_paths, general_annot* gmannot, GMGraph gm, 
-                            vector<ground_literal> init, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_vars_map, KnowledgeBase world_db, 
-                                vector<SemanticMapping> semantic_mapping);
+ATGraph build_at_graph(std::map<std::string,std::vector<AbstractTask>> at_instances, std::map<std::string,std::vector<std::vector<task>>> at_decomposition_paths, general_annot* gmannot, GMGraph gm, 
+                            std::vector<ground_literal> init, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_vars_map, KnowledgeBase world_db, 
+                                std::vector<SemanticMapping> semantic_mapping);
 
-void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_literal> world_state,map<string,vector<AbstractTask>> at_instances, 
-                                    map<string,vector<vector<task>>> at_decomposition_paths, general_annot* gmannot, int parent, GMGraph gm, bool non_coop,
-                                        map<string, variant<pair<string,string>,pair<vector<string>,string>>>  gm_vars_map, KnowledgeBase world_db, 
-                                            vector<SemanticMapping> semantic_mapping,map<string, variant<string,vector<string>>> instantiated_vars);
+void recursive_at_graph_build(ATGraph& mission_decomposition, std::vector<ground_literal> world_state,std::map<std::string,std::vector<AbstractTask>> at_instances, 
+                                    std::map<std::string,std::vector<std::vector<task>>> at_decomposition_paths, general_annot* gmannot, int parent, GMGraph gm, bool non_coop,
+                                        std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>>  gm_vars_map, KnowledgeBase world_db, 
+                                            std::vector<SemanticMapping> semantic_mapping,std::map<std::string, std::variant<std::string,std::vector<std::string>>> instantiated_vars);
 
-pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decomposition);
+std::pair<ATGraph,std::map<int,int>> generate_trimmed_at_graph(ATGraph mission_decomposition);
 
-void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_vars_map);
+void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_vars_map);
     
-bool check_context(Context context, vector<ground_literal> world_state, vector<SemanticMapping> semantic_mapping, 
-                        map<string, variant<string,vector<string>>> instantiated_vars);
+bool check_context(Context context, std::vector<ground_literal> world_state, std::vector<SemanticMapping> semantic_mapping, 
+                        std::map<std::string, std::variant<std::string,std::vector<std::string>>> instantiated_vars);
 
-bool check_context_dependency(ATGraph& mission_decomposition, int parent_node, int current_node, Context context, general_annot* rannot,  vector<ground_literal> world_state, 
-                                map<string, variant<string,vector<string>>> instantiated_vars, map<string,vector<vector<task>>> at_decomposition_paths,
-                                    vector<SemanticMapping> semantic_mapping);
+bool check_context_dependency(ATGraph& mission_decomposition, int parent_node, int current_node, Context context, general_annot* rannot,  std::vector<ground_literal> world_state, 
+                                std::map<std::string, std::variant<std::string,std::vector<std::string>>> instantiated_vars, std::map<std::string,std::vector<std::vector<task>>> at_decomposition_paths,
+                                    std::vector<SemanticMapping> semantic_mapping);
 
-int find_at_graph_node_by_id(string id, ATGraph mission);
+int find_at_graph_node_by_id(std::string id, ATGraph mission);
 
-vector<pair<int,ATNode>> find_decompositions(ATGraph mission_decomposition, int node_id);
+std::vector<std::pair<int,ATNode>> find_decompositions(ATGraph mission_decomposition, int node_id);
 
 void create_non_coop_edges(ATGraph& mission_decomposition, int node_id);
 

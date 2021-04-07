@@ -7,6 +7,8 @@
 
 #include "annotmanager.hpp"
 
+using namespace std;
+
 
 /*
     Function: generate_at_instances
@@ -26,7 +28,7 @@
 map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tasks, GMGraph gm, string location_type,
 														KnowledgeBase world_db, map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map,
 															vector<VariableMapping> var_mapping) {
-	std::vector<int> vctr = get_dfs_gm_nodes(gm);
+	vector<int> vctr = get_dfs_gm_nodes(gm);
 	/*
 		Get the world knowledge ptree. We disconsider the root key, if any, since we expect it to be
 		just a name like world_db or similar
@@ -122,11 +124,11 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 
 				int parent_id = gm[current].parent;
 				general_annot* parent_annot;
-				std::string parent_text = gm[parent_id].text;
+				string parent_text = gm[parent_id].text;
 
 				parent_annot = retrieve_runtime_annot(parent_text);
 				if(parent_annot->type != OPERATOR) {
-					std::string except = "[AT_MANAGER] Invalid runtime annotation for node: " + gm[current].text;
+					string except = "[AT_MANAGER] Invalid runtime annotation for node: " + gm[current].text;
 					throw std::runtime_error(except);
 				}
 				if(parent_annot->content == ";") {
@@ -192,7 +194,7 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 								string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
 								bool prop_val;
 								istringstream(boost::to_lower_copy(child.second.get<string>(prop))) >> std::boolalpha >> prop_val;
-								if(q.query.at(0).find('!') != std::string::npos) {
+								if(q.query.at(0).find('!') != string::npos) {
 									prop_val = !prop_val;
 								}
 								if(prop_val) aux.push_back(child.second);
@@ -205,7 +207,7 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 							try {
 								prop_val = child.second.get<string>(prop);
 							} catch(...) {
-								std::string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + gm[v].text; 
+								string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + gm[v].text; 
 								throw std::runtime_error(bad_condition);
 							}
 
@@ -296,7 +298,7 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 			}
 
 			if(!found_abstract_task) {
-				std::string bad_at_error = "Could not find AT [" + at_def.second + "] in HDDL Domain definition.";
+				string bad_at_error = "Could not find AT [" + at_def.second + "] in HDDL Domain definition.";
 				throw std::runtime_error(bad_at_error);
 			}
 
@@ -343,26 +345,26 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 						for(VariableMapping var : var_mapping) {
 							if(var.get_task_id() == at_def.first) {
 								if(var.get_gm_var() == forAll_iteration_var) {
-									std::string var_type = valid_variables[forAll_iteration_var].first;
-									std::string var_value = current_val.get<string>("name");
+									string var_type = valid_variables[forAll_iteration_var].first;
+									string var_value = current_val.get<string>("name");
 									at.variable_mapping.push_back(make_pair(make_pair(var_value,var_type),var.get_hddl_var()));
 								} else {
-									std::pair<std::pair<std::variant<std::vector<std::string>,std::string>,std::string>,std::string> new_var_mapping;
+									pair<pair<variant<vector<string>,string>,string>,string> new_var_mapping;
 									if(valid_variables.find(var.get_gm_var()) != valid_variables.end()) {
-										std::string var_type = valid_variables[var.get_gm_var()].first;
+										string var_type = valid_variables[var.get_gm_var()].first;
 										if(parse_gm_var_type(var_type) == "COLLECTION") {
-											std::vector<std::string> var_values;
+											vector<string> var_values;
 											for(pt::ptree v : valid_variables[var.get_gm_var()].second) {
-												var_values.push_back(v.get<std::string>("name"));
+												var_values.push_back(v.get<string>("name"));
 											}
 											new_var_mapping = make_pair(make_pair(var_values,var_type),var.get_hddl_var());
 										} else {
-											std::string var_value = valid_variables[var.get_gm_var()].second.at(0).get<std::string>("name");
+											string var_value = valid_variables[var.get_gm_var()].second.at(0).get<string>("name");
 											new_var_mapping = make_pair(make_pair(var_value,var_type),var.get_hddl_var());
 										}
 										at.variable_mapping.push_back(new_var_mapping);
 									} else { 
-										std::string var_mapping_error = "Could not find variable mapping for task " + at.name;
+										string var_mapping_error = "Could not find variable mapping for task " + at.name;
 										throw std::runtime_error(var_mapping_error);
 									}
 								}
@@ -413,26 +415,26 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 						for(VariableMapping var : var_mapping) {
 							if(var.get_task_id() == at_def.first) {
 								if(var.get_gm_var() == forAll_iteration_var) {
-									std::string var_type = valid_variables[forAll_iteration_var].first;
-									std::string var_value = valid_variables[forAll_iteration_var].second.at(0).get<string>("name");
+									string var_type = valid_variables[forAll_iteration_var].first;
+									string var_value = valid_variables[forAll_iteration_var].second.at(0).get<string>("name");
 									at.variable_mapping.push_back(make_pair(make_pair(var_value,var_type),var.get_hddl_var()));
 								} else {
-									std::pair<std::pair<std::variant<std::vector<std::string>,std::string>,std::string>,std::string> new_var_mapping;
+									pair<pair<variant<vector<string>,string>,string>,string> new_var_mapping;
 									if(valid_variables.find(var.get_gm_var()) != valid_variables.end()) {
-										std::string var_type = valid_variables[var.get_gm_var()].first;
+										string var_type = valid_variables[var.get_gm_var()].first;
 										if(parse_gm_var_type(var_type) == "COLLECTION") {
-											std::vector<std::string> var_values;
+											vector<string> var_values;
 											for(pt::ptree v : valid_variables[var.get_gm_var()].second) {
-												var_values.push_back(v.get<std::string>("name"));
+												var_values.push_back(v.get<string>("name"));
 											}
 											new_var_mapping = make_pair(make_pair(var_values,var_type),var.get_hddl_var());
 										} else {
-											std::string var_value = valid_variables[var.get_gm_var()].second.at(0).get<std::string>("name");
+											string var_value = valid_variables[var.get_gm_var()].second.at(0).get<string>("name");
 											new_var_mapping = make_pair(make_pair(var_value,var_type),var.get_hddl_var());
 										}
 										at.variable_mapping.push_back(new_var_mapping);
 									} else { 
-										std::string var_mapping_error = "Could not find variable mapping for task " + at.name;
+										string var_mapping_error = "Could not find variable mapping for task " + at.name;
 										throw std::runtime_error(var_mapping_error);
 									}
 								}
@@ -492,24 +494,24 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 				for(VariableMapping var : var_mapping) {
 					if(var.get_task_id() == at_def.first) {
 						if(valid_variables.find(var.get_gm_var()) != valid_variables.end()) {
-							std::pair<std::pair<std::variant<std::vector<std::string>,std::string>,std::string>,std::string> new_var_mapping;
-							std::string var_type = valid_variables[var.get_gm_var()].first;
+							pair<pair<variant<vector<string>,string>,string>,string> new_var_mapping;
+							string var_type = valid_variables[var.get_gm_var()].first;
 							std::cout << "GM VAR FOR AT " << at.name << ": " << var.get_gm_var() << std::endl;
 							std::cout << "VAR TYPE FOR AT " << at.name << ": " << var_type << std::endl;
 							if(parse_gm_var_type(var_type) == "COLLECTION") {
 								std::cout << "COLLECTION MAPPING FOR AT " << at.name << std::endl;
-								std::vector<std::string> var_values;
+								vector<string> var_values;
 								for(pt::ptree v : valid_variables[var.get_gm_var()].second) {
-									var_values.push_back(v.get<std::string>("name"));
+									var_values.push_back(v.get<string>("name"));
 								}
 								new_var_mapping = make_pair(make_pair(var_values,var_type),var.get_hddl_var());
 							} else {
-								string var_value = valid_variables[var.get_gm_var()].second.at(0).get<std::string>("name");
+								string var_value = valid_variables[var.get_gm_var()].second.at(0).get<string>("name");
 								new_var_mapping = make_pair(make_pair(var_value,var_type),var.get_hddl_var());
 							}
 							at.variable_mapping.push_back(new_var_mapping);
 						} else {
-							std::string var_mapping_error = "Could not find variable mapping for task " + at.name;
+							string var_mapping_error = "Could not find variable mapping for task " + at.name;
 							throw std::runtime_error(var_mapping_error);
 						}
 					}

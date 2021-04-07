@@ -4,6 +4,8 @@
 
 #include <boost/property_tree/xml_parser.hpp>
 
+using namespace std;
+
 /*
     Function: generate_instances_output
     Objective: This function generates the XML output with all task instances, constraints, actions and valid mission
@@ -68,7 +70,7 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
             Decomposition d = std::get<Decomposition>(mission_decomposition[index].content);
 
             for(task a : d.path) {
-                if(actions.find(a.name) == actions.end() && a.name.find(method_precondition_action_name) == std::string::npos) {
+                if(actions.find(a.name) == actions.end() && a.name.find(method_precondition_action_name) == string::npos) {
                     actions[a.name] = a;
                 }
             }
@@ -79,7 +81,7 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
 
     output_actions(output_file, actions);
 
-    std::map<std::string,std::string> task_id_map = output_tasks(output_file, task_instances, semantic_mapping);
+    map<string,string> task_id_map = output_tasks(output_file, task_instances, semantic_mapping);
 
     output_constraints(output_file, final_mission_constraints, task_id_map);
 
@@ -153,7 +155,7 @@ void output_actions(pt::ptree& output_file, map<string,task> actions) {
             - Decomposition (Into actions)
            -> Each instance corresponds to a decomposition of an AT
 */
-std::map<std::string,std::string> output_tasks(pt::ptree& output_file, vector<Decomposition> task_instances, vector<SemanticMapping> semantic_mapping) {
+map<string,string> output_tasks(pt::ptree& output_file, vector<Decomposition> task_instances, vector<SemanticMapping> semantic_mapping) {
     map<string,string> task_id_map;
 
     output_file.put("tasks","");
@@ -217,7 +219,7 @@ std::map<std::string,std::string> output_tasks(pt::ptree& output_file, vector<De
             pair<SemanticMapping,bool> prec_mapping = find_predicate_mapping(prec,semantic_mapping,sorts,task_vars,sort_definitions);
 
             if(!prec_mapping.second) {
-                std::string semantic_mapping_error;
+                string semantic_mapping_error;
                 if(holds_alternative<ground_literal>(prec)) {
                     ground_literal p = get<ground_literal>(prec);
                     semantic_mapping_error += "No Semantic Mapping exists for predicate [" + p.predicate + " ";
@@ -327,7 +329,7 @@ std::map<std::string,std::string> output_tasks(pt::ptree& output_file, vector<De
             pair<SemanticMapping,bool> eff_mapping = find_predicate_mapping(eff,semantic_mapping,sorts,task_vars,sort_definitions);
 
             if(!eff_mapping.second) {
-                std::string semantic_mapping_error;
+                string semantic_mapping_error;
                 if(holds_alternative<ground_literal>(eff)) {
                     ground_literal e = get<ground_literal>(eff);
                     semantic_mapping_error += "No Semantic Mapping exists for predicate [" + e.predicate + " ";
@@ -440,7 +442,7 @@ std::map<std::string,std::string> output_tasks(pt::ptree& output_file, vector<De
         task_attr = task_name + ".decomposition";
         int action_counter = 0;
         for(task a : instance.path) {
-            if(a.name.find(method_precondition_action_name) == std::string::npos) {
+            if(a.name.find(method_precondition_action_name) == string::npos) {
                 string action_id = task_attr + ".action" + to_string(action_counter);
                 output_file.put(action_id,a.name);
 
@@ -471,7 +473,7 @@ std::map<std::string,std::string> output_tasks(pt::ptree& output_file, vector<De
             - Group (Important only if constraint is of NC type)
             - Divisible (Important only if constraint is of NC type)
 */
-void output_constraints(pt::ptree& output_file, vector<Constraint> final_mission_constraints, std::map<std::string,std::string> task_id_map) {
+void output_constraints(pt::ptree& output_file, vector<Constraint> final_mission_constraints, map<string,string> task_id_map) {
     output_file.put("constraints","");
     
     int constraint_counter = 0;
@@ -531,7 +533,7 @@ void output_constraints(pt::ptree& output_file, vector<Constraint> final_mission
             - Decomposition
             - Task Instances
 */
-void output_mission_decompositions(pt::ptree& output_file, std::vector<std::vector<std::pair<int,ATNode>>> valid_mission_decompositions, std::map<std::string,std::string> task_id_map) {
+void output_mission_decompositions(pt::ptree& output_file, vector<vector<pair<int,ATNode>>> valid_mission_decompositions, map<string,string> task_id_map) {
     output_file.put("mission_decompositions","");
 
     int decomposition_counter = 0;
@@ -1045,7 +1047,7 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
 
                 if(!valid_task_decomposition) {
                     AbstractTask at = get<AbstractTask>(current_node.second.content);
-                    std::string invalid_task_decomposition_error = "NO VALID DECOMPOSITIONS FOR TASK " + at.id + ": " + at.name;
+                    string invalid_task_decomposition_error = "NO VALID DECOMPOSITIONS FOR TASK " + at.id + ": " + at.name;
                     
                     throw std::runtime_error(invalid_task_decomposition_error);
                 }
@@ -1147,7 +1149,7 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
 
             if(!at_least_one_decomposition_valid) {
                 AbstractTask at = get<AbstractTask>(current_node.second.content);
-                std::string invalid_task_decomposition_error = "NO VALID DECOMPOSITIONS FOR TASK " + at.id + ": " + at.name;
+                string invalid_task_decomposition_error = "NO VALID DECOMPOSITIONS FOR TASK " + at.id + ": " + at.name;
                 
                 throw std::runtime_error(invalid_task_decomposition_error);
             }
@@ -1212,7 +1214,7 @@ queue<pair<int,ATNode>> generate_mission_queue(ATGraph mission_decomposition) {
         if(node.second.node_type == ATASK) {
             std::cout << "ATASK: " << get<AbstractTask>(node.second.content).id << " - " << get<AbstractTask>(node.second.content).name << std::endl;
         } else {
-            std::cout << "OPERATOR: " << get<std::string>(node.second.content) << std::endl;
+            std::cout << "OPERATOR: " << get<string>(node.second.content) << std::endl;
         }
     }
 
@@ -1387,10 +1389,10 @@ void resolve_conflicts(vector<pair<vector<pair<int,ATNode>>,vector<ground_litera
 
                     // If all the decompositions of a task are in conflict, throw an error
                     if(found_task_decompositions[t1.first].size() == task_decompositions_number[t1.first]) {
-                        std::string conflict_error = "Cannot solve conflicts with task " + get<AbstractTask>(mission_decomposition[t1.first].content).id + ": " + get<AbstractTask>(mission_decomposition[t1.first].content).name; 
+                        string conflict_error = "Cannot solve conflicts with task " + get<AbstractTask>(mission_decomposition[t1.first].content).id + ": " + get<AbstractTask>(mission_decomposition[t1.first].content).name; 
                         throw std::runtime_error(conflict_error);
                     } else if(found_task_decompositions[t2.first].size() == task_decompositions_number[t2.first]) {
-                        std::string conflict_error = "Cannot solve conflicts with task " + get<AbstractTask>(mission_decomposition[t2.first].content).id + ": " + get<AbstractTask>(mission_decomposition[t2.first].content).name; 
+                        string conflict_error = "Cannot solve conflicts with task " + get<AbstractTask>(mission_decomposition[t2.first].content).id + ": " + get<AbstractTask>(mission_decomposition[t2.first].content).name; 
                         throw std::runtime_error(conflict_error);
                     }
 

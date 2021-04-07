@@ -9,6 +9,8 @@
 
 #include "rannot.hpp"
 
+using namespace std;
+
 int parse_string(const char* in);
 
 map<string,general_annot*> goals_and_rannots;
@@ -39,7 +41,7 @@ general_annot* retrieve_runtime_annot(string id) {
     @ Output: The goal model runtime annotation
 */ 
 general_annot* retrieve_gm_annot(GMGraph gm, pt::ptree worlddb, string location_type, map<string,vector<AbstractTask>> at_instances) {
-    std::vector<int> vctr = get_dfs_gm_nodes(gm);
+    vector<int> vctr = get_dfs_gm_nodes(gm);
     
     VertexData root = gm[vctr.at(0)];
 
@@ -113,7 +115,7 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
 							string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
 							bool prop_val;
 							istringstream(boost::to_lower_copy(child.second.get<string>(prop))) >> std::boolalpha >> prop_val;
-							if(q.query.at(0).find('!') != std::string::npos) {
+							if(q.query.at(0).find('!') != string::npos) {
 								prop_val = !prop_val;
 							}
 							if(prop_val) aux.push_back(child.second);
@@ -386,7 +388,7 @@ void rename_at_instances_in_runtime_annot(general_annot* gmannot, map<string,vec
     map<string,vector<AbstractTask>>::iterator at_inst_it;
     for(at_inst_it = at_instances.begin();at_inst_it != at_instances.end();at_inst_it++) {
         string task_id;
-        if(at_inst_it->second.at(0).id.find("_") != std::string::npos) {
+        if(at_inst_it->second.at(0).id.find("_") != string::npos) {
             task_id = at_inst_it->second.at(0).id.substr(0,at_inst_it->second.at(0).id.find("_"));
         } else {
             task_id = at_inst_it->second.at(0).id;

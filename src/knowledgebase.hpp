@@ -9,23 +9,21 @@
 
 #include <boost/property_tree/ptree.hpp>
 
-using namespace std;
-
 namespace pt = boost::property_tree;
 
 class KnowledgeBase {
     public:
-        KnowledgeBase(string db_name, pt::ptree knowledge, string root_key);
+        KnowledgeBase(std::string db_name, pt::ptree knowledge, std::string root_key);
 
         pt::ptree get_knowledge();
 
-        string get_db_name();
-        string get_root_key();
+        std::string get_db_name();
+        std::string get_root_key();
 
     private:
         pt::ptree knowledge;
-        string db_name;
-        string root_key;
+        std::string db_name;
+        std::string root_key;
 
 };
 

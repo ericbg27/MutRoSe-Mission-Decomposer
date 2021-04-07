@@ -30,7 +30,7 @@ vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition
     DFSATVisitor vis;
     boost::depth_first_search(trimmed_mission_decomposition, vis, colormap, 0);
 
-    std::vector<int> vctr = vis.GetVector();
+    vector<int> vctr = vis.GetVector();
     operators_stack.push(make_pair(vctr.at(0),trimmed_mission_decomposition[vctr.at(0)]));
 
     pair<int,int> current_root_node = make_pair(vctr.at(0),1);
@@ -345,7 +345,7 @@ vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition
             mission_constraints.push_back(std::get<Constraint>(nodes_stack.top()));
         } else {
             pair<int,ATNode> node = std::get<pair<int,ATNode>>(nodes_stack.top());
-            std::string constraint_error = "Could not generate constraint with node " + std::get<AbstractTask>(node.second.content).id;
+            string constraint_error = "Could not generate constraint with node " + std::get<AbstractTask>(node.second.content).id;
 
             throw std::runtime_error(constraint_error);
         }
@@ -706,13 +706,13 @@ vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vecto
     std::cout << "Mission constraints size: " << mission_constraints.size() << std::endl;
     std::cout << "Mission Constraints:" << std::endl; 
     for(Constraint c : mission_constraints) {
-        std::cout << get<AbstractTask>(c.nodes_involved.first.second.content).id;
+        std::cout << std::get<AbstractTask>(c.nodes_involved.first.second.content).id;
         if(c.type == PAR) {
             std::cout << " # ";
         } else {
             std::cout << " ; ";
         }
-        std::cout << get<AbstractTask>(c.nodes_involved.second.second.content).id;
+        std::cout << std::get<AbstractTask>(c.nodes_involved.second.second.content).id;
         std::cout << std::endl;
     }
 
@@ -820,7 +820,7 @@ vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vecto
                             DFSATVisitor vis;
                             boost::depth_first_search(mission_decomposition, vis, colormap, target);
 
-                            std::vector<int> vctr = vis.GetVector();
+                            vector<int> vctr = vis.GetVector();
 
                             int current_node = vctr.at(0);
                             vctr.erase(vctr.begin());
@@ -856,13 +856,13 @@ vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vecto
     std::cout << "Transformed constraints size: " << transformed_constraints.size() << std::endl;
     std::cout << "Transformed Constraints:" << std::endl; 
     for(Constraint c : transformed_constraints) {
-        std::cout << get<Decomposition>(c.nodes_involved.first.second.content).id;
+        std::cout << std::get<Decomposition>(c.nodes_involved.first.second.content).id;
         if(c.type == PAR) {
             std::cout << " # ";
         } else {
             std::cout << " ; ";
         }
-        std::cout << get<Decomposition>(c.nodes_involved.second.second.content).id;
+        std::cout << std::get<Decomposition>(c.nodes_involved.second.second.content).id;
         std::cout << std::endl;
     }
 

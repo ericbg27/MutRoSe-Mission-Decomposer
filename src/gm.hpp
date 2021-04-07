@@ -16,36 +16,34 @@
 #include "parsetree.hpp"
 #include "contextmanager.hpp"
 
-using namespace std;
-
 namespace pt = boost::property_tree;
 
 class AchieveCondition {
     public:
         bool has_forAll_expr;
         
-        string get_iterated_var() {
+        std::string get_iterated_var() {
             if(has_forAll_expr) {
                 return iterated_var;
             } else {
                 return "";
             }
         }
-        string get_iteration_var() {
+        std::string get_iteration_var() {
             if(has_forAll_expr) {
                 return iteration_var;
             } else {
                 return "";
             }
         }
-        string get_forAll_condition() {
+        std::string get_forAll_condition() {
             if(has_forAll_expr) {
                 return forAll_condition;
             } else {
                 return "";
             }
         }
-        string get_condition() {
+        std::string get_condition() {
             if(!has_forAll_expr) {
                 return condition;
             } else {
@@ -53,52 +51,52 @@ class AchieveCondition {
             }
         }
 
-        void set_iterated_var(string ivar) {
+        void set_iterated_var(std::string ivar) {
             iterated_var = ivar;
         }
-        void set_iteration_var(string itvar) {
+        void set_iteration_var(std::string itvar) {
             iteration_var = itvar;
         }
-        void set_forAll_condition(string f_cond) {
+        void set_forAll_condition(std::string f_cond) {
             forAll_condition = f_cond;
         }
-        void set_condition(string cond) {
+        void set_condition(std::string cond) {
             condition = cond;
         }
 
     private:
-        string iterated_var;
-        string iteration_var;
-        string forAll_condition;
-        string condition;
+        std::string iterated_var;
+        std::string iteration_var;
+        std::string forAll_condition;
+        std::string condition;
 };
 
 class FailureCondition {
     public:
-        string condition;
+        std::string condition;
 };
 
 struct IterationRule {
-    string iterated_var;
-    string iteration_var;
-    pair<string,string> result_var;
-    string result_init;
-    string end_loop;
+    std::string iterated_var;
+    std::string iteration_var;
+    std::pair<std::string,std::string> result_var;
+    std::string result_init;
+    std::string end_loop;
 };
 
 struct QueriedProperty {
-    string queried_var;
-    pair<string,string> query_var;
-    vector<string> query;
+    std::string queried_var;
+    std::pair<std::string,std::string> query_var;
+    std::vector<std::string> query;
 };
 
 struct VertexData {
     int parent;
-    vector<int> children;
-    string id;
-    string text;
-    string type;
-    map<string,variant<string,Context,QueriedProperty,AchieveCondition,FailureCondition,IterationRule,vector<pair<string,string>>>> custom_props;
+    std::vector<int> children;
+    std::string id;
+    std::string text;
+    std::string type;
+    std::map<std::string,std::variant<std::string,Context,QueriedProperty,AchieveCondition,FailureCondition,IterationRule,std::vector<std::pair<std::string,std::string>>>> custom_props;
     int x;
     int y;
     bool periodic; 
@@ -107,14 +105,14 @@ struct VertexData {
     bool group = true;
     bool divisible = true;
     bool fixed_robot_num = true;
-    variant<int,pair<int,int>> robot_num;
+    std::variant<int,std::pair<int,int>> robot_num;
 };
 
 struct EdgeData {
-    string id;
-    string type;
-    string source;
-    string target;
+    std::string id;
+    std::string type;
+    std::string source;
+    std::string target;
 };
 
 typedef boost::adjacency_list<boost::vecS,boost::vecS,
@@ -137,49 +135,49 @@ class DFSVisitor : public boost::default_dfs_visitor {
     boost::shared_ptr<std::vector<int> > vv;
 };
 
-vector<int> get_dfs_gm_nodes(GMGraph gm);
+std::vector<int> get_dfs_gm_nodes(GMGraph gm);
 
 void check_gm_validity(GMGraph gm);
 
-vector<pair<int,VertexData>> parse_gm_nodes(pt::ptree nodes);
+std::vector<std::pair<int,VertexData>> parse_gm_nodes(pt::ptree nodes);
 
-vector<pair<pair<int,int>, EdgeData>> parse_gm_edges(pt::ptree links, GMGraph& gm, vector<pair<int,VertexData>> vertex);
+std::vector<std::pair<std::pair<int,int>, EdgeData>> parse_gm_edges(pt::ptree links, GMGraph& gm, std::vector<std::pair<int,VertexData>> vertex);
 
 GMGraph graph_from_property_tree(pt::ptree root);
 
-void check_undefined_number_of_robots(GMGraph& gm, vector<task> abstract_tasks, vector<sort_definition> sort_definitions);
+void check_undefined_number_of_robots(GMGraph& gm, std::vector<task> abstract_tasks, std::vector<sort_definition> sort_definitions);
 
-string get_node_name(string node_text);
-string parse_gm_var_type(string var_type);
+std::string get_node_name(std::string node_text);
+std::string parse_gm_var_type(std::string var_type);
 
-vector<pair<string,string>> parse_vars(string var_decl);
-vector<pair<string,string>> parse_var_mapping(string text);
+std::vector<std::pair<std::string,std::string>> parse_vars(std::string var_decl);
+std::vector<std::pair<std::string,std::string>> parse_var_mapping(std::string text);
 
-vector<string> parse_forAll_expr(string expr);
+std::vector<std::string> parse_forAll_expr(std::string expr);
 
-IterationRule parse_iterate_expr(string expr);
+IterationRule parse_iterate_expr(std::string expr);
 
-AchieveCondition parse_achieve_condition(string cond);
+AchieveCondition parse_achieve_condition(std::string cond);
 
-QueriedProperty parse_select_expr(string expr);
+QueriedProperty parse_select_expr(std::string expr);
 
-pair<string,string> parse_at_text(string text);
-pair<string,string> parse_goal_text(string text);
+std::pair<std::string,std::string> parse_at_text(std::string text);
+std::pair<std::string,std::string> parse_goal_text(std::string text);
 
-pair<int,int> parse_robot_number(string text);
+std::pair<int,int> parse_robot_number(std::string text);
 
-void analyze_custom_props(map<string,string> custom_props, VertexData& v);
+void analyze_custom_props(std::map<std::string,std::string> custom_props, VertexData& v);
 
-int find_gm_node_by_id(string id, GMGraph gm);
+int find_gm_node_by_id(std::string id, GMGraph gm);
 
 void print_gm_nodes_info(GMGraph gm);
-void print_gm_var_map_info(map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map);
+void print_gm_var_map_info(std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_var_map);
 void print_gm(GMGraph gm);
 
 struct sort_by_id {
-    inline bool operator() (const pair<int,VertexData> v1, const pair<int,VertexData> v2) {
-        string v1_id = get_node_name(v1.second.text);
-        string v2_id = get_node_name(v2.second.text);
+    inline bool operator() (const std::pair<int,VertexData> v1, const std::pair<int,VertexData> v2) {
+        std::string v1_id = get_node_name(v1.second.text);
+        std::string v2_id = get_node_name(v2.second.text);
 
         bool v1_goal, v2_goal;
         v1_goal = (v1_id.rfind("G",0) == 0);
@@ -214,7 +212,7 @@ struct sort_by_id {
 };
 
 struct sort_edges {
-    inline bool operator() (const pair<pair<int,int>, EdgeData> e1, const pair<pair<int,int>, EdgeData> e2) {
+    inline bool operator() (const std::pair<std::pair<int,int>, EdgeData> e1, const std::pair<std::pair<int,int>, EdgeData> e2) {
         if(e1.first.first == e2.first.first) {
             return e1.first.second < e2.first.second;
         } else {

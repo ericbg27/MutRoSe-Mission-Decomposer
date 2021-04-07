@@ -7,6 +7,8 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/optional/optional.hpp>
 
+using namespace std;
+
 SemanticMapping::SemanticMapping(string mapping_type, string mapped_type) {
     this->mapping_type = mapping_type;
     this->mapped_type = mapped_type;
