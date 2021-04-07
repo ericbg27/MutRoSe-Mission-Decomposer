@@ -28,9 +28,9 @@ extern std::map<std::string,general_annot*> goals_and_rannots; //Map from goals 
 
 general_annot* retrieve_runtime_annot(std::string id);
 
-general_annot* retrieve_gm_annot(GMGraph gm, pt::ptree worlddb, std::string location_type, std::map<std::string,std::vector<AbstractTask>> at_instances);
+general_annot* retrieve_gm_annot(GMGraph gm, pt::ptree worlddb, std::vector<std::string> high_level_loc_types, std::map<std::string,std::vector<AbstractTask>> at_instances);
 
-void recursive_gm_annot_generation(general_annot* node_annot, std::vector<int> &vctr, GMGraph gm, pt::ptree worlddb, std::string location_type, int current_node,
+void recursive_gm_annot_generation(general_annot* node_annot, std::vector<int> &vctr, GMGraph gm, pt::ptree worlddb, std::vector<std::string> high_level_loc_types, int current_node,
                                         std::map<std::string,pair<std::string,std::vector<pt::ptree>>>& valid_variables, std::map<int,AchieveCondition> valid_forAll_conditions, 
                                         std::map<int,int>& node_depths);
 

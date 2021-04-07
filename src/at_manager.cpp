@@ -25,7 +25,7 @@ using namespace std;
 	@ Input 6: The variable mappings between HDDL and the Goal Model
     @ Output: The abstract task instances in a map format
 */
-map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tasks, GMGraph gm, string location_type,
+map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tasks, GMGraph gm, vector<string> high_level_loc_types,
 														KnowledgeBase world_db, map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map,
 															vector<VariableMapping> var_mapping) {
 	vector<int> vctr = get_dfs_gm_nodes(gm);
@@ -48,7 +48,7 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 	*/
 	set<string> dsl_locations; //Locations that must be declared in the DSL
 	BOOST_FOREACH(pt::ptree::value_type& child, world_tree) {
-		if(child.first == location_type) {
+		if(std::find(high_level_loc_types.begin(), high_level_loc_types.end(), child.first) != high_level_loc_types.end()) {
 			dsl_locations.insert(child.second.get<string>("name"));
 		}
 	}

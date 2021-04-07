@@ -52,7 +52,7 @@ KnowledgeBase construct_knowledge_base(string db_name, map<string, variant<map<s
     @ Input 6: The mapping between HDDL types and OCL types
     @ Output: Void. The sorts are initialized
 */ 
-void initialize_objects(KnowledgeBase worlddb, KnowledgeBase robotsdb, map<string,set<string>>& sorts, string location_type,
+void initialize_objects(KnowledgeBase worlddb, KnowledgeBase robotsdb, map<string,set<string>>& sorts, vector<string> high_level_loc_types,
                             map<string,vector<AbstractTask>>& at_instances, map<string,string> type_mapping) {
 
     pt::ptree worlddb_root;
@@ -89,11 +89,12 @@ void initialize_objects(KnowledgeBase worlddb, KnowledgeBase robotsdb, map<strin
     set<string> world_locations; //Locations that must be declared in the DSL
 
 	BOOST_FOREACH(pt::ptree::value_type& child, worlddb_root) {
-		if(child.first == location_type) {
+        vector<string>::iterator loc_it = std::find(high_level_loc_types.begin(), high_level_loc_types.end(), child.first);
+		if(loc_it != high_level_loc_types.end()) {
 			world_locations.insert(child.second.get<string>("name"));
             string hddl_type;
 
-            hddl_type = type_mapping[location_type];
+            hddl_type = type_mapping[*loc_it];
             sorts[hddl_type].insert(child.second.get<string>("name"));
 		}
 	}

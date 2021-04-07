@@ -464,7 +464,8 @@ vector<pair<string,string>> parse_vars(string var_decl) {
 
         smatch m;
         regex e1("[a-zA-z]+");
-        regex e2("[a-zA-z]+([(][a-zA-z]+[)])?");
+        //regex e2("[a-zA-z]+([(][a-zA-z]+[)])?");
+        regex e2("([a-zA-Z0-9]+)|([a-zA-z]+([(][a-zA-z]+[)]))");
 
         getline(ss, substr, ',');
 

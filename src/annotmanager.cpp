@@ -40,7 +40,7 @@ general_annot* retrieve_runtime_annot(string id) {
     @ Input 4: The abstract task instances vector
     @ Output: The goal model runtime annotation
 */ 
-general_annot* retrieve_gm_annot(GMGraph gm, pt::ptree worlddb, string location_type, map<string,vector<AbstractTask>> at_instances) {
+general_annot* retrieve_gm_annot(GMGraph gm, pt::ptree worlddb, vector<string> high_level_loc_types, map<string,vector<AbstractTask>> at_instances) {
     vector<int> vctr = get_dfs_gm_nodes(gm);
     
     VertexData root = gm[vctr.at(0)];
@@ -66,7 +66,7 @@ general_annot* retrieve_gm_annot(GMGraph gm, pt::ptree worlddb, string location_
 
     root_annot->parent = empty_annot;
 
-    recursive_gm_annot_generation(root_annot, vctr, gm, worlddb, location_type, current_node, valid_variables, valid_forAll_conditions, node_depths);
+    recursive_gm_annot_generation(root_annot, vctr, gm, worlddb, high_level_loc_types, current_node, valid_variables, valid_forAll_conditions, node_depths);
 
     return root_annot;
 }
@@ -86,7 +86,7 @@ general_annot* retrieve_gm_annot(GMGraph gm, pt::ptree worlddb, string location_
     @ Input 9: The map of node depths
     @ Output: Void. The runtime goal model annotation is generated
 */ 
-void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr, GMGraph gm, pt::ptree worlddb, string location_type, int current_node,
+void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr, GMGraph gm, pt::ptree worlddb, vector<string> high_level_loc_types, int current_node,
                                         map<string,pair<string,vector<pt::ptree>>>& valid_variables, map<int,AchieveCondition> valid_forAll_conditions, 
                                         map<int,int>& node_depths) {
     set<string> operators {";","#","FALLBACK","OPT","|"};
@@ -157,7 +157,7 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
         for(general_annot* child : node_annot->children) {
             int c_node = vctr.at(0);
             child->parent = node_annot;
-            recursive_gm_annot_generation(child, vctr, gm, worlddb, location_type, c_node, valid_variables, valid_forAll_conditions, node_depths);
+            recursive_gm_annot_generation(child, vctr, gm, worlddb, high_level_loc_types, c_node, valid_variables, valid_forAll_conditions, node_depths);
         }
 
         if(is_forAll_goal) {
@@ -263,7 +263,7 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
             for(general_annot* child : node_annot->children) {
                 int c_node = vctr.at(0);
                 child->parent = node_annot;
-                recursive_gm_annot_generation(child, vctr, gm, worlddb, location_type, c_node, valid_variables, valid_forAll_conditions, node_depths);
+                recursive_gm_annot_generation(child, vctr, gm, worlddb, high_level_loc_types, c_node, valid_variables, valid_forAll_conditions, node_depths);
             }
 
             if(is_forAll_goal) {
