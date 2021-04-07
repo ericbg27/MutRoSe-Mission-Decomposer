@@ -1,5 +1,7 @@
 #include "knowledgebase.hpp"
 
+using namespace std;
+
 KnowledgeBase::KnowledgeBase(string db_name, pt::ptree knowledge, string root_key) {
     this->db_name = db_name;
     this->knowledge = knowledge;

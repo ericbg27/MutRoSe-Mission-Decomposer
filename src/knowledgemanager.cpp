@@ -7,6 +7,8 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 
+using namespace std;
+
 /*
     Function: construct_knowledge_base
     Objective: Construct a knowledge base given the database name and the configuration map

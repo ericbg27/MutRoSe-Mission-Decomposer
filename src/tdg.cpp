@@ -6,6 +6,8 @@
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>
 
+using namespace std;
+
 /*
     Function: TDG
     Objective: Constructor for the TDG object. Here we generate a TDG and deal with the cycles 
@@ -128,7 +130,7 @@ vector<vector<task>> TDG::decomposition_recursion(vector<int> dfs_nodes, int cur
             bool ordering_exec = true;
             for(int c : ordering) {
                 vector<literal> world_state_copy = world_state;
-                std::vector<int>::iterator it = std::find(dfs_nodes.begin(),dfs_nodes.end(),c);
+                vector<int>::iterator it = std::find(dfs_nodes.begin(),dfs_nodes.end(),c);
                 int c_pos = std::distance(dfs_nodes.begin(),it);
 
                 task child_task = tdg[c].t;
@@ -213,7 +215,7 @@ vector<vector<task>> TDG::decomposition_recursion(vector<int> dfs_nodes, int cur
     } else if(n.type == AT) {
         vector<literal> initial_world_state = world_state;
         for(int c : n.children) {
-            std::vector<int>::iterator it = std::find(dfs_nodes.begin(),dfs_nodes.end(),c);
+            vector<int>::iterator it = std::find(dfs_nodes.begin(),dfs_nodes.end(),c);
             int c_pos = std::distance(dfs_nodes.begin(),it);
 
             method child_method = tdg[c].m;
@@ -381,7 +383,7 @@ vector<int> TDG::DFS_visit() {
     TDGDFSVisitor vis;
     boost::depth_first_search(tdg, vis, colormap, 0);
 
-    std::vector<int> vctr = vis.GetVector();
+    vector<int> vctr = vis.GetVector();
 
     return vctr;
 }
