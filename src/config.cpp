@@ -183,8 +183,13 @@ map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>,
 
                 if(mapping_type == "attribute") {
                     sm.add_prop("name", mapping.second.get<string>("name"));
-                    sm.add_prop("relation", mapping.second.get<string>("relation"));
-                    if(mapping.second.get<string>("relation") != "robot") {
+
+                    string relation_type = mapping.second.get<string>("relation");
+                    std::transform(relation_type.begin(),relation_type.end(),relation_type.begin(),::tolower);
+                    if(relation_type == "robot") {
+                        sm.add_prop("relation", relation_type);
+                    } else {
+                        sm.add_prop("relation", mapping.second.get<string>("relation"));
                         sm.add_prop("belongs_to", mapping.second.get<string>("belongs_to"));
                     }
                 }
