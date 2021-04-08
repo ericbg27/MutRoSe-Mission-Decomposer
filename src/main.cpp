@@ -38,6 +38,7 @@
 #include "annotmanager.hpp"
 #include "missiondecomposer.hpp"
 #include "instancesoutput.hpp"
+#include "typechecker.hpp"
 
 using namespace std;
 
@@ -263,6 +264,8 @@ int main(int argc, char** argv) {
 	GMGraph gm;
 
 	gm = graph_from_property_tree(json_root);
+
+	check_types_in_var_mapping(variable_mapping, type_mapping, gm, abstract_tasks);
 
 	/*
 		TODO: Add flag which will indicate if we need to verify or not our constructs (deal with errors)

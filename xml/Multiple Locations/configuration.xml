@@ -25,11 +25,11 @@
     <type_mapping>
         <mapping>
             <hddl_type>room</hddl_type>
-            <actual_type>Room</actual_type>
+            <ocl_type>Room</ocl_type>
         </mapping>
         <mapping>
             <hddl_type>rooms</hddl_type>
-            <actual_type>Sequence(Room)</actual_type>
+            <ocl_type>Sequence(Room)</ocl_type>
         </mapping>
     </type_mapping>
 

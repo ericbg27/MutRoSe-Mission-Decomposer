@@ -25,7 +25,7 @@
     <type_mapping>
         <mapping>
             <hddl_type>room</hddl_type>
-            <actual_type>Room</actual_type>
+            <ocl_type>Room</ocl_type>
         </mapping>
     </type_mapping>
 

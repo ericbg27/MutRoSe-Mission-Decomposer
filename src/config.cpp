@@ -147,7 +147,7 @@ map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>,
             map<string,string> type_mapping;
             BOOST_FOREACH(pt::ptree::value_type& mapping, config.second) {
                 string hddl_type = mapping.second.get<string>("hddl_type");
-                string actual_type = mapping.second.get<string>("actual_type");
+                string actual_type = mapping.second.get<string>("ocl_type");
 
                 type_mapping[actual_type] = hddl_type;
             }
