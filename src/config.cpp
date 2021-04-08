@@ -184,7 +184,9 @@ map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>,
                 if(mapping_type == "attribute") {
                     sm.add_prop("name", mapping.second.get<string>("name"));
                     sm.add_prop("relation", mapping.second.get<string>("relation"));
-                    sm.add_prop("belongs_to", mapping.second.get<string>("belongs_to"));
+                    if(mapping.second.get<string>("relation") != "robot") {
+                        sm.add_prop("belongs_to", mapping.second.get<string>("belongs_to"));
+                    }
                 }
 
                 if(mapped_type == "predicate") {

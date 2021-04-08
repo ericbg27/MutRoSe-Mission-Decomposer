@@ -81,7 +81,6 @@
             <type>attribute</type>
             <name>is_sanitized</name>
             <relation>robot</relation>
-            <belongs_to>robots_db</belongs_to>
             <mapped_type>predicate</mapped_type>
             <map>
                 <pred>sanitized</pred> 

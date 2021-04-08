@@ -22,16 +22,16 @@ using namespace std;
 		    passing the configuration file as a function parameter
 */ 
 KnowledgeBase construct_knowledge_base(string db_name, map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> cfg) {
-    string db_type = get<map<string,string>>(cfg[db_name])["type"];
+    string db_type = std::get<map<string,string>>(cfg[db_name])["type"];
 
     pt::ptree db_knowledge;
     string db_root = "";
 	if(db_type == "file") {
-		string db_file_type = get<map<string,string>>(cfg[db_name])["file_type"];
+		string db_file_type = std::get<map<string,string>>(cfg[db_name])["file_type"];
 		if(db_file_type == "xml") {
-			pt::read_xml(get<map<string,string>>(cfg[db_name])["path"], db_knowledge);
+			pt::read_xml(std::get<map<string,string>>(cfg[db_name])["path"], db_knowledge);
             
-            db_root = get<map<string,string>>(cfg[db_name])["xml_root"];
+            db_root = std::get<map<string,string>>(cfg[db_name])["xml_root"];
 		}
 	}
 
@@ -208,44 +208,46 @@ void initialize_world_state(KnowledgeBase robotsdb, KnowledgeBase worlddb, vecto
     for(SemanticMapping sm : semantic_mapping) {
         //For now we are only mapping attributes
         if(sm.get_mapping_type() == "attribute") {
-            string attr_name = get<string>(sm.get_prop("name"));
-            string relation_type = get<string>(sm.get_prop("relation"));
-            string db = get<string>(sm.get_prop("belongs_to"));
+            string attr_name = std::get<string>(sm.get_prop("name"));
+            string relation_type = std::get<string>(sm.get_prop("relation"));
+            if(relation_type != "robot") {
+                string db = std::get<string>(sm.get_prop("belongs_to"));
 
-            //In addition to only mapping attributes we are only mapping them to predicates
-            if(sm.get_mapped_type() == "predicate") {
-                predicate_definition pred = get<predicate_definition>(sm.get_prop("map"));
-                    
-                pt::ptree used_db;
-                 if(db == "robots_db") {
-                    used_db = robotsdb_root;
-                } else {
-                    used_db = worlddb_root;
-                }
-                            
-                BOOST_FOREACH(pt::ptree::value_type& child, used_db) {
-                    if(child.first == relation_type) {
-                        //Only insert the predicate if the object exists (was initialized) in the sorts map
-                        string hddl_type = type_mapping[relation_type];
-                        if(sorts[hddl_type].find(child.second.get<string>("name")) != sorts[hddl_type].end()) {
-                            bool val;
-                            istringstream(boost::to_lower_copy(child.second.get<string>(attr_name))) >> std::boolalpha >> val;
+                //In addition to only mapping attributes we are only mapping them to predicates
+                if(sm.get_mapped_type() == "predicate") {
+                    predicate_definition pred = std::get<predicate_definition>(sm.get_prop("map"));
+                        
+                    pt::ptree used_db;
+                    if(db == "robots_db") {
+                        used_db = robotsdb_root;
+                    } else {
+                        used_db = worlddb_root;
+                    }
+                                
+                    BOOST_FOREACH(pt::ptree::value_type& child, used_db) {
+                        if(child.first == relation_type) {
+                            //Only insert the predicate if the object exists (was initialized) in the sorts map
+                            string hddl_type = type_mapping[relation_type];
+                            if(sorts[hddl_type].find(child.second.get<string>("name")) != sorts[hddl_type].end()) {
+                                bool val;
+                                istringstream(boost::to_lower_copy(child.second.get<string>(attr_name))) >> std::boolalpha >> val;
 
-                            ground_literal l;
+                                ground_literal l;
 
-                            l.predicate = pred.name;
-                            l.positive = val;
-                            /*
-                                For now, semantic mappings only involve one argument, which is of the hddl_type. With this in mind,
-                                we get the name attribute in the xml
-                            */
-                            for(string sort_type : pred.argument_sorts) {
-                                if(sort_type == hddl_type) {
-                                    l.args.push_back(child.second.get<string>("name"));
+                                l.predicate = pred.name;
+                                l.positive = val;
+                                /*
+                                    For now, semantic mappings only involve one argument, which is of the hddl_type. With this in mind,
+                                    we get the name attribute in the xml
+                                */
+                                for(string sort_type : pred.argument_sorts) {
+                                    if(sort_type == hddl_type) {
+                                        l.args.push_back(child.second.get<string>("name"));
+                                    }
                                 }
-                            }
 
-                            init.push_back(l);
+                                init.push_back(l);
+                            }
                         }
                     }
                 }
