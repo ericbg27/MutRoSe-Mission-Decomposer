@@ -38,7 +38,7 @@
         <mapping>
             <task_id>AT2</task_id>
             <gm_var>sanitization_room</gm_var>
-            <hddl_var>?rm</hddl_var>
+            <hddl_var>?srm</hddl_var>
         </mapping>
         <mapping>
             <task_id>AT3</task_id>
