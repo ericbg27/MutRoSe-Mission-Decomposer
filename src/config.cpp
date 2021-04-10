@@ -158,16 +158,22 @@ map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>,
         //Read Variable Mappings
         if(config.first == "var_mapping") {
             vector<VariableMapping> var_mappings;
-            BOOST_FOREACH(pt::ptree::value_type& mapping, config.second) {
-                string task_id, hddl_var, gm_var;
+            BOOST_FOREACH(pt::ptree::value_type& mapping, config.second) { 
+                string task_id = mapping.second.get<string>("task_id");
+                BOOST_FOREACH(pt::ptree::value_type& child, mapping.second) {
+                    if(child.first == "map") {
+                        string hddl_var, gm_var;
 
-                task_id = mapping.second.get<string>("task_id");
-                hddl_var = mapping.second.get<string>("hddl_var");
-                gm_var  = mapping.second.get<string>("gm_var");
+                        pt::ptree var_map_attrs = child.second.get_child("<xmlattr>");
 
-                VariableMapping var_map(task_id,hddl_var,gm_var);
+                        gm_var = var_map_attrs.get<string>("gm_var");
+                        hddl_var = var_map_attrs.get<string>("hddl_var");
 
-                var_mappings.push_back(var_map);
+                        VariableMapping v_map(task_id,hddl_var,gm_var);
+
+                        var_mappings.push_back(v_map);
+                    }
+                }
             }
             
             config_info["var_mapping"] = var_mappings;
