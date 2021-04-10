@@ -36,11 +36,6 @@
     <var_mapping>
         <mapping>
             <task_id>AT1</task_id>
-            <gm_var>rooms</gm_var>
-            <hddl_var>?rms</hddl_var>
-        </mapping>
-        <mapping>
-            <task_id>AT1</task_id>
             <map gm_var="rooms" hddl_var="?rms"/>
         </mapping>
         <mapping>

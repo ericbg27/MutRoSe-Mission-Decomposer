@@ -571,6 +571,7 @@ void print_at_instances_info(map<string,vector<AbstractTask>> at_instances) {
 						} else {
 							cout << val << ",";
 						}
+						index++;
 					}
 				}
 			}

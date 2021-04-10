@@ -41,7 +41,8 @@
           "y": 791,
           "customProperties": {
             "Description": "",
-            "Location": "sanitization_room"
+            "Location": "sanitization_room",
+            "Params": "param1, param2"
           }
         },
         {
