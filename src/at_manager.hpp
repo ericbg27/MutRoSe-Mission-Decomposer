@@ -17,7 +17,7 @@
 
 namespace pt = boost::property_tree;
 
-std::map<std::string,std::vector<AbstractTask>> generate_at_instances(std::vector<task> abstract_tasks , GMGraph gm, std::string location_type, 
+std::map<std::string,std::vector<AbstractTask>> generate_at_instances(std::vector<task> abstract_tasks , GMGraph gm, std::vector<std::string> high_level_loc_types, 
                                                         KnowledgeBase world_db, std::map<std::string, std::variant<pair<std::string,std::string>,pair<std::vector<std::string>,std::string>>>& gm_var_map,
                                                             std::vector<VariableMapping> var_mapping);
 

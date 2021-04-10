@@ -38,6 +38,7 @@
 #include "annotmanager.hpp"
 #include "missiondecomposer.hpp"
 #include "instancesoutput.hpp"
+#include "configchecker.hpp"
 
 using namespace std;
 
@@ -134,6 +135,7 @@ int main(int argc, char** argv) {
 	map<string,string> type_mapping = get<map<string,string>>(cfg["type_mapping"]);
 	vector<VariableMapping> variable_mapping = get<vector<VariableMapping>>(cfg["var_mapping"]);
 	vector<SemanticMapping> semantic_mapping = get<vector<SemanticMapping>>(cfg["semantic_mapping"]);
+	vector<string> high_level_loc_types = get<vector<string>>(cfg["location_types"]);
 
 	//Generate Knowledge Bases
 	KnowledgeBase world_db = construct_knowledge_base("world_db", cfg);
@@ -264,6 +266,8 @@ int main(int argc, char** argv) {
 
 	gm = graph_from_property_tree(json_root);
 
+	check_config(variable_mapping, type_mapping, gm, abstract_tasks, semantic_mapping, high_level_loc_types, predicate_definitions);
+
 	/*
 		TODO: Add flag which will indicate if we need to verify or not our constructs (deal with errors)
 	*/
@@ -275,12 +279,9 @@ int main(int argc, char** argv) {
 
 	check_undefined_number_of_robots(gm, abstract_tasks, sort_definitions);
 
-	//For now, only one high-level location type allowed
-	string location_type = get<vector<string>>(cfg["location_types"]).at(0);
-
 	map<string,vector<AbstractTask>> at_instances;
 
-	at_instances = generate_at_instances(abstract_tasks, gm, location_type, world_db, gm_var_map, variable_mapping);
+	at_instances = generate_at_instances(abstract_tasks, gm, high_level_loc_types, world_db, gm_var_map, variable_mapping);
 
 	print_at_instances_info(at_instances);
 
@@ -325,13 +326,13 @@ int main(int argc, char** argv) {
 
 	print_at_paths_info(at_decomposition_paths);
 
-	initialize_objects(world_db, robots_db, sorts, location_type, at_instances, type_mapping);	
+	initialize_objects(world_db, robots_db, sorts, high_level_loc_types, at_instances, type_mapping);	
 
 	initialize_world_state(robots_db, world_db, init, init_functions, semantic_mapping, type_mapping, sorts);
 
 	print_world_state(init);
 
-	general_annot* gmannot = retrieve_gm_annot(gm, world_db.get_knowledge(), location_type, at_instances);
+	general_annot* gmannot = retrieve_gm_annot(gm, world_db.get_knowledge(), high_level_loc_types, at_instances);
 
 	rename_at_instances_in_runtime_annot(gmannot, at_instances);
 
@@ -358,5 +359,5 @@ int main(int argc, char** argv) {
 
 	print_mission_decomposition(mission_decomposition); 
 
-	generate_instances_output(mission_decomposition,gm,output,init,semantic_mapping,sorts,sort_definitions,predicate_definitions);
+	generate_instances_output(mission_decomposition, gm, output, init, semantic_mapping, sorts, sort_definitions, predicate_definitions);
 }

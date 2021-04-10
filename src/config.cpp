@@ -147,7 +147,7 @@ map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>,
             map<string,string> type_mapping;
             BOOST_FOREACH(pt::ptree::value_type& mapping, config.second) {
                 string hddl_type = mapping.second.get<string>("hddl_type");
-                string actual_type = mapping.second.get<string>("actual_type");
+                string actual_type = mapping.second.get<string>("ocl_type");
 
                 type_mapping[actual_type] = hddl_type;
             }
@@ -183,8 +183,15 @@ map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>,
 
                 if(mapping_type == "attribute") {
                     sm.add_prop("name", mapping.second.get<string>("name"));
-                    sm.add_prop("relation", mapping.second.get<string>("relation"));
-                    sm.add_prop("belongs_to", mapping.second.get<string>("belongs_to"));
+
+                    string relation_type = mapping.second.get<string>("relation");
+                    std::transform(relation_type.begin(),relation_type.end(),relation_type.begin(),::tolower);
+                    if(relation_type == "robot") {
+                        sm.add_prop("relation", relation_type);
+                    } else {
+                        sm.add_prop("relation", mapping.second.get<string>("relation"));
+                        sm.add_prop("belongs_to", mapping.second.get<string>("belongs_to"));
+                    }
                 }
 
                 if(mapped_type == "predicate") {

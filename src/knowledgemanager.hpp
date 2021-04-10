@@ -17,7 +17,7 @@ namespace pt = boost::property_tree;
 
 KnowledgeBase construct_knowledge_base(std::string name, std::map<std::string, std::variant<std::map<std::string,std::string>, std::vector<std::string>, std::vector<SemanticMapping>, std::vector<VariableMapping>, pair<std::string,std::string>>> cfg);
 
-void initialize_objects(KnowledgeBase worlddb, KnowledgeBase robotsdb, std::map<std::string,std::set<std::string>>& sorts, std::string location_type,
+void initialize_objects(KnowledgeBase worlddb, KnowledgeBase robotsdb, std::map<std::string,std::set<std::string>>& sorts, std::vector<std::string> high_level_loc_types,
                             std::map<std::string,std::vector<AbstractTask>>& at_instances, std::map<std::string,std::string> type_mapping);
 
 struct Robot {

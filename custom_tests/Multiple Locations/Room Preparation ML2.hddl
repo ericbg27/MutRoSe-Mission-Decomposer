@@ -6,6 +6,7 @@
         (sanitized ?r - robot)
         (prepared ?rm - room)
         (door-open ?rm - room)
+        (clean ?rms - rooms)
     )
     (:capabilities moveobject cleaning sanitize door-opening)
 

@@ -127,7 +127,12 @@ int find_gm_node_by_id(string id, GMGraph gm) {
     GMGraph::vertex_iterator v, vend;
 
     for(boost::tie(v,vend) = vertices(gm);v != vend;++v) {
-        string node_id = parse_goal_text(gm[*v].text).first;
+        string node_id;
+        if(gm[*v].type == "istar.Goal") {
+            node_id = parse_goal_text(gm[*v].text).first;
+        } else {
+            node_id = parse_at_text(gm[*v].text).first;
+        }
 
         if(id == node_id) {
             int n_id = *v;
@@ -464,7 +469,8 @@ vector<pair<string,string>> parse_vars(string var_decl) {
 
         smatch m;
         regex e1("[a-zA-z]+");
-        regex e2("[a-zA-z]+([(][a-zA-z]+[)])?");
+        //regex e2("[a-zA-z]+([(][a-zA-z]+[)])?");
+        regex e2("[a-zA-z0-9]+([(][a-zA-z]+[)])?");
 
         getline(ss, substr, ',');
 
