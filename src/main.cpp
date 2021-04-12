@@ -133,8 +133,10 @@ int main(int argc, char** argv) {
 	cfg = parse_configuration_file(argv[configfile]);
 
 	map<string,string> type_mapping = get<map<string,string>>(cfg["type_mapping"]);
+
 	vector<VariableMapping> variable_mapping = get<vector<VariableMapping>>(cfg["var_mapping"]);
 	vector<SemanticMapping> semantic_mapping = get<vector<SemanticMapping>>(cfg["semantic_mapping"]);
+	
 	vector<string> high_level_loc_types = get<vector<string>>(cfg["location_types"]);
 
 	//Generate Knowledge Bases

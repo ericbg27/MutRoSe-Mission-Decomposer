@@ -732,6 +732,8 @@ vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vecto
                 n1_decompositions = constraint_nodes_decompositions[n1.first];
             } else {
                 n1_decompositions = find_decompositions(mission_decomposition,n1.first);
+
+                constraint_nodes_decompositions[n1.first] = n1_decompositions;
             }
 
             if(constraint_nodes_decompositions.find(n2.first) != constraint_nodes_decompositions.end()) {
@@ -774,6 +776,8 @@ vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vecto
                 n1_decompositions = constraint_nodes_decompositions[n1.first];
             } else {
                 n1_decompositions = find_decompositions(mission_decomposition,n1.first);
+
+                constraint_nodes_decompositions[n1.first] = n1_decompositions;
             }
 
             if(constraint_nodes_decompositions.find(n2.first) != constraint_nodes_decompositions.end()) {
@@ -894,6 +898,7 @@ void generate_noncoop_constraints(vector<Constraint>& mission_constraints, ATGra
                 source_decompositions = constraint_nodes_decompositions[index];
             } else {
                 source_decompositions = find_decompositions(mission_decomposition,index);
+
                 constraint_nodes_decompositions[index] = source_decompositions;
             }
 
@@ -911,6 +916,7 @@ void generate_noncoop_constraints(vector<Constraint>& mission_constraints, ATGra
                         target_decompositions = constraint_nodes_decompositions[target];
                     } else {
                         target_decompositions = find_decompositions(mission_decomposition,target);
+
                         constraint_nodes_decompositions[target] = target_decompositions;
                     }
 

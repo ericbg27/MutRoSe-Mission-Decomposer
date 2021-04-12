@@ -127,7 +127,6 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
 			e.target = node_id;
 
 			//mission_decomposition[node_id].parent = parent;
-			
 			boost::add_edge(boost::vertex(parent, mission_decomposition), boost::vertex(node_id, mission_decomposition), e, mission_decomposition);
 		}
 		/*
@@ -816,7 +815,7 @@ bool check_context_dependency(ATGraph& mission_decomposition, int parent_node, i
 					e.edge_type = CDEPEND;
 					e.source = d_id;
 					e.target = current_node;
-				
+
 					boost::add_edge(boost::vertex(d_id, mission_decomposition), boost::vertex(current_node, mission_decomposition), e, mission_decomposition);
 
 					cout << "Context satisfied with task " << std::get<Decomposition>(mission_decomposition[d_id].content).id << ": " << at.name << endl;
@@ -1171,21 +1170,31 @@ void print_mission_decomposition(ATGraph mission_decomposition) {
 	for(boost::tie(i,end) = vertices(mission_decomposition); i != end; ++i) {
 		ATNode node = mission_decomposition[*i];
 		if(holds_alternative<AbstractTask>(node.content)) {
-			std::cout << std::get<AbstractTask>(node.content).id << "(" << *i << ")" << "(" << node.parent << ")" << " --> ";
+			std::cout << std::get<AbstractTask>(node.content).id << "(" << *i << ")" << "(" << node.parent << ")" << "[AT]";
 		} else if(holds_alternative<string>(node.content)) {
-			std::cout << std::get<string>(node.content) << "(" << *i << ")" << "(" << node.parent << ")" << " --> ";
+			std::cout << std::get<string>(node.content) << "(" << *i << ")" << "(" << node.parent << ")" << "[OP]";
 		} else {
-			std::cout << std::get<Decomposition>(node.content).id << "(" << *i << ")" << "(" << node.parent << ")" << " --> ";	
+			std::cout << std::get<Decomposition>(node.content).id << "(" << *i << ")" << "(" << node.parent << ")" << "[D]";	
 		}
 
 		for(boost::tie(ai,a_end) = adjacent_vertices(*i,mission_decomposition); ai != a_end;++ai) {
 			ATNode a_node = mission_decomposition[*ai];
-			if(holds_alternative<AbstractTask>(a_node.content)) {
-				std::cout << std::get<AbstractTask>(a_node.content).id << "(" << *ai << ")" << "(" << a_node.parent << ")" << " ";
-			} else if(holds_alternative<string>(a_node.content)) {
-				std::cout << std::get<string>(a_node.content) << "(" << *ai << ")" << "(" << a_node.parent << ")" << " ";
+			auto e = boost::edge(*i,*ai,mission_decomposition).first;
+
+			ATEdge edge = mission_decomposition[e];
+			if(edge.edge_type == NORMAL) {
+				std::cout << " ----> ";
+			} else if(edge.edge_type == NONCOOP) { 
+				std::cout << " -NC-> ";
 			} else {
-				std::cout << std::get<Decomposition>(a_node.content).id << "(" << *ai << ")" << "(" << a_node.parent << ")" << " ";
+				std::cout << " -CD-> "; 
+			}
+			if(holds_alternative<AbstractTask>(a_node.content)) {
+				std::cout << std::get<AbstractTask>(a_node.content).id << "(" << *ai << ")" << "(" << a_node.parent << ")" << "[AT]" << " ";
+			} else if(holds_alternative<string>(a_node.content)) {
+				std::cout << std::get<string>(a_node.content) << "(" << *ai << ")" << "(" << a_node.parent << ")" << "[OP]" << " ";
+			} else {
+				std::cout << std::get<Decomposition>(a_node.content).id << "(" << *ai << ")" << "(" << a_node.parent << ")" << "[D]" << " ";
 			}
 		}	
 		std::cout << std::endl;

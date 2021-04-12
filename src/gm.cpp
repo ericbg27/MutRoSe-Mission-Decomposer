@@ -1,6 +1,8 @@
 #include "gm.hpp"
 
 #include <boost/foreach.hpp>
+#include <boost/algorithm/string.hpp>
+
 #include <iostream>
 #include <regex>
 #include <sstream>
@@ -204,6 +206,19 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
         } else if(cp_it->first == "RobotNumber") {
             v.fixed_robot_num = false;
             v.robot_num = parse_robot_number(cp_it->second);
+        } else if(cp_it->first == "Params") {
+            vector<string> params;
+
+            string params_str = cp_it->second;
+
+            stringstream ss(params_str);
+            string param;
+            while(std::getline(ss,param,',')) {
+                boost::trim(param);
+                params.push_back(param);
+            }
+
+            v.custom_props[cp_it->first] = params;
         } else {
             if(default_props.find(cp_it->first) == default_props.end()) {
                 string error_str = "Invalid property " + cp_it->first + " in vertex " + v.text;
@@ -849,6 +864,14 @@ void print_gm_nodes_info(GMGraph gm) {
 		} else {
 			std::cout << "\tNo Context" << std::endl;
 		}
+
+        std::cout << "Parameters: " << std::endl;
+
+        if(node.custom_props.find("Params") != node.custom_props.end()) {
+            for(string param : get<vector<string>>(node.custom_props["Params"])) {
+                std::cout << "\tParam: " << param << std::endl;
+            }
+        }
 			
 		std::cout << std::endl;
 	}
