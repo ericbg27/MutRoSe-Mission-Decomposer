@@ -6,6 +6,8 @@
 
 using namespace std;
 
+const string xml_type = "XML";
+
 /*
     Function: generate_instances_output
     Objective: This function generates the XML output with all task instances, constraints, actions and valid mission
@@ -86,11 +88,18 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
     output_constraints(output_file, final_mission_constraints, task_id_map);
 
     output_mission_decompositions(output_file, valid_mission_decompositions, task_id_map);
-    
-    string output_filename = "xml/OutputTest.xml";
 
-    pt::xml_writer_settings<string> settings(' ',4);
-    pt::write_xml(output_filename, output_file, std::locale(), settings);
+    string file_type = output.second;
+    std::transform(file_type.begin(),file_type.end(),file_type.begin(),::toupper);
+
+    if(file_type == xml_type) {
+        pt::xml_writer_settings<string> settings(' ',4);
+        pt::write_xml(output.first, output_file, std::locale(), settings);
+    } else {
+        string file_type_not_supported_error = "Unsupported output file type: " + file_type;
+
+        throw std::runtime_error(file_type_not_supported_error);
+    }
 }
 
 /*
