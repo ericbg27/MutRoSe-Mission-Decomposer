@@ -2,19 +2,19 @@
     <robots_db>
         <type>file</type>
         <file_type>xml</file_type>
-        <path>xml/Robots_db.xml</path>
+        <path>xml/Room Preparation/Robots_db.xml</path>
         <xml_root>robots_db</xml_root>
     </robots_db>
 
     <world_db>
         <type>file</type>
         <file_type>xml</file_type>
-        <path>xml/World_db.xml</path>
+        <path>xml/Room Preparation/World_db.xml</path>
         <xml_root>world_db</xml_root>
     </world_db>
 
     <output>
-        <file_path>xml/task_output.xml</file_path>
+        <file_path>xml/Room Preparation/task_output.xml</file_path>
         <file_type>xml</file_type>
     </output>
 
@@ -36,23 +36,19 @@
     <var_mapping>
         <mapping>
             <task_id>AT1</task_id>
-            <gm_var>rooms</gm_var>
-            <hddl_var>?rms</hddl_var>
+            <map gm_var="current_room" hddl_var="?rm"/>
         </mapping>
         <mapping>
             <task_id>AT2</task_id>
-            <gm_var>current_room</gm_var>
-            <hddl_var>?rm</hddl_var>
+            <map gm_var="sanitization_room" hddl_var="?srm"/>
         </mapping>
         <mapping>
             <task_id>AT3</task_id>
-            <gm_var>sanitization_room</gm_var>
-            <hddl_var>?srm</hddl_var>
+            <map gm_var="current_room" hddl_var="?rm"/>
         </mapping>
         <mapping>
             <task_id>AT4</task_id>
-            <gm_var>current_room</gm_var>
-            <hddl_var>?rm</hddl_var>
+            <map gm_var="rooms" hddl_var="?rms"/>
         </mapping>
     </var_mapping>
 
