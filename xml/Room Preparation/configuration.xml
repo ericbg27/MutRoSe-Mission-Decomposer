@@ -2,19 +2,19 @@
     <robots_db>
         <type>file</type>
         <file_type>xml</file_type>
-        <path>xml/Robots_db.xml</path>
+        <path>xml/Room Preparation/Robots_db.xml</path>
         <xml_root>robots_db</xml_root>
     </robots_db>
 
     <world_db>
         <type>file</type>
         <file_type>xml</file_type>
-        <path>xml/World_db.xml</path>
+        <path>xml/Room Preparation/World_db.xml</path>
         <xml_root>world_db</xml_root>
     </world_db>
 
     <output>
-        <file_path>xml/task_output.xml</file_path>
+        <file_path>xml/Room Preparation/task_output.xml</file_path>
         <file_type>xml</file_type>
     </output>
 
@@ -27,27 +27,19 @@
             <hddl_type>room</hddl_type>
             <ocl_type>Room</ocl_type>
         </mapping>
-        <mapping>
-            <hddl_type>rooms</hddl_type>
-            <ocl_type>Sequence(Room)</ocl_type>
-        </mapping>
     </type_mapping>
 
     <var_mapping>
         <mapping>
             <task_id>AT1</task_id>
-            <map gm_var="rooms" hddl_var="?rms"/>
-        </mapping>
-        <mapping>
-            <task_id>AT2</task_id>
             <map gm_var="current_room" hddl_var="?rm"/>
         </mapping>
-        <mapping>
-            <task_id>AT3</task_id>
+         <mapping>
+            <task_id>AT2</task_id>
             <map gm_var="sanitization_room" hddl_var="?srm"/>
         </mapping>
-        <mapping>
-            <task_id>AT4</task_id>
+         <mapping>
+            <task_id>AT3</task_id>
             <map gm_var="current_room" hddl_var="?rm"/>
         </mapping>
     </var_mapping>
@@ -97,18 +89,6 @@
             <map>
                 <pred>door-open</pred> 
                 <arg_sorts number="1">room</arg_sorts>
-            </map>
-        </mapping>
-        <mapping>
-            <type>attribute</type>
-            <name>is_clean</name>
-            <relation>Sequence(Room)</relation>
-            <belongs_to>world_db</belongs_to>
-            <mapped_type>predicate</mapped_type>
-            <predicate_type>Universal</predicate_type>
-            <map>
-                <pred>clean</pred> 
-                <arg_sorts number="1">rooms</arg_sorts>
             </map>
         </mapping>
     </semantic_mapping>
