@@ -32,18 +32,15 @@
     <var_mapping>
         <mapping>
             <task_id>AT1</task_id>
-            <gm_var>current_room</gm_var>
-            <hddl_var>?rm</hddl_var>
+            <map gm_var="current_room" hddl_var="?rm"/>
         </mapping>
-        <mapping>
+         <mapping>
             <task_id>AT2</task_id>
-            <gm_var>sanitization_room</gm_var>
-            <hddl_var>?srm</hddl_var>
+            <map gm_var="sanitization_room" hddl_var="?srm"/>
         </mapping>
-        <mapping>
+         <mapping>
             <task_id>AT3</task_id>
-            <gm_var>current_room</gm_var>
-            <hddl_var>?rm</hddl_var>
+            <map gm_var="current_room" hddl_var="?rm"/>
         </mapping>
     </var_mapping>
 
