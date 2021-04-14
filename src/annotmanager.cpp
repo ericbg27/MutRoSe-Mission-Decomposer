@@ -11,6 +11,8 @@
 
 using namespace std;
 
+const string world_db_query_var = "location_db";
+
 int parse_string(const char* in);
 
 map<string,general_annot*> goals_and_rannots;
@@ -106,7 +108,7 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
     bool is_forAll_goal = false;
     if(gm[current_node].type == "istar.Goal") {
 		if(std::get<string>(gm[current_node].custom_props["GoalType"]) == "Query") {
-			vector<pt::ptree> aux;
+			/*vector<pt::ptree> aux;
 			QueriedProperty q = std::get<QueriedProperty>(gm[current_node].custom_props["QueriedProperty"]);
 			BOOST_FOREACH(pt::ptree::value_type& child, worlddb.get_child("world_db")) {
 				if(child.first == q.query_var.second) { //If type of queried var equals type of the variable in the database, check condition (if any)
@@ -136,7 +138,10 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
 				}
 			}
 			string var_name = std::get<vector<pair<string,string>>>(gm[current_node].custom_props["Controls"]).at(0).first; //.second would be for type assertion
-			valid_variables[var_name] = make_pair(q.query_var.second,aux);
+			valid_variables[var_name] = make_pair(q.query_var.second,aux);*/
+
+            QueriedProperty q = std::get<QueriedProperty>(gm[current_node].custom_props["QueriedProperty"]);
+            solve_query_statement(worlddb.get_child("world_db"),q,gm,current_node,valid_variables);
 		} else if(std::get<string>(gm[current_node].custom_props["GoalType"]) == "Achieve") {
             is_forAll_goal = true;
 			AchieveCondition a = std::get<AchieveCondition>(gm[current_node].custom_props["AchieveCondition"]);
@@ -192,18 +197,6 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
             }
         }
     } else {
-        /*if((!gm[vctr.at(0)].group) || (gm[vctr.at(0)].group && !gm[vctr.at(0)].divisible)) {
-            node_annot->non_coop = true;
-        } else {
-            node_annot->non_coop = false;
-        }
-
-        if(!gm[vctr.at(0)].group) {
-            node_annot->group = false;
-        }
-        if(!gm[vctr.at(0)].divisible) {
-            node_annot->divisible = false;
-        }*/
         recursive_fill_up_runtime_annot(node_annot, gm[vctr.at(0)]);
 
         if(gm[vctr.at(0)].children.size() == 0) { //Leaf Node
@@ -266,14 +259,20 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
                 recursive_gm_annot_generation(child, vctr, gm, worlddb, high_level_loc_types, c_node, valid_variables, valid_forAll_conditions, node_depths);
             }
 
+            std::cout << "is forAll goal? " << is_forAll_goal << std::endl;
+            std::cout << "Goal Name: " << get_node_name(gm[current_node].text) << std::endl;
             if(is_forAll_goal) {
                 string iterated_var = valid_forAll_conditions[depth].get_iterated_var();
                 int generated_instances = valid_variables[iterated_var].second.size();
+
+                std::cout << "iterated var: " << iterated_var << std::endl;
+                std::cout << "valid_variables[iterated_var].second.size(): " << valid_variables[iterated_var].second.size() << std::endl;
 
                 /*
                     Generation of multiple instances of the forAll goal and its children
                 */
                 if(generated_instances > 1) {
+                    std::cout << "Generated instances > 1" << std::endl;
                     general_annot* aux = new general_annot();
 
                     aux->content = node_annot->content;
@@ -425,14 +424,14 @@ void recursive_at_instances_renaming(general_annot* rannot, map<string,int>& at_
 
     op_it = operators.find(rannot->content);
 
+    std::cout << "rannot->content: " << rannot->content << std::endl;
+
     if(op_it == operators.end()) { //If we have a task
         if(rannot->type == TASK) {
-            //if(in_forAll) {
             string aux = rannot->content;
             rannot->content = rannot->content + "_" + to_string(at_instances_counter[rannot->content]);
 
             at_instances_counter[aux]++;
-            //}
         } else {
             if(rannot->type == MEANSEND) {
                 general_annot* child = rannot->children.at(0);
@@ -540,4 +539,51 @@ string recursive_rt_annot_build(general_annot* rt) {
     }
 
     return annot;
+}
+
+void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm, int node_id, std::map<std::string,std::pair<std::string,std::vector<pt::ptree>>>& valid_variables) {
+    vector<pt::ptree> aux;
+				
+	if(!queried_tree.empty()) {
+		BOOST_FOREACH(pt::ptree::value_type& child, queried_tree) {
+			if(child.first == q.query_var.second) {
+				if(q.query.size() == 1) {
+					if(q.query.at(0) != "") {
+						string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
+						bool prop_val;
+						istringstream(boost::to_lower_copy(child.second.get<string>(prop))) >> std::boolalpha >> prop_val;
+						if(q.query.at(0).find('!') != string::npos) {
+							prop_val = !prop_val;
+						}
+						if(prop_val) aux.push_back(child.second);
+					} else {
+						aux.push_back(child.second);
+					}
+				} else {
+					string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
+					string prop_val;
+					try {
+						prop_val = child.second.get<string>(prop);
+					} catch(...) {
+						string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
+
+						throw std::runtime_error(bad_condition);
+					}
+
+					bool result;
+					if(q.query.at(1) == "==") {
+						result = (prop_val == q.query.at(2));
+					} else {
+						result = (prop_val != q.query.at(2));
+					}
+					if(result) aux.push_back(child.second);
+				}
+			}
+		}
+
+		string var_name = std::get<vector<pair<string,string>>>(gm[node_id].custom_props["Controls"]).at(0).first;
+		string var_type = std::get<vector<pair<string,string>>>(gm[node_id].custom_props["Controls"]).at(0).second;
+
+		valid_variables[var_name] = make_pair(var_type,aux);
+	}
 }

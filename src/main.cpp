@@ -330,13 +330,30 @@ int main(int argc, char** argv) {
 
 	initialize_objects(world_db, robots_db, sorts, high_level_loc_types, at_instances, type_mapping);	
 
+	/*std::cout << "SORTS: " << std::endl;
+	map<string,set<string>>::iterator s_it;
+	for(s_it = sorts.begin();s_it != sorts.end();++s_it) {
+		std::cout << "Sort: " << s_it->first << std::endl;
+		std::cout << "Children: ";
+		for(string s : s_it->second) {
+			std::cout << s << " ";
+		}
+		std::cout << std::endl;
+	}*/
+
 	initialize_world_state(robots_db, world_db, init, init_functions, semantic_mapping, type_mapping, sorts);
 
 	print_world_state(init);
 
+	std::cout << "TESTE1" << std::endl;
+
 	general_annot* gmannot = retrieve_gm_annot(gm, world_db.get_knowledge(), high_level_loc_types, at_instances);
 
+	std::cout << "TESTE2" << std::endl;
+
 	rename_at_instances_in_runtime_annot(gmannot, at_instances);
+
+	std::cout << "TESTE3" << std::endl;
 
 	print_runtime_annot_from_general_annot(gmannot);		
 

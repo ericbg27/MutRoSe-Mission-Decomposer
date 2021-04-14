@@ -205,6 +205,8 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
 			
 			if(at_id == rannot_id) { //If we are dealing with the same task
 				for(AbstractTask at : at_inst_it->second) {
+					std::cout << "AT ID: " << at.id << std::endl;
+					std::cout << "rannot content: " << rannot->content << std::endl;
 					if(at.id == rannot->content) {
 						node.content = at;
 						found_at = true;

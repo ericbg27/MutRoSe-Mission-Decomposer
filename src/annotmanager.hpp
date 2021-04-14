@@ -46,4 +46,6 @@ void print_runtime_annot_from_general_annot(general_annot* rt);
 
 std::string recursive_rt_annot_build(general_annot* rt);
 
+void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm, int node_id, std::map<std::string,std::pair<std::string,std::vector<pt::ptree>>>& valid_variables);
+
 #endif
