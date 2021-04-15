@@ -108,40 +108,11 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
     bool is_forAll_goal = false;
     if(gm[current_node].type == "istar.Goal") {
 		if(std::get<string>(gm[current_node].custom_props["GoalType"]) == "Query") {
-			/*vector<pt::ptree> aux;
-			QueriedProperty q = std::get<QueriedProperty>(gm[current_node].custom_props["QueriedProperty"]);
-			BOOST_FOREACH(pt::ptree::value_type& child, worlddb.get_child("world_db")) {
-				if(child.first == q.query_var.second) { //If type of queried var equals type of the variable in the database, check condition (if any)
-					if(q.query.size() == 1) {
-						if(q.query.at(0) != "") {
-							string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
-							bool prop_val;
-							istringstream(boost::to_lower_copy(child.second.get<string>(prop))) >> std::boolalpha >> prop_val;
-							if(q.query.at(0).find('!') != string::npos) {
-								prop_val = !prop_val;
-							}
-							if(prop_val) aux.push_back(child.second);
-						} else {
-							aux.push_back(child.second);
-						}
-					} else {
-						string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
-						string prop_val = child.second.get<string>(prop);
-						bool result;
-						if(q.query.at(1) == "==") {
-							result = (prop_val == q.query.at(2));
-						} else {
-							result = (prop_val != q.query.at(2));
-						}
-						if(result) aux.push_back(child.second);
-					}
-				}
-			}
-			string var_name = std::get<vector<pair<string,string>>>(gm[current_node].custom_props["Controls"]).at(0).first; //.second would be for type assertion
-			valid_variables[var_name] = make_pair(q.query_var.second,aux);*/
-
             QueriedProperty q = std::get<QueriedProperty>(gm[current_node].custom_props["QueriedProperty"]);
-            solve_query_statement(worlddb.get_child("world_db"),q,gm,current_node,valid_variables);
+
+            pt::ptree query_ptree = get_query_ptree(gm, current_node, valid_variables, valid_forAll_conditions, worlddb.get_child("world_db"));
+
+            solve_query_statement(query_ptree,q,gm,current_node,valid_variables);
 		} else if(std::get<string>(gm[current_node].custom_props["GoalType"]) == "Achieve") {
             is_forAll_goal = true;
 			AchieveCondition a = std::get<AchieveCondition>(gm[current_node].custom_props["AchieveCondition"]);
@@ -158,42 +129,85 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
             - We may be dealing with a leaf node, in which case we simply finish the execution or
             - We may be dealing with a non-leaf node, in which case we expand it and substitute it for its extension in the parent's children
     */
-    if(op_it != operators.end()) { //GM root goal    
-        for(general_annot* child : node_annot->children) {
-            int c_node = vctr.at(0);
-            child->parent = node_annot;
-            recursive_gm_annot_generation(child, vctr, gm, worlddb, high_level_loc_types, c_node, valid_variables, valid_forAll_conditions, node_depths);
-        }
+    if(op_it != operators.end()) { //GM root goal  
+        bool expanded_in_forAll = false;
 
         if(is_forAll_goal) {
             string iterated_var = valid_forAll_conditions[depth].get_iterated_var();
+            string iteration_var = valid_forAll_conditions[depth].get_iteration_var();
+
             int generated_instances = valid_variables[iterated_var].second.size();
 
-            /*
-                Generation of multiple instances of the forAll goal and its children
-            */
             if(generated_instances > 1) {
-                general_annot* aux = new general_annot();
+                int c_node = vctr.at(0);
 
-                aux->content = node_annot->content;
-                aux->type = node_annot->type;
-                aux->children = node_annot->children;
-                aux->related_goal = node_annot->related_goal;
-                
+                vector<general_annot*> new_annots;
+                for(int i = 0; i < generated_instances; i++) {
+                    general_annot* aux = new general_annot();
+
+                    aux->content = node_annot->content;
+                    aux->type = node_annot->type;
+                    aux->related_goal = node_annot->related_goal;
+                    aux->parent = node_annot;
+                    recursive_child_replacement(aux, node_annot);
+
+                    new_annots.push_back(aux);
+                }
+
                 node_annot->content = "#";
                 node_annot->type = OPERATOR;
-                node_annot->children.clear();
                 node_annot->related_goal = "";
-                for(int i = 0;i < generated_instances;i++) {
-                    general_annot* child = new general_annot();
-                    
-                    child->content = aux->content;
-                    child->type = aux->type;
-                    child->children = aux->children;
-                    child->related_goal = aux->related_goal;
-
-                    node_annot->children.push_back(child);
+                node_annot->children.clear();
+                for(general_annot* annot : new_annots) {
+                    node_annot->children.push_back(annot);
                 }
+
+                int index = 0;
+                for(general_annot* node_ch : node_annot->children) {
+                    string var_type = valid_variables[iterated_var].first;
+                    vector<pt::ptree> iteration_var_value;
+                    iteration_var_value.push_back(valid_variables[iterated_var].second.at(index));
+
+                    valid_variables[iteration_var] = make_pair(var_type, iteration_var_value);
+
+                    unsigned int child_index = 0;
+                    for(general_annot* child : node_ch->children) {
+                        child->parent = node_ch;
+                        vector<int> vctr_aux;
+                        recursive_gm_annot_generation(child, vctr, gm, worlddb, high_level_loc_types, c_node, valid_variables, valid_forAll_conditions, node_depths);
+
+                        if(child_index < node_annot->children.size()-1) {
+                            unsigned int nodes_diff = vctr_aux.size() - vctr.size();
+                                
+                            vector<int> to_insert(vctr_aux.begin(),vctr_aux.begin() + nodes_diff);
+                            std::reverse(to_insert.begin(),to_insert.end());
+
+                            for(int elem : to_insert) {
+                                vctr.insert(vctr.begin(),elem);
+                            }   
+                        }
+
+                        child_index++;
+                    }
+
+                    index++;
+                }
+
+                expanded_in_forAll = true;
+            } else {
+                string var_type = valid_variables[iterated_var].first;
+                vector<pt::ptree> iteration_var_value;
+                iteration_var_value.push_back(valid_variables[iterated_var].second.at(0));
+
+                valid_variables[iteration_var] = make_pair(var_type, iteration_var_value);
+            }
+        } 
+
+        if(!expanded_in_forAll) {
+            for(general_annot* child : node_annot->children) {
+                child->parent = node_annot;
+                int c_node = vctr.at(0);
+                recursive_gm_annot_generation(child, vctr, gm, worlddb, high_level_loc_types, c_node, valid_variables, valid_forAll_conditions, node_depths);
             }
         }
     } else {
@@ -253,69 +267,94 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
             node_annot->related_goal = expanded_annot->related_goal;
             
             vctr.erase(vctr.begin());
-            for(general_annot* child : node_annot->children) {
-                int c_node = vctr.at(0);
-                child->parent = node_annot;
-                recursive_gm_annot_generation(child, vctr, gm, worlddb, high_level_loc_types, c_node, valid_variables, valid_forAll_conditions, node_depths);
-            }
 
-            std::cout << "is forAll goal? " << is_forAll_goal << std::endl;
-            std::cout << "Goal Name: " << get_node_name(gm[current_node].text) << std::endl;
+            bool expanded_in_forAll = false;
+            
             if(is_forAll_goal) {
                 string iterated_var = valid_forAll_conditions[depth].get_iterated_var();
+                string iteration_var = valid_forAll_conditions[depth].get_iteration_var();
+
                 int generated_instances = valid_variables[iterated_var].second.size();
 
-                std::cout << "iterated var: " << iterated_var << std::endl;
-                std::cout << "valid_variables[iterated_var].second.size(): " << valid_variables[iterated_var].second.size() << std::endl;
-
-                /*
-                    Generation of multiple instances of the forAll goal and its children
-                */
                 if(generated_instances > 1) {
-                    std::cout << "Generated instances > 1" << std::endl;
-                    general_annot* aux = new general_annot();
+                    int c_node = vctr.at(0);
 
-                    aux->content = node_annot->content;
-                    aux->type = node_annot->type;
-                    aux->children = node_annot->children;
-                    aux->related_goal = node_annot->related_goal;
-                    aux->non_coop = node_annot->non_coop;
-                    aux->group = node_annot->group;
-                    aux->divisible = node_annot->divisible;
+                    vector<general_annot*> new_annots;
+                    for(int i = 0; i < generated_instances; i++) {
+                        general_annot* aux = new general_annot();
 
-                    node_annot->content = "#"; //Do we need to define a custom operator for instances generated by a forAll expression?
+                        aux->content = node_annot->content;
+                        aux->type = node_annot->type;
+                        aux->related_goal = node_annot->related_goal;
+                        aux->parent = node_annot;
+                        aux->non_coop = node_annot->non_coop;
+                        aux->group = node_annot->group;
+                        aux->divisible = node_annot->divisible;
+                        recursive_child_replacement(aux, node_annot);
+
+                        new_annots.push_back(aux);
+                    }
+
+                    node_annot->content = "#";
                     node_annot->type = OPERATOR;
-                    node_annot->children.clear();
                     node_annot->related_goal = "";
+                    node_annot->children.clear();
                     node_annot->group = true;
                     node_annot->divisible = true;
-                    for(int i = 0;i < generated_instances;i++) {
-                        general_annot* child = new general_annot();
-                        
-                        child->content = aux->content;
-                        child->type = aux->type;
-                        child->non_coop = aux->non_coop;
-                        child->group = aux->group;
-                        child->divisible = aux->divisible;
-                        for(general_annot* ch : aux->children) {
-                            general_annot* copy = new general_annot();
-
-                            copy->content = ch->content;
-                            copy->type = ch->type;
-                            copy->related_goal = ch->related_goal;
-                            copy->non_coop = ch->non_coop;
-                            copy->group = ch->group;
-                            copy->divisible = ch->divisible;
-                            recursive_child_replacement(copy, ch);
-                            
-                            copy->parent = child;
-                            child->children.push_back(copy);
-                        }
-                        child->related_goal = aux->related_goal;
-
-                        child->parent = node_annot;
-                        node_annot->children.push_back(child);
+                    for(general_annot* annot : new_annots) {
+                        node_annot->children.push_back(annot);
                     }
+
+                    int index = 0;
+                    for(general_annot* node_ch : node_annot->children) {
+                        string var_type = valid_variables[iterated_var].first;
+                        vector<pt::ptree> iteration_var_value;
+                        iteration_var_value.push_back(valid_variables[iterated_var].second.at(index));
+
+                        valid_variables[iteration_var] = make_pair(var_type, iteration_var_value);
+
+                        unsigned int child_index = 0;
+                        for(general_annot* child : node_ch->children) {
+                            child->parent = node_ch;
+                            vector<int> vctr_aux = vctr;
+                            recursive_gm_annot_generation(child, vctr, gm, worlddb, high_level_loc_types, c_node, valid_variables, valid_forAll_conditions, node_depths);
+                            
+                            if(child_index < node_annot->children.size()-1) {
+                                unsigned int nodes_diff = vctr_aux.size() - vctr.size();
+                                
+                                vector<int> to_insert(vctr_aux.begin(),vctr_aux.begin() + nodes_diff);
+                                std::reverse(to_insert.begin(),to_insert.end());
+
+                                for(int elem : to_insert) {
+                                    vctr.insert(vctr.begin(),elem);
+                                }   
+                            }
+
+                            child_index++;
+                        }
+
+                        index++;
+                    } 
+
+                    expanded_in_forAll = true;
+                } else {
+                    string var_type = valid_variables[iterated_var].first;
+                    size_t begin = var_type.find("(")+1;
+                    size_t end = var_type.find(")", begin);
+                    var_type = var_type.substr(begin,end-begin); 
+
+                    vector<pt::ptree> iteration_var_value;
+                    iteration_var_value.push_back(valid_variables[iterated_var].second.at(0));
+
+                    valid_variables[iteration_var] = make_pair(var_type, iteration_var_value);
+                }
+            }
+
+            if(!expanded_in_forAll) {
+                for(general_annot* child : node_annot->children) {            
+                    int c_node = vctr.at(0);
+                    child->parent = node_annot;
+                    recursive_gm_annot_generation(child, vctr, gm, worlddb, high_level_loc_types, c_node, valid_variables, valid_forAll_conditions, node_depths);
                 }
             }
         }
@@ -379,9 +418,10 @@ void recursive_child_replacement(general_annot* copy, general_annot* original) {
 
     @ Input 1: The goal model runtime annotation
     @ Input 2: The at instances map
+    @ Input 3: The goal model as a GMGraph object
     @ Output: Void. The goal model runtime annotation has the AT's instances renamed
 */ 
-void rename_at_instances_in_runtime_annot(general_annot* gmannot, map<string,vector<AbstractTask>> at_instances) {
+void rename_at_instances_in_runtime_annot(general_annot* gmannot, map<string,vector<AbstractTask>> at_instances, GMGraph gm) {
     map<string,int> at_instances_counter;
 
     map<string,vector<AbstractTask>>::iterator at_inst_it;
@@ -393,17 +433,17 @@ void rename_at_instances_in_runtime_annot(general_annot* gmannot, map<string,vec
             task_id = at_inst_it->second.at(0).id;
         }
 
-        at_instances_counter[task_id] = 1;
+        at_instances_counter[task_id] = 0;
     }
 
     if(gmannot->content == "#" && gmannot->related_goal == "") {
         //Dealing with a forAll in the root
         for(general_annot* child : gmannot->children) {
-            recursive_at_instances_renaming(child, at_instances_counter, true);
+            recursive_at_instances_renaming(child, at_instances_counter, true, at_instances, gm);
         }
     } else {
         for(general_annot* child : gmannot->children) {
-            recursive_at_instances_renaming(child, at_instances_counter, false);
+            recursive_at_instances_renaming(child, at_instances_counter, false, at_instances, gm);
         }
     }
 }
@@ -415,37 +455,39 @@ void rename_at_instances_in_runtime_annot(general_annot* gmannot, map<string,vec
     @ Input 1: The runtime annotation being considered
     @ Input 2: The counter in order to know which instance we left
     @ Input 3: Boolean flag to know if we have a forAll generated node in the root
+    @ Input 4: The at instances map
+    @ Input 5: The goal model as a GMGraph object
     @ Output: Void. The runtime goal model annotation is renamed
 */ 
-void recursive_at_instances_renaming(general_annot* rannot, map<string,int>& at_instances_counter, bool in_forAll) {
+void recursive_at_instances_renaming(general_annot* rannot, map<string,int>& at_instances_counter, bool in_forAll, map<string,vector<AbstractTask>> at_instances, GMGraph gm) {
     set<string> operators {";","#","FALLBACK","OPT","|"};
 
     set<string>::iterator op_it;
 
     op_it = operators.find(rannot->content);
 
-    std::cout << "rannot->content: " << rannot->content << std::endl;
-
     if(op_it == operators.end()) { //If we have a task
         if(rannot->type == TASK) {
-            string aux = rannot->content;
-            rannot->content = rannot->content + "_" + to_string(at_instances_counter[rannot->content]);
+            int gm_id = find_gm_node_by_id(rannot->content.substr(0,rannot->content.find("_")), gm);
+            pair<string,string> at_id_name = parse_at_text(gm[gm_id].text);
 
-            at_instances_counter[aux]++;
+            rannot->content = at_instances[at_id_name.second].at(at_instances_counter[at_id_name.first]).id;
+
+            at_instances_counter[at_id_name.first]++;
         } else {
             if(rannot->type == MEANSEND) {
                 general_annot* child = rannot->children.at(0);
-                recursive_at_instances_renaming(child, at_instances_counter, in_forAll);
+                recursive_at_instances_renaming(child, at_instances_counter, in_forAll, at_instances, gm);
             }
         }
     } else {
         if(rannot->content == "#" && rannot->related_goal == "") {
             for(general_annot* child : rannot->children) {
-                recursive_at_instances_renaming(child, at_instances_counter, true);
+                recursive_at_instances_renaming(child, at_instances_counter, true, at_instances, gm);
             }
         } else {
             for(general_annot* child : rannot->children) {
-                recursive_at_instances_renaming(child, at_instances_counter, in_forAll);
+                recursive_at_instances_renaming(child, at_instances_counter, in_forAll, at_instances, gm);
             }
         }
     }
@@ -586,4 +628,108 @@ void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm
 
 		valid_variables[var_name] = make_pair(var_type,aux);
 	}
+}
+
+pt::ptree get_query_ptree(GMGraph gm, int node_id, map<string,pair<string,vector<pt::ptree>>> valid_variables, map<int,AchieveCondition> valid_forAll_conditions, pt::ptree world_tree) {
+	pt::ptree queried_tree;
+	QueriedProperty q = std::get<QueriedProperty>(gm[node_id].custom_props["QueriedProperty"]);
+
+	if(q.queried_var == world_db_query_var) {
+		queried_tree = world_tree;
+	} else {
+		bool valid_query = true;
+		if(q.queried_var.find(".") == string::npos) {
+			if(valid_variables.find(q.queried_var) != valid_variables.end()) {
+				if(valid_variables[q.queried_var].second.size() != 1) {
+					valid_query = false;
+				} else {
+					queried_tree = valid_variables[q.queried_var].second.at(0);
+				}
+			} else {
+				valid_query = false;
+			}
+		} else {
+			vector<string> query_attrs;
+						
+			string queried_var = q.queried_var;
+			std::replace(queried_var.begin(), queried_var.end(),'.',' ');
+
+			stringstream ss(queried_var);
+			string temp;
+			while(ss >> temp) {
+				query_attrs.push_back(temp);
+			}
+
+			pt::ptree var_to_query;
+			string var_type;
+
+			bool found_var = false;
+			int current_attr = 0;
+
+			if(valid_variables.find(query_attrs.at(0)) != valid_variables.end()) {
+				var_type = valid_variables[query_attrs.at(0)].first;
+				found_var = true;
+			}
+
+			if(!found_var) {
+				valid_query = false;
+			}			
+							
+			if(valid_query) {
+				BOOST_FOREACH(pt::ptree::value_type& child, world_tree) {
+					if(child.first == var_type) {	
+						if(child.second.get<string>("name") == valid_variables[query_attrs.at(0)].second.at(0).get<string>("name")) { //Check
+							boost::optional<pt::ptree&> attr = child.second.get_child_optional(query_attrs.at(1));
+							if(!attr) {
+								valid_query = false;
+							} else {
+								current_attr = 1;
+								var_to_query = attr.get();
+							}
+
+							break;
+						}
+					}
+				}
+
+				while(current_attr < int(query_attrs.size())-1 && valid_query) {
+					boost::optional<pt::ptree&> attr = var_to_query.get_child_optional(query_attrs.at(current_attr+1));
+					if(!attr) {
+						valid_query = false;
+					} else {
+						current_attr++;
+						var_to_query = attr.get();
+					}
+				}
+
+				if(valid_query) {
+					string queried_var_type = std::get<vector<pair<string,string>>>(gm[node_id].custom_props["Controls"]).at(0).second;
+										
+					string gm_var_type = parse_gm_var_type(queried_var_type);
+					if(gm_var_type == "COLLECTION") {
+                        size_t begin = queried_var_type.find("(")+1;
+                        size_t end = queried_var_type.find(")");
+						queried_var_type = queried_var_type.substr(begin,end-begin);
+					}
+
+					BOOST_FOREACH(pt::ptree::value_type& child, var_to_query) {
+						if(child.first != queried_var_type) {
+							valid_query = false;
+							break;
+						}
+					}
+				}
+			}
+
+			if(valid_query) {
+				queried_tree = var_to_query;
+			} else { 
+				string invalid_query_error = "Invalid query in Goal " + get_node_name(gm[node_id].text);
+
+				throw std::runtime_error(invalid_query_error);
+			}	
+		}
+	}
+
+	return queried_tree;
 }

@@ -75,8 +75,6 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 	for(int v : vctr) {
 		current = v;
 
-		std::cout << "Current Node: " << get_node_name(gm[v].text) << std::endl;
-
 		/*
 			If the last visited vertex is not the same as the current we verify:
 
@@ -615,7 +613,6 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 									}
 									additional_var_mappings.push_back(new_var_mapping);
 							} else { 
-								std::cout << "VAR: " << var.get_gm_var() << std::endl;
 								string var_mapping_error = "Could not find variable mapping for task " + at_def.second;
 
 								throw std::runtime_error(var_mapping_error);
