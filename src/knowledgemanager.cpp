@@ -1,6 +1,8 @@
 #include "knowledgemanager.hpp"
+
 #include <sstream>
 #include <iostream>
+#include <stack>
 
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>
@@ -57,7 +59,7 @@ void initialize_objects(KnowledgeBase worlddb, KnowledgeBase robotsdb, map<strin
 
     pt::ptree worlddb_root;
     if(worlddb.get_root_key() == "") {
-        worlddb_root = worlddb.get_knowledge();
+        worlddb_root = worlddb.get_knowledge(); 
     } else {
         worlddb_root = worlddb.get_knowledge().get_child(worlddb.get_root_key());
     }
@@ -99,13 +101,65 @@ void initialize_objects(KnowledgeBase worlddb, KnowledgeBase robotsdb, map<strin
 		}
 	}
 
-    map<string,vector<string>> robot_types;
+    /*
+        Initializing objects that are not of location type but are declared in the configuration file type mappings
+    */
+    pt::ptree current_tree = worlddb_root;
+                    
+    stack<pt::ptree> ptree_stack;
+                    
+    pt::ptree::const_iterator end = current_tree.end();
+    pt::ptree::const_iterator it = current_tree.begin();
+
+    while(it != end) {
+        bool changed_tree = false;
+
+        pt::ptree::value_type child = *it;
+
+        if(type_mapping.find(child.first) != type_mapping.end()) {
+            string hddl_type = type_mapping[child.first];
+            sorts[hddl_type].insert(child.second.get<string>("name"));
+        }
+
+        string child_data = child.second.data();
+        boost::trim(child_data);
+        if(!child.second.empty() && child_data == "") {
+            current_tree.pop_front();
+            if(current_tree.size() > 0) {
+                ptree_stack.push(current_tree);
+            }
+            current_tree = child.second;
+
+            end = current_tree.end();
+            it = current_tree.begin();
+
+            changed_tree = true;
+        }
+
+        if(!changed_tree && it != end) {
+            it++;
+            current_tree.pop_front();
+        }
+
+        if(it == end && ptree_stack.size() != 0) {
+            current_tree = ptree_stack.top();
+            ptree_stack.pop();
+
+            it = current_tree.begin();
+            end = current_tree.end();
+        }
+    }
+
+    /*map<string,vector<string>> robot_types;
 
     BOOST_FOREACH(pt::ptree::value_type child, robotsdb_root) {
         if(child.first == "robot") {
             Robot r;
             r.name = child.second.get<string>("name");
-            r.type = child.second.get<string>("type");
+            boost::optional<string> r_type = child.second.get_optional("type");
+            if(r_type) {
+                r.type = child.second.get<string>("type");
+            }
             r.pos = child.second.get<string>("pos");
 
             assigned_robots.push_back(r);
@@ -122,7 +176,7 @@ void initialize_objects(KnowledgeBase worlddb, KnowledgeBase robotsdb, map<strin
 
             sorts["robotlocation"].insert(r.pos);
         }
-    } 
+    } */
 }
 
 /*
@@ -162,7 +216,7 @@ void initialize_world_state(KnowledgeBase robotsdb, KnowledgeBase worlddb, vecto
     }
 
     //Initialize at predicates
-    for(Robot r : assigned_robots) {
+    /*for(Robot r : assigned_robots) {
         ground_literal l;
         l.predicate = "at";
         l.positive = true;
@@ -198,7 +252,7 @@ void initialize_world_state(KnowledgeBase robotsdb, KnowledgeBase worlddb, vecto
                 }
             }
         }
-    }
+    }*/
 
     /*
         Initialize predicates from semantic mappings given at the configuration file
@@ -223,8 +277,19 @@ void initialize_world_state(KnowledgeBase robotsdb, KnowledgeBase worlddb, vecto
                     } else {
                         used_db = worlddb_root;
                     }
-                                
-                    BOOST_FOREACH(pt::ptree::value_type& child, used_db) {
+
+                    pt::ptree current_tree = used_db;
+                    
+                    stack<pt::ptree> ptree_stack;
+                    
+                    pt::ptree::const_iterator end = current_tree.end();
+                    pt::ptree::const_iterator it = current_tree.begin();
+
+                    while(it != end) {
+                        bool changed_tree = false;
+
+                        pt::ptree::value_type child = *it;
+
                         if(child.first == relation_type) {
                             //Only insert the predicate if the object exists (was initialized) in the sorts map
                             string hddl_type = type_mapping[relation_type];
@@ -248,6 +313,34 @@ void initialize_world_state(KnowledgeBase robotsdb, KnowledgeBase worlddb, vecto
 
                                 init.push_back(l);
                             }
+                        } else {
+                            string child_data = child.second.data();
+                            boost::trim(child_data);
+                            if(!child.second.empty() && child_data == "") {
+                                current_tree.pop_front();
+                                if(current_tree.size() > 0) {
+                                    ptree_stack.push(current_tree);
+                                }
+                                current_tree = child.second;
+
+                                end = current_tree.end();
+                                it = current_tree.begin();
+
+                                changed_tree = true;
+                            }
+                        }
+
+                        if(!changed_tree && it != end) {
+                            it++;
+                            current_tree.pop_front();
+                        }
+
+                        if(it == end && ptree_stack.size() > 0) {
+                            current_tree = ptree_stack.top();
+                            ptree_stack.pop();
+
+                            it = current_tree.begin();
+                            end = current_tree.end();
                         }
                     }
                 }

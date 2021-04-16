@@ -334,10 +334,12 @@ int main(int argc, char** argv) {
 
 	print_world_state(init);
 
+	std::cout << "[TESTE1]" << std::endl;
 	general_annot* gmannot = retrieve_gm_annot(gm, world_db.get_knowledge(), high_level_loc_types, at_instances);
-
-	rename_at_instances_in_runtime_annot(gmannot, at_instances);
-
+	std::cout << "[TESTE2]" << std::endl;
+	print_runtime_annot_from_general_annot(gmannot);
+	rename_at_instances_in_runtime_annot(gmannot, at_instances, gm);
+	std::cout << "[TESTE3]" << std::endl;
 	print_runtime_annot_from_general_annot(gmannot);		
 
 	/*

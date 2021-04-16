@@ -9,6 +9,8 @@
 
 using namespace std;
 
+const string world_db_query_var = "location_db";
+
 
 /*
     Function: generate_at_instances
@@ -29,6 +31,7 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 														KnowledgeBase world_db, map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map,
 															vector<VariableMapping> var_mapping) {
 	vector<int> vctr = get_dfs_gm_nodes(gm);
+
 	/*
 		Get the world knowledge ptree. We disconsider the root key, if any, since we expect it to be
 		just a name like world_db or similar
@@ -41,10 +44,7 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 	}
 
 	/*
-		Get the high-level location type
-
-		-> TODO: We declare a set of locations since we expect to be able to have multiple
-		high-level location types
+		Get the high-level location types
 	*/
 	set<string> dsl_locations; //Locations that must be declared in the DSL
 	BOOST_FOREACH(pt::ptree::value_type& child, world_tree) {
@@ -69,10 +69,11 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 
 	bool insert_events = true;
 
+	// This is related to queries that query iteration variables of forAll conditions
+	map<string,pair<int,QueriedProperty>> props_to_query;
+
 	for(int v : vctr) {
 		current = v;
-
-		std::cout << "Current Node: " << gm[v].text << std::endl;
 
 		/*
 			If the last visited vertex is not the same as the current we verify:
@@ -140,7 +141,6 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 		}
 
 		if(gm[v].type == "istar.Goal") { 
-
 			/*
 				If current vertex is a goal in the GM we check its type
 
@@ -184,61 +184,10 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 			*/
 
 			if(std::get<string>(gm[v].custom_props["GoalType"]) == "Query") {
-				vector<pt::ptree> aux;
+				pt::ptree queried_tree = get_query_ptree(gm, v, valid_variables, valid_forAll_conditions, props_to_query, gm_var_map, world_tree);
 				QueriedProperty q = std::get<QueriedProperty>(gm[v].custom_props["QueriedProperty"]);
 
-				BOOST_FOREACH(pt::ptree::value_type& child, world_tree) {
-					if(child.first == q.query_var.second) {
-						if(q.query.size() == 1) {
-							if(q.query.at(0) != "") {
-								string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
-								bool prop_val;
-								istringstream(boost::to_lower_copy(child.second.get<string>(prop))) >> std::boolalpha >> prop_val;
-								if(q.query.at(0).find('!') != string::npos) {
-									prop_val = !prop_val;
-								}
-								if(prop_val) aux.push_back(child.second);
-							} else {
-								aux.push_back(child.second);
-							}
-						} else {
-							string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
-							string prop_val;
-							try {
-								prop_val = child.second.get<string>(prop);
-							} catch(...) {
-								string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + gm[v].text; 
-								throw std::runtime_error(bad_condition);
-							}
-
-							bool result;
-							if(q.query.at(1) == "==") {
-								result = (prop_val == q.query.at(2));
-							} else {
-								result = (prop_val != q.query.at(2));
-							}
-							if(result) aux.push_back(child.second);
-						}
-					}
-				}
-
-				string var_name = std::get<vector<pair<string,string>>>(gm[v].custom_props["Controls"]).at(0).first;
-				string var_type = std::get<vector<pair<string,string>>>(gm[v].custom_props["Controls"]).at(0).second;
-
-				valid_variables[var_name] = make_pair(var_type,aux);
-				
-				string gm_var_type = parse_gm_var_type(var_type);
-				if(gm_var_type == "VALUE") {
-					//We assume everything has a name attribute
-					gm_var_map[var_name] = make_pair(aux.at(0).get<string>("name"),var_type); 
-				} else if(gm_var_type == "COLLECTION") {
-					vector<string> var_value;
-					for(pt::ptree t : aux) {
-						var_value.push_back(t.get<string>("name"));
-					}
-
-					gm_var_map[var_name] = make_pair(var_value,var_type);
-				}
+				solve_query_statement(queried_tree, q, gm, v, valid_variables, gm_var_map);
 			} else if(std::get<string>(gm[v].custom_props["GoalType"]) == "Achieve") {
 				AchieveCondition a = std::get<AchieveCondition>(gm[v].custom_props["AchieveCondition"]);
 				if(a.has_forAll_expr) {
@@ -302,146 +251,379 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 				throw std::runtime_error(bad_at_error);
 			}
 
+			set<string> mapped_gm_vars;
+			map<string,vector<pair<string,pt::ptree>>> query_vals;
+
+			/*
+				If we have valid forAll conditions, the AT must have the iteration variable of each of them
+
+				-> The only exception for this is the case where the AT has a location var which is of same type of the unsatisfied forAll condition
+			*/
 			if(!valid_forAll_conditions.empty()) { // We have valid forAll conditions
-				string location_var, forAll_iterated_var, forAll_iteration_var;
-				map<int,AchieveCondition>::iterator a_it;
-
-				for(a_it = valid_forAll_conditions.begin();a_it != valid_forAll_conditions.end();++a_it) {
-					//Since we are assuming one valid forAll condition, this will work properly
-					forAll_iterated_var = a_it->second.get_iterated_var();
-					forAll_iteration_var = a_it->second.get_iteration_var();
-					break;
-				}
-
+				string location_var;
 				if(gm[v].custom_props.find("Location") != gm[v].custom_props.end()) {
-					location_var = get<string>(gm[v].custom_props["Location"]);
+					location_var = std::get<string>(gm[v].custom_props["Location"]);
 				} else {
 					location_var = "";
 				}
 
-				if(location_var == forAll_iteration_var) { // Task location variable is equal to forAll iteration var
-					for(pt::ptree current_val : valid_variables[forAll_iterated_var].second) {
-						AbstractTask at;
-						
-						if(at_ids.find(at_def.first) != at_ids.end()) {
-							at_ids[at_def.first]++;
-						} else {
-							at_ids[at_def.first] = 1;
-						}
+				set<string> solved_forAll_iteration_vars;
+				vector<AchieveCondition> unsolved_forAll_conditions;
 
-						at.id = at_def.first + "_" + to_string(at_ids[at_def.first]);
-						at.name = at_def.second;
-						variant<vector<string>,string> loc = current_val.get<string>("name");
-						string var_type = get<pair<string,string>>(gm_var_map[location_var]).second;
-						at.location = make_pair(loc,make_pair(location_var,var_type));
-						at.at = at_hddl_def;
-						at.fixed_robot_num = gm[v].fixed_robot_num;
-						if(holds_alternative<int>(gm[v].robot_num)) {
-							at.robot_num = get<int>(gm[v].robot_num); 
-						} else {
-							at.robot_num = get<pair<int,int>>(gm[v].robot_num);
-						}
-						
-						for(VariableMapping var : var_mapping) {
-							if(var.get_task_id() == at_def.first) {
-								if(var.get_gm_var() == forAll_iteration_var) {
-									string var_type = valid_variables[forAll_iteration_var].first;
-									string var_value = current_val.get<string>("name");
-									at.variable_mapping.push_back(make_pair(make_pair(var_value,var_type),var.get_hddl_var()));
-								} else {
-									pair<pair<variant<vector<string>,string>,string>,string> new_var_mapping;
-									if(valid_variables.find(var.get_gm_var()) != valid_variables.end()) {
-										string var_type = valid_variables[var.get_gm_var()].first;
-										if(parse_gm_var_type(var_type) == "COLLECTION") {
-											vector<string> var_values;
-											for(pt::ptree v : valid_variables[var.get_gm_var()].second) {
-												var_values.push_back(v.get<string>("name"));
-											}
-											new_var_mapping = make_pair(make_pair(var_values,var_type),var.get_hddl_var());
-										} else {
-											string var_value = valid_variables[var.get_gm_var()].second.at(0).get<string>("name");
-											new_var_mapping = make_pair(make_pair(var_value,var_type),var.get_hddl_var());
-										}
-										at.variable_mapping.push_back(new_var_mapping);
-									} else { 
-										string var_mapping_error = "Could not find variable mapping for task " + at.name;
-										throw std::runtime_error(var_mapping_error);
-									}
-								}
-							}
-						}
+				map<int,AchieveCondition>::iterator a_it;
+				for(a_it = valid_forAll_conditions.begin();a_it != valid_forAll_conditions.end();++a_it) {
+					AchieveCondition current_condition = a_it->second;
 
-						at_instances[at.name].push_back(at);
+					if(solved_forAll_iteration_vars.find(current_condition.get_iteration_var()) != solved_forAll_iteration_vars.end()) {
+						string duplicated_variable_error = "Could not solve forAll conditions: Duplicate variable " + current_condition.get_iteration_var() + " in task " + at_def.first;
+
+						throw std::runtime_error(duplicated_variable_error); 
 					}
-				} else { // Task location variable is not equal to forAll iteration var
-					for(unsigned int i = 0;i < valid_variables[forAll_iterated_var].second.size();i++) {
-						AbstractTask at;
 
-						if(at_ids.find(at_def.first) != at_ids.end()) {
-							at_ids[at_def.first]++;
-						} else {
-							at_ids[at_def.first] = 1;
-						}
+					map<string,pair<int,QueriedProperty>>::iterator props_it = props_to_query.find(current_condition.get_iteration_var());
+					if(props_it != props_to_query.end()) {
+						for(pt::ptree current_val : valid_variables[current_condition.get_iterated_var()].second) {
+							vector<string> query_attrs;
+						
+							string queried_var = props_it->second.second.queried_var;
+							std::replace(queried_var.begin(), queried_var.end(),'.',' ');
 
-						at.id = at_def.first + "_" + to_string(at_ids[at_def.first]);
-						at.name = at_def.second;
-						variant<vector<string>,string> loc;
-						string var_type;
-						if(valid_variables[location_var].second.size() > 1) {
-							vector<string> aux;
-							for(pt::ptree l : valid_variables[location_var].second) {
-								aux.push_back(l.get<string>("name"));
+							stringstream ss(queried_var);
+							string temp;
+							while(ss >> temp) {
+								query_attrs.push_back(temp);
+							}	
+
+							pt::ptree query_ptree = current_val;
+							for(unsigned int i = 1;i < query_attrs.size();i++) {
+								boost::optional<pt::ptree&> attr_ptree = query_ptree.get_child_optional(query_attrs.at(i));
+								if(attr_ptree) {
+									query_ptree = attr_ptree.get();
+ 								} else {
+									string query_statement_error = "Cannot solve query in Goal" + get_node_name(gm[props_it->second.first].text);
+
+									throw std::runtime_error(query_statement_error);
+								}
 							}
-							loc = aux;
-							var_type = get<pair<vector<string>,string>>(gm_var_map[location_var]).second;
-						} else {
-							if(valid_variables[location_var].second.size() == 1) {
-								loc = valid_variables[location_var].second.at(0).get<string>("name");
-							} else {
-								loc = "";
-							}
-							var_type = get<pair<string,string>>(gm_var_map[location_var]).second;
+							query_vals[current_condition.get_iteration_var()].push_back(make_pair(current_val.get<string>("name"),query_ptree));
 						}
-						//at.location = make_pair(valid_variables[location_var].second.at(0).get<string>("name"), location_var);
-						at.location = make_pair(loc, make_pair(location_var,var_type));
-						at.at = at_hddl_def;
-						at.fixed_robot_num = gm[v].fixed_robot_num;
-						if(holds_alternative<int>(gm[v].robot_num)) {
-							at.robot_num = get<int>(gm[v].robot_num); 
-						} else {
-							at.robot_num = get<pair<int,int>>(gm[v].robot_num);
+					}
+
+					if(current_condition.get_iteration_var() == location_var) {
+						if(at_instances[at_def.second].size() == 0) {
+							AbstractTask at;
+
+							at.id = at_def.first;
+							at.name = at_def.second;
+
+							at_instances[at.name].push_back(at);
 						}
 
-						for(VariableMapping var : var_mapping) {
-							if(var.get_task_id() == at_def.first) {
-								if(var.get_gm_var() == forAll_iteration_var) {
-									string var_type = valid_variables[forAll_iteration_var].first;
-									string var_value = valid_variables[forAll_iteration_var].second.at(0).get<string>("name");
-									at.variable_mapping.push_back(make_pair(make_pair(var_value,var_type),var.get_hddl_var()));
-								} else {
-									pair<pair<variant<vector<string>,string>,string>,string> new_var_mapping;
-									if(valid_variables.find(var.get_gm_var()) != valid_variables.end()) {
-										string var_type = valid_variables[var.get_gm_var()].first;
-										if(parse_gm_var_type(var_type) == "COLLECTION") {
-											vector<string> var_values;
-											for(pt::ptree v : valid_variables[var.get_gm_var()].second) {
-												var_values.push_back(v.get<string>("name"));
+						vector<AbstractTask> old_instances = at_instances[at_def.second];
+						at_instances[at_def.second].clear();
+
+						for(AbstractTask at_inst : old_instances) {
+							for(VariableMapping vm : var_mapping) {
+								if(vm.get_task_id() == at_def.first && vm.get_gm_var() != current_condition.get_iteration_var()) {
+									map<string,vector<pair<string,pt::ptree>>>::iterator qvals_it = query_vals.find(vm.get_gm_var());
+									if(qvals_it != query_vals.end()) {
+										string q_value;
+										for(auto at_vm : at_inst.variable_mapping) {
+											if(at_vm.second == vm.get_hddl_var()) {
+												if(holds_alternative<string>(at_vm.first.first)) {
+													q_value = std::get<string>(at_vm.first.first);
+												} else{
+													//Error! iteration variables should not be of collection type
+												}
+												break;
 											}
-											new_var_mapping = make_pair(make_pair(var_values,var_type),var.get_hddl_var());
-										} else {
-											string var_value = valid_variables[var.get_gm_var()].second.at(0).get<string>("name");
-											new_var_mapping = make_pair(make_pair(var_value,var_type),var.get_hddl_var());
 										}
-										at.variable_mapping.push_back(new_var_mapping);
-									} else { 
-										string var_mapping_error = "Could not find variable mapping for task " + at.name;
-										throw std::runtime_error(var_mapping_error);
+										for(pair<string,pt::ptree> val_tree : qvals_it->second) {
+											if(val_tree.first == q_value) {
+												map<string,pair<int,QueriedProperty>>::iterator p_it = props_to_query.find(vm.get_gm_var());
+												solve_query_statement(val_tree.second, p_it->second.second, gm, p_it->second.first, valid_variables, gm_var_map);
+												break;
+											}
+										}
 									}
+								}
+							}
+
+							for(pt::ptree current_val : valid_variables[current_condition.get_iterated_var()].second) {
+								AbstractTask at;
+								
+								if(at_ids.find(at_inst.id) != at_ids.end()) {
+									at_ids[at_inst.id]++;
+								} else {
+									at_ids[at_inst.id] = 1;
+								}
+
+								at.id = at_inst.id + "_" + to_string(at_ids[at_inst.id]);
+								at.name = at_inst.name;
+
+								variant<vector<string>,string> loc = current_val.get<string>("name");
+								string var_type = get<pair<string,string>>(gm_var_map[location_var]).second;
+								at.location = make_pair(loc,make_pair(location_var,var_type));
+
+								at.at = at_hddl_def;
+								at.params = at_inst.params;
+								at.fixed_robot_num = gm[v].fixed_robot_num;
+								if(holds_alternative<int>(gm[v].robot_num)) {
+									at.robot_num = get<int>(gm[v].robot_num); 
+								} else {
+									at.robot_num = get<pair<int,int>>(gm[v].robot_num);
+								}
+								
+								for(VariableMapping var : var_mapping) {
+									if(var.get_task_id() == at_def.first) {
+										if(var.get_gm_var() == location_var) {
+											string var_type = valid_variables[location_var].first;
+											string var_value = current_val.get<string>("name");
+											at.variable_mapping.push_back(make_pair(make_pair(var_value,var_type),var.get_hddl_var()));
+
+											mapped_gm_vars.insert(var.get_gm_var());
+											break;
+										} 
+									}
+								}
+
+								at_instances[at.name].push_back(at);
+							}
+						}
+
+						solved_forAll_iteration_vars.insert(current_condition.get_iteration_var());
+					} else {
+						vector<string> params;
+
+						if(gm[v].custom_props.find("Params") != gm[v].custom_props.end()) {
+							params = std::get<vector<string>>(gm[v].custom_props["Params"]);
+						}
+
+						if(at_instances[at_def.second].size() == 0) {
+							AbstractTask at;
+
+							at.id = at_def.first;
+							at.name = at_def.second;
+
+							at_instances[at.name].push_back(at);
+						}
+
+						if(std::find(params.begin(), params.end(), current_condition.get_iteration_var()) != params.end()) {
+							vector<AbstractTask> old_instances = at_instances[at_def.second];
+							at_instances[at_def.second].clear();
+
+							for(AbstractTask at_inst : old_instances) {
+								for(VariableMapping vm : var_mapping) {
+									if(vm.get_task_id() == at_def.first && vm.get_gm_var() != current_condition.get_iteration_var()) {
+										map<string,vector<pair<string,pt::ptree>>>::iterator qvals_it = query_vals.find(vm.get_gm_var());
+										if(qvals_it != query_vals.end()) {
+											string q_value;
+											for(auto at_vm : at_inst.variable_mapping) {
+												if(at_vm.second == vm.get_hddl_var()) {
+													if(holds_alternative<string>(at_vm.first.first)) {
+														q_value = std::get<string>(at_vm.first.first);
+													} else{
+														//Error! iteration variables should not be of collection type
+													}
+													break;
+												}
+											}
+											for(pair<string,pt::ptree> val_tree : qvals_it->second) {
+												if(val_tree.first == q_value) {
+													map<string,pair<int,QueriedProperty>>::iterator p_it = props_to_query.find(vm.get_gm_var());
+													solve_query_statement(val_tree.second, p_it->second.second, gm, p_it->second.first, valid_variables, gm_var_map);
+													break;
+												}
+											}
+										}
+									}
+								}
+
+								for(pt::ptree current_val : valid_variables[current_condition.get_iterated_var()].second) {
+									AbstractTask at;
+								
+									if(at_ids.find(at_inst.id) != at_ids.end()) {
+										at_ids[at_inst.id]++;
+									} else {
+										at_ids[at_inst.id] = 1;
+									}
+
+									at.id = at_inst.id + "_" + to_string(at_ids[at_inst.id]);
+									at.name = at_inst.name;
+									at.location = at_inst.location;
+
+									at.at = at_hddl_def;
+									at.fixed_robot_num = gm[v].fixed_robot_num;
+									if(holds_alternative<int>(gm[v].robot_num)) {
+										at.robot_num = get<int>(gm[v].robot_num); 
+									} else {
+										at.robot_num = get<pair<int,int>>(gm[v].robot_num);
+									}
+
+									string param_value = current_val.get<string>("name");
+									at.params.push_back(param_value);
+
+									
+									for(VariableMapping var : var_mapping) {
+										if(var.get_task_id() == at_def.first) {
+											if(var.get_gm_var() == current_condition.get_iteration_var()) {
+												string var_type = valid_variables[current_condition.get_iteration_var()].first;
+												string var_value = current_val.get<string>("name");
+												at.variable_mapping.push_back(make_pair(make_pair(var_value,var_type),var.get_hddl_var()));
+
+												mapped_gm_vars.insert(var.get_gm_var());
+												break;
+											} 
+										}
+									}
+
+									at_instances[at.name].push_back(at);
+								}
+							}
+
+							solved_forAll_iteration_vars.insert(current_condition.get_iteration_var());
+						} else {
+							if(unsolved_forAll_conditions.size() == 0) {
+								unsolved_forAll_conditions.push_back(current_condition);
+							} else {
+								string unsolved_forAll_conditions_error = "Cannot solve all forAll conditions in task " + at_def.first;
+
+								throw std::runtime_error(unsolved_forAll_conditions_error);
+							}
+						}
+					}
+				}
+
+				assert(unsolved_forAll_conditions.size() <= 1);
+
+				/*
+					Solve unsolved forAll condition (if possible). This condition will be related to a location variable that isn't
+					an iteration variable of any forAll condition
+				*/
+				if(unsolved_forAll_conditions.size() > 0) {
+					AchieveCondition unsolved_condition = unsolved_forAll_conditions.at(0);
+					bool solved_condition = true;
+
+					if(location_var == "") {
+						solved_condition = false;
+					} else {
+						string iteration_var_type = std::get<pair<string,string>>(gm_var_map[unsolved_condition.get_iteration_var()]).second;
+						if(std::find(high_level_loc_types.begin(),high_level_loc_types.end(),iteration_var_type) == high_level_loc_types.end()) {
+							solved_condition = false;
+						}
+					}
+
+					if(solved_condition) {
+						bool found_location_type_condition = false;
+						map<int,AchieveCondition>::iterator forAll_it;
+						for(forAll_it = valid_forAll_conditions.begin();forAll_it != valid_forAll_conditions.end();++forAll_it) {
+							string iteration_var_type = std::get<pair<string,string>>(gm_var_map[forAll_it->second.get_iteration_var()]).second;
+							if(std::find(high_level_loc_types.begin(),high_level_loc_types.end(),iteration_var_type) != high_level_loc_types.end()) {
+								if(!found_location_type_condition) {
+									found_location_type_condition = true;
+								} else {
+									string multiple_forall_conditions_error = "Conflict between forAll conditions in task " + at_def.first;
+
+									throw std::runtime_error(multiple_forall_conditions_error);
 								}
 							}
 						}
 
-						at_instances[at.name].push_back(at);
+						if(!found_location_type_condition) {
+							solved_condition = false;
+						}
+					}
+
+					if(!solved_condition) {
+						string forAll_condition_not_found_error = "Could not solve forAll condition expansion in task " + at_def.first;
+
+						throw std::runtime_error(forAll_condition_not_found_error);
+					} else {
+						if(at_instances[at_def.second].size() == 0) {
+							AbstractTask at;
+
+							at.id = at_def.first;
+							at.name = at_def.second;
+
+							at_instances[at.name].push_back(at);
+						}
+
+						vector<AbstractTask> old_instances = at_instances[at_def.second];
+						at_instances[at_def.second].clear();
+
+						for(AbstractTask at_inst : old_instances) {
+							for(unsigned int i = 0;i < valid_variables[unsolved_condition.get_iterated_var()].second.size();i++) {
+								AbstractTask at;
+								
+								if(at_ids.find(at_inst.id) != at_ids.end()) {
+									at_ids[at_inst.id]++;
+								} else {
+									at_ids[at_inst.id] = 1;
+								}
+
+								at.id = at_inst.id + "_" + to_string(at_ids[at_inst.id]);
+								at.name = at_inst.name;
+
+								string var_value = std::get<pair<string,string>>(gm_var_map[location_var]).first;
+								string var_type = std::get<pair<string,string>>(gm_var_map[location_var]).second;
+								at.location = make_pair(var_value,make_pair(location_var,var_type));
+
+								at.at = at_hddl_def;
+								at.params = at_inst.params;
+								at.fixed_robot_num = gm[v].fixed_robot_num;
+								if(holds_alternative<int>(gm[v].robot_num)) {
+									at.robot_num = get<int>(gm[v].robot_num); 
+								} else {
+									at.robot_num = get<pair<int,int>>(gm[v].robot_num);
+								}
+
+								for(VariableMapping var : var_mapping) {
+									if(var.get_task_id() == at_def.first) {
+										if(var.get_gm_var() == location_var) {
+											at.variable_mapping.push_back(make_pair(make_pair(var_value,var_type),var.get_hddl_var()));
+
+											mapped_gm_vars.insert(var.get_gm_var());
+											break;
+										} 
+									}
+								}
+
+								at_instances[at.name].push_back(at);
+							}
+						}
+					}
+				}
+				
+				vector<pair<pair<variant<vector<string>,string>,string>,string>> additional_var_mappings;
+				for(VariableMapping var : var_mapping) {
+					if(mapped_gm_vars.find(var.get_gm_var()) == mapped_gm_vars.end()) {
+						if(var.get_task_id() == at_def.first) {
+							pair<pair<variant<vector<string>,string>,string>,string> new_var_mapping;
+							if(valid_variables.find(var.get_gm_var()) != valid_variables.end()) {
+								string var_type = valid_variables[var.get_gm_var()].first;
+									if(parse_gm_var_type(var_type) == "COLLECTION") {
+										vector<string> var_values;
+										for(pt::ptree v : valid_variables[var.get_gm_var()].second) {
+											var_values.push_back(v.get<string>("name"));
+										}
+										new_var_mapping = make_pair(make_pair(var_values,var_type),var.get_hddl_var());
+									} else {
+										string var_value = valid_variables[var.get_gm_var()].second.at(0).get<string>("name");
+										new_var_mapping = make_pair(make_pair(var_value,var_type),var.get_hddl_var());
+									}
+									additional_var_mappings.push_back(new_var_mapping);
+							} else { 
+								string var_mapping_error = "Could not find variable mapping for task " + at_def.second;
+
+								throw std::runtime_error(var_mapping_error);
+							}
+						}
+					}
+				}
+
+				for(AbstractTask at : at_instances[at_def.second]) {
+					for(pair<pair<variant<vector<string>,string>,string>,string> var_mapping : additional_var_mappings) {
+						at.variable_mapping.push_back(var_mapping);
 					}
 				}
 			} else { // We don't have valid forAll statements
@@ -481,7 +663,7 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 					}
 					var_type = get<pair<string,string>>(gm_var_map[location_var]).second;
 				}
-				//at.location = make_pair(valid_variables[location_var].second.at(0).get<string>("name"),location_var);
+
 				at.location = make_pair(loc, make_pair(location_var,var_type));
 				at.at = at_hddl_def;
 				at.fixed_robot_num = gm[v].fixed_robot_num;
@@ -496,10 +678,7 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 						if(valid_variables.find(var.get_gm_var()) != valid_variables.end()) {
 							pair<pair<variant<vector<string>,string>,string>,string> new_var_mapping;
 							string var_type = valid_variables[var.get_gm_var()].first;
-							std::cout << "GM VAR FOR AT " << at.name << ": " << var.get_gm_var() << std::endl;
-							std::cout << "VAR TYPE FOR AT " << at.name << ": " << var_type << std::endl;
 							if(parse_gm_var_type(var_type) == "COLLECTION") {
-								std::cout << "COLLECTION MAPPING FOR AT " << at.name << std::endl;
 								vector<string> var_values;
 								for(pt::ptree v : valid_variables[var.get_gm_var()].second) {
 									var_values.push_back(v.get<string>("name"));
@@ -765,4 +944,197 @@ bool check_path_validity(vector<task> path, vector<ground_literal> world_state, 
 	}
 
 	return valid_path;
+}
+
+void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm, int node_id, map<string,pair<string,vector<pt::ptree>>>& valid_variables, 
+							map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map) {
+	vector<pt::ptree> aux;
+				
+	if(!queried_tree.empty()) {
+		BOOST_FOREACH(pt::ptree::value_type& child, queried_tree) {
+			if(child.first == q.query_var.second) {
+				if(q.query.size() == 1) {
+					if(q.query.at(0) != "") {
+						string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
+						bool prop_val;
+						istringstream(boost::to_lower_copy(child.second.get<string>(prop))) >> std::boolalpha >> prop_val;
+						if(q.query.at(0).find('!') != string::npos) {
+							prop_val = !prop_val;
+						}
+						if(prop_val) aux.push_back(child.second);
+					} else {
+						aux.push_back(child.second);
+					}
+				} else {
+					string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
+					string prop_val;
+					try {
+						prop_val = child.second.get<string>(prop);
+					} catch(...) {
+						string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
+
+						throw std::runtime_error(bad_condition);
+					}
+
+					bool result;
+					if(q.query.at(1) == "==") {
+						result = (prop_val == q.query.at(2));
+					} else {
+						result = (prop_val != q.query.at(2));
+					}
+					if(result) aux.push_back(child.second);
+				}
+			}
+		}
+
+		string var_name = std::get<vector<pair<string,string>>>(gm[node_id].custom_props["Controls"]).at(0).first;
+		string var_type = std::get<vector<pair<string,string>>>(gm[node_id].custom_props["Controls"]).at(0).second;
+
+		valid_variables[var_name] = make_pair(var_type,aux);
+					
+		string gm_var_type = parse_gm_var_type(var_type);
+		if(gm_var_type == "VALUE") {
+			//We assume everything has a name attribute
+			gm_var_map[var_name] = make_pair(aux.at(0).get<string>("name"),var_type); 
+		} else if(gm_var_type == "COLLECTION") {
+			vector<string> var_value;
+			for(pt::ptree t : aux) {
+				var_value.push_back(t.get<string>("name"));
+			}
+
+			gm_var_map[var_name] = make_pair(var_value,var_type);
+		}
+	}
+}
+
+pt::ptree get_query_ptree(GMGraph gm, int node_id, map<string,pair<string,vector<pt::ptree>>> valid_variables, map<int,AchieveCondition> valid_forAll_conditions, map<string,pair<int,QueriedProperty>>& props_to_query,
+							map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map, pt::ptree world_tree) {
+	pt::ptree queried_tree;
+	QueriedProperty q = std::get<QueriedProperty>(gm[node_id].custom_props["QueriedProperty"]);
+
+	if(q.queried_var == world_db_query_var) {
+		queried_tree = world_tree;
+	} else {
+		bool valid_query = true;
+		if(q.queried_var.find(".") == string::npos) {
+			if(valid_variables.find(q.queried_var) != valid_variables.end()) {
+				if(valid_variables[q.queried_var].second.size() != 1) {
+					valid_query = false;
+				} else {
+					queried_tree = valid_variables[q.queried_var].second.at(0);
+				}
+			} else {
+				bool found_var = false;
+				map<int,AchieveCondition>::iterator f_it;
+				for(f_it = valid_forAll_conditions.begin();f_it != valid_forAll_conditions.end();++f_it) {
+					if(q.queried_var == f_it->second.get_iteration_var()) {
+						props_to_query[q.queried_var] = make_pair(node_id,q);
+						found_var = true;
+						break;
+					}
+				}
+
+				if(!found_var) {
+					valid_query = false;
+				}
+			}
+		} else {
+			vector<string> query_attrs;
+						
+			string queried_var = q.queried_var;
+			std::replace(queried_var.begin(), queried_var.end(),'.',' ');
+
+			stringstream ss(queried_var);
+			string temp;
+			while(ss >> temp) {
+				query_attrs.push_back(temp);
+			}
+
+			bool found_forAll_var = false;
+			map<int,AchieveCondition>::iterator f_it;
+			for(f_it = valid_forAll_conditions.begin();f_it != valid_forAll_conditions.end();++f_it) {
+				if(query_attrs.at(0) == f_it->second.get_iteration_var()) {
+					props_to_query[query_attrs.at(0)] = make_pair(node_id,q);
+					found_forAll_var = true;
+					break;
+				}
+			}
+
+			if(!found_forAll_var) {
+				pt::ptree var_to_query;
+				string var_type;
+
+				bool found_var = false;
+				int current_attr = 0;
+
+				if(valid_variables.find(query_attrs.at(0)) != valid_variables.end()) {
+					var_type = valid_variables[query_attrs.at(0)].first;
+					found_var = true;
+				} else if(gm_var_map.find(query_attrs.at(0)) != gm_var_map.end()) {
+					if(holds_alternative<pair<string,string>>(gm_var_map[query_attrs.at(0)])) {
+						var_type = std::get<pair<string,string>>(gm_var_map[query_attrs.at(0)]).second;
+						found_var = true;
+					}
+				}
+
+				if(!found_var) {
+					valid_query = false;
+				}					
+							
+				if(valid_query) {
+					BOOST_FOREACH(pt::ptree::value_type& child, world_tree) {
+						if(child.first == var_type) {				
+							if(child.second.get<string>("name") == valid_variables[query_attrs.at(0)].second.at(0).get<string>("name")) { //Doesn't work for collection variables
+								boost::optional<pt::ptree&> attr = child.second.get_child_optional(query_attrs.at(1));
+								if(!attr) {
+									valid_query = false;
+								} else {
+									current_attr = 1;
+									var_to_query = attr.get();
+								}
+
+								break;
+							}
+						}
+					}
+
+					while(current_attr < int(query_attrs.size())-1 && valid_query) {
+						boost::optional<pt::ptree&> attr = var_to_query.get_child_optional(query_attrs.at(current_attr+1));
+						if(!attr) {
+							valid_query = false;
+						} else {
+							current_attr++;
+							var_to_query = attr.get();
+						}
+					}
+
+					if(valid_query) {
+						string queried_var_type = std::get<vector<pair<string,string>>>(gm[node_id].custom_props["Controls"]).at(0).second;
+										
+						string gm_var_type = parse_gm_var_type(queried_var_type);
+						if(gm_var_type == "COLLECTION") {
+							queried_var_type = queried_var_type.substr(queried_var_type.find("(")+1,queried_var_type.find(")"));
+						}
+
+						BOOST_FOREACH(pt::ptree::value_type& child, var_to_query) {
+							if(child.first != queried_var_type) {
+								valid_query = false;
+								break;
+							}
+						}
+					}
+				}
+
+				if(valid_query) {
+					queried_tree = var_to_query;
+				} else { 
+					string invalid_query_error = "Invalid query in Goal " + get_node_name(gm[node_id].text);
+
+					throw std::runtime_error(invalid_query_error);
+				}	
+			}
+		}
+	}
+
+	return queried_tree;
 }
