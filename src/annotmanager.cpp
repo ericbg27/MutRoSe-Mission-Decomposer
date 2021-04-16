@@ -681,8 +681,7 @@ pt::ptree get_query_ptree(GMGraph gm, int node_id, map<string,pair<string,vector
 			if(valid_query) {
 				BOOST_FOREACH(pt::ptree::value_type& child, world_tree) {
 					if(child.first == var_type) {	
-                        std::cout << "TESTE" << std::endl;
-						if(child.second.get<string>("name") == valid_variables[query_attrs.at(0)].second.at(0).get<string>("name")) { //Check
+						if(child.second.get<string>("name") == valid_variables[query_attrs.at(0)].second.at(0).get<string>("name")) { //Doesn't work for collection variables
 							boost::optional<pt::ptree&> attr = child.second.get_child_optional(query_attrs.at(1));
 							if(!attr) {
 								valid_query = false;

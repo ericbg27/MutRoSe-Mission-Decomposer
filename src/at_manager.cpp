@@ -503,26 +503,24 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 				if(unsolved_forAll_conditions.size() > 0) {
 					AchieveCondition unsolved_condition = unsolved_forAll_conditions.at(0);
 					bool solved_condition = true;
-					AchieveCondition loc_forAll;
 
 					if(location_var == "") {
 						solved_condition = false;
-					} /*else {
-						if(std::get<pair<string,string>>(gm_var_map[unsolved_condition.get_iteration_var()]).second != std::get<pair<string,string>>(gm_var_map[location_var]).second) {
-							std::cout << "std::get<pair<string,string>>(gm_var_map[unsolved_condition.get_iteration_var()]).second: " << std::get<pair<string,string>>(gm_var_map[unsolved_condition.get_iteration_var()]).second << std::endl;
-							std::cout << "std::get<pair<string,string>>(gm_var_map[location_var]).second: " << std::get<pair<string,string>>(gm_var_map[location_var]).second << std::endl;
+					} else {
+						string iteration_var_type = std::get<pair<string,string>>(gm_var_map[unsolved_condition.get_iteration_var()]).second;
+						if(std::find(high_level_loc_types.begin(),high_level_loc_types.end(),iteration_var_type) == high_level_loc_types.end()) {
 							solved_condition = false;
 						}
-					}*/
+					}
 
 					if(solved_condition) {
-						bool found_same_type_condition = false;
+						bool found_location_type_condition = false;
 						map<int,AchieveCondition>::iterator forAll_it;
 						for(forAll_it = valid_forAll_conditions.begin();forAll_it != valid_forAll_conditions.end();++forAll_it) {
-							if(std::get<pair<string,string>>(gm_var_map[forAll_it->second.get_iteration_var()]).second == std::get<pair<string,string>>(gm_var_map[location_var]).second) { //Same type
-								if(!found_same_type_condition) {
-									found_same_type_condition = true;
-									//loc_forAll = forAll_it->second;
+							string iteration_var_type = std::get<pair<string,string>>(gm_var_map[forAll_it->second.get_iteration_var()]).second;
+							if(std::find(high_level_loc_types.begin(),high_level_loc_types.end(),iteration_var_type) != high_level_loc_types.end()) {
+								if(!found_location_type_condition) {
+									found_location_type_condition = true;
 								} else {
 									string multiple_forall_conditions_error = "Conflict between forAll conditions in task " + at_def.first;
 
@@ -531,9 +529,9 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 							}
 						}
 
-						/*if(!found_same_type_condition) {
+						if(!found_location_type_condition) {
 							solved_condition = false;
-						}*/
+						}
 					}
 
 					if(!solved_condition) {
@@ -1086,7 +1084,7 @@ pt::ptree get_query_ptree(GMGraph gm, int node_id, map<string,pair<string,vector
 				if(valid_query) {
 					BOOST_FOREACH(pt::ptree::value_type& child, world_tree) {
 						if(child.first == var_type) {				
-							if(child.second.get<string>("name") == valid_variables[query_attrs.at(0)].second.at(0).get<string>("name")) { //Check!
+							if(child.second.get<string>("name") == valid_variables[query_attrs.at(0)].second.at(0).get<string>("name")) { //Doesn't work for collection variables
 								boost::optional<pt::ptree&> attr = child.second.get_child_optional(query_attrs.at(1));
 								if(!attr) {
 									valid_query = false;
