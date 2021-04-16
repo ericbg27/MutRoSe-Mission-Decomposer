@@ -122,6 +122,9 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
 		}
     }
 
+    std::cout << "Current Node: " << get_node_name(gm[current_node].text) << std::endl;
+    std::cout << "vctr.size(): " << vctr.size() << std::endl;
+
     /*
         -> If we have an operator, simply check its children.
 
@@ -163,6 +166,7 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
                 }
 
                 int index = 0;
+                unsigned int child_index = 0;
                 for(general_annot* node_ch : node_annot->children) {
                     string var_type = valid_variables[iterated_var].first;
                     vector<pt::ptree> iteration_var_value;
@@ -170,7 +174,6 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
 
                     valid_variables[iteration_var] = make_pair(var_type, iteration_var_value);
 
-                    unsigned int child_index = 0;
                     for(general_annot* child : node_ch->children) {
                         child->parent = node_ch;
                         vector<int> vctr_aux;
@@ -306,6 +309,7 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
                     }
 
                     int index = 0;
+                    unsigned int child_index = 0;
                     for(general_annot* node_ch : node_annot->children) {
                         string var_type = valid_variables[iterated_var].first;
                         vector<pt::ptree> iteration_var_value;
@@ -313,7 +317,6 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
 
                         valid_variables[iteration_var] = make_pair(var_type, iteration_var_value);
 
-                        unsigned int child_index = 0;
                         for(general_annot* child : node_ch->children) {
                             child->parent = node_ch;
                             vector<int> vctr_aux = vctr;
@@ -678,6 +681,7 @@ pt::ptree get_query_ptree(GMGraph gm, int node_id, map<string,pair<string,vector
 			if(valid_query) {
 				BOOST_FOREACH(pt::ptree::value_type& child, world_tree) {
 					if(child.first == var_type) {	
+                        std::cout << "TESTE" << std::endl;
 						if(child.second.get<string>("name") == valid_variables[query_attrs.at(0)].second.at(0).get<string>("name")) { //Check
 							boost::optional<pt::ptree&> attr = child.second.get_child_optional(query_attrs.at(1));
 							if(!attr) {
