@@ -9,6 +9,8 @@
 
 using namespace std;
 
+set<string> accepted_output_file_types = {"XML"};
+
 SemanticMapping::SemanticMapping(string mapping_type, string mapped_type) {
     this->mapping_type = mapping_type;
     this->mapped_type = mapped_type;
@@ -125,10 +127,33 @@ map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>,
             -> FOR NOW THE ONLY ALLOWED TYPE IS XML
         */
         if(config.first == "output") {
-            string output_type = config.second.get<string>("file_type");
-            string output_path = config.second.get<string>("file_path");
+            vector<string> output_info;
 
-            config_info["output"] = make_pair(output_path,output_type);
+            string output_type = config.second.get<string>("output_type");
+            std::transform(output_type.begin(),output_type.end(),output_type.begin(),::toupper);
+            output_info.push_back(output_type);
+
+            if(output_type == "FILE") {
+                string file_type = config.second.get<string>("file_type");
+                std::transform(file_type.begin(),file_type.end(),file_type.begin(),::toupper);
+
+                if(accepted_output_file_types.find(file_type) == accepted_output_file_types.end()) {
+                    string unsupported_file_type_error = "File type [" + output_type + "] is not supported";
+
+                    throw std::runtime_error(unsupported_file_type_error);
+                }
+
+                string output_path = config.second.get<string>("file_path");
+                
+                output_info.push_back(output_path);
+                output_info.push_back(file_type);
+            } else {
+                string unsupported_output_type_error = "Output type [" + output_type + "] is not supported";
+
+                throw std::runtime_error(unsupported_output_type_error);
+            }
+
+            config_info["output"] = output_info;
         }
 
         //Read Possible High Level Location Types

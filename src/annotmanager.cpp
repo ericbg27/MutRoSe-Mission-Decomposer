@@ -365,7 +365,7 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
     }
 }
 
-std::shared_ptr<AnnotManager> AnnotManagerFactory::create_at_manager(std::shared_ptr<KnowledgeManager> k_manager) {
+std::shared_ptr<AnnotManager> AnnotManagerFactory::create_annot_manager(std::shared_ptr<KnowledgeManager> k_manager) {
     if(k_manager->get_knowledge_type() == FILEKNOWLEDGE) {
 		shared_ptr<AnnotManager> f_annot_manager = std::make_shared<FileKnowledgeAnnotManager>();
 		f_annot_manager->set_annot_manager_type(FILEANNOTMANAGER);

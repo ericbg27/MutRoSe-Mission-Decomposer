@@ -132,12 +132,12 @@ int main(int argc, char** argv) {
 	map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> cfg;
 	cfg = parse_configuration_file(argv[configfile]);
 
-	map<string,string> type_mapping = get<map<string,string>>(cfg["type_mapping"]);
+	map<string,string> type_mapping = std::get<map<string,string>>(cfg["type_mapping"]);
 
-	vector<VariableMapping> variable_mapping = get<vector<VariableMapping>>(cfg["var_mapping"]);
-	vector<SemanticMapping> semantic_mapping = get<vector<SemanticMapping>>(cfg["semantic_mapping"]);
+	vector<VariableMapping> variable_mapping = std::get<vector<VariableMapping>>(cfg["var_mapping"]);
+	vector<SemanticMapping> semantic_mapping = std::get<vector<SemanticMapping>>(cfg["semantic_mapping"]);
 	
-	vector<string> high_level_loc_types = get<vector<string>>(cfg["location_types"]);
+	vector<string> high_level_loc_types = std::get<vector<string>>(cfg["location_types"]);
 
 	//Generate Knowledge Bases and Knowledge Manager
 	KnowledgeManagerFactory k_manager_factory;
@@ -145,7 +145,7 @@ int main(int argc, char** argv) {
 	knowledge_manager->construct_knowledge_base("world_db", cfg);
 	knowledge_manager->construct_knowledge_base("robots_db", cfg);
 
-	pair<string,string> output = get<pair<string,string>>(cfg["output"]);
+	vector<string> output = std::get<vector<string>>(cfg["output"]);
 
 	//Parse HDDL Domain file
 	run_parser_on_file(domain_file, argv[dfile]);
@@ -346,7 +346,7 @@ int main(int argc, char** argv) {
 	print_world_state(init);
 
 	AnnotManagerFactory annot_manager_factory;
-	shared_ptr<AnnotManager> annot_manager_ptr = annot_manager_factory.create_at_manager(knowledge_manager);
+	shared_ptr<AnnotManager> annot_manager_ptr = annot_manager_factory.create_annot_manager(knowledge_manager);
 
 	general_annot* gmannot;
 
@@ -382,7 +382,7 @@ int main(int argc, char** argv) {
 
 	MissionDecomposerFactory mission_decomposer_factory;
 	shared_ptr<MissionDecomposer> mission_decomposer_ptr = mission_decomposer_factory.create_mission_decomposer(knowledge_manager);
-
+	
 	ATGraph mission_decomposition;
 
 	if(mission_decomposer_ptr->get_mission_decomposer_type() == FILEMISSIONDECOMPOSER) {
@@ -396,5 +396,16 @@ int main(int argc, char** argv) {
 
 	print_mission_decomposition(mission_decomposition); 
 
-	generate_instances_output(mission_decomposition, gm, output, init, semantic_mapping, sorts, sort_definitions, predicate_definitions);
+	if(output.at(0) == "FILE") {
+		FileOutputGeneratorFactory output_gen_factory;
+
+		pair<string,string> file_output_data = std::make_pair(output.at(1),output.at(2));
+		std::shared_ptr<FileOutputGenerator> output_generator_ptr = output_gen_factory.create_file_output_generator(file_output_data.second);
+
+		if(output_generator_ptr->get_file_output_generator_type() == XMLFILEOUTGEN) {
+			XMLOutputGenerator* output_generator = dynamic_cast<XMLOutputGenerator*>(output_generator_ptr.get());
+
+			output_generator->generate_instances_output(mission_decomposition, gm, file_output_data, init, semantic_mapping, sorts, sort_definitions, predicate_definitions);
+		}
+	}
 }

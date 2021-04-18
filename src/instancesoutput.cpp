@@ -6,8 +6,6 @@
 
 using namespace std;
 
-const string xml_type = "XML";
-
 /*
     Function: generate_instances_output
     Objective: This function generates the XML output with all task instances, constraints, actions and valid mission
@@ -24,7 +22,7 @@ const string xml_type = "XML";
 	@ Input 8: The predicates definitions
     @ Output: Void. The output file is generated in the given relative path
 */
-void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<string,string> output, vector<ground_literal> world_state, vector<SemanticMapping> semantic_mapping,
+void XMLOutputGenerator::generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<string,string> output, vector<ground_literal> world_state, vector<SemanticMapping> semantic_mapping,
                                 map<string,set<string>> sorts, vector<sort_definition> sort_definitions, vector<predicate_definition> predicate_definitions) {
     pair<ATGraph,map<int,int>> trimmed_mission_decomposition = generate_trimmed_at_graph(mission_decomposition);  
 
@@ -92,14 +90,16 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
     string file_type = output.second;
     std::transform(file_type.begin(),file_type.end(),file_type.begin(),::toupper);
 
-    if(file_type == xml_type) {
-        pt::xml_writer_settings<string> settings(' ',4);
-        pt::write_xml(output.first, output_file, std::locale(), settings);
-    } else {
-        string file_type_not_supported_error = "Unsupported output file type: " + file_type;
+    pt::xml_writer_settings<string> settings(' ',4);
+    pt::write_xml(output.first, output_file, std::locale(), settings);
+}
 
-        throw std::runtime_error(file_type_not_supported_error);
-    }
+void FileOutputGenerator::set_file_output_generator_type(file_output_generator_type fogt) {
+    fog_type = fogt;
+}
+
+file_output_generator_type FileOutputGenerator::get_file_output_generator_type() {
+    return fog_type;
 }
 
 /*
@@ -114,7 +114,7 @@ void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<s
             - Name
             - Capabilities
 */
-void output_actions(pt::ptree& output_file, map<string,task> actions) {
+void FileOutputGenerator::output_actions(pt::ptree& output_file, map<string,task> actions) {
     output_file.put("actions","");
 
     map<string,string>actions_id_map;
@@ -164,7 +164,7 @@ void output_actions(pt::ptree& output_file, map<string,task> actions) {
             - Decomposition (Into actions)
            -> Each instance corresponds to a decomposition of an AT
 */
-map<string,string> output_tasks(pt::ptree& output_file, vector<Decomposition> task_instances, vector<SemanticMapping> semantic_mapping) {
+map<string,string> FileOutputGenerator::output_tasks(pt::ptree& output_file, vector<Decomposition> task_instances, vector<SemanticMapping> semantic_mapping) {
     map<string,string> task_id_map;
 
     output_file.put("tasks","");
@@ -482,7 +482,7 @@ map<string,string> output_tasks(pt::ptree& output_file, vector<Decomposition> ta
             - Group (Important only if constraint is of NC type)
             - Divisible (Important only if constraint is of NC type)
 */
-void output_constraints(pt::ptree& output_file, vector<Constraint> final_mission_constraints, map<string,string> task_id_map) {
+void FileOutputGenerator::output_constraints(pt::ptree& output_file, vector<Constraint> final_mission_constraints, map<string,string> task_id_map) {
     output_file.put("constraints","");
     
     int constraint_counter = 0;
@@ -542,7 +542,7 @@ void output_constraints(pt::ptree& output_file, vector<Constraint> final_mission
             - Decomposition
             - Task Instances
 */
-void output_mission_decompositions(pt::ptree& output_file, vector<vector<pair<int,ATNode>>> valid_mission_decompositions, map<string,string> task_id_map) {
+void FileOutputGenerator::output_mission_decompositions(pt::ptree& output_file, vector<vector<pair<int,ATNode>>> valid_mission_decompositions, map<string,string> task_id_map) {
     output_file.put("mission_decompositions","");
 
     int decomposition_counter = 0;
@@ -558,6 +558,17 @@ void output_mission_decompositions(pt::ptree& output_file, vector<vector<pair<in
 
         decomposition_counter++;
     }
+}
+
+std::shared_ptr<FileOutputGenerator> FileOutputGeneratorFactory::create_file_output_generator(string file_type) {
+    shared_ptr<FileOutputGenerator> file_output_gen;
+
+    if(file_type == "XML") {
+        file_output_gen = std::make_shared<XMLOutputGenerator>();
+        file_output_gen->set_file_output_generator_type(XMLFILEOUTGEN);
+    }
+
+    return file_output_gen;
 }
 
 /*

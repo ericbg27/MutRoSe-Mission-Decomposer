@@ -14,7 +14,8 @@
     </world_db>
 
     <output>
-        <file_path>xml/Room Preparation/task_output.xml</file_path>
+        <output_type>file</output_type>
+        <file_path>xml/Room Preparation/Multiple Locations/V2/task_output.xml</file_path>
         <file_type>xml</file_type>
     </output>
 

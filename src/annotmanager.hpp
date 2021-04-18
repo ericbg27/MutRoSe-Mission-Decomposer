@@ -57,7 +57,7 @@ class FileKnowledgeAnnotManager : public AnnotManager {
 
 class AnnotManagerFactory {
     public:
-        std::shared_ptr<AnnotManager> create_at_manager(std::shared_ptr<KnowledgeManager> k_manager);
+        std::shared_ptr<AnnotManager> create_annot_manager(std::shared_ptr<KnowledgeManager> k_manager);
 };
 
 extern std::map<std::string,general_annot*> goals_and_rannots; //Map from goals to runtime annotation
