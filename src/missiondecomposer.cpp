@@ -6,6 +6,14 @@
 
 using namespace std;
 
+void MissionDecomposer::set_mission_decomposer_type(mission_decomposer_type mdt) {
+	md_type = mdt;
+}
+
+mission_decomposer_type MissionDecomposer::get_mission_decomposer_type() {
+	return md_type;
+}
+
 /*
     Function: build_at_graph
     Objective: Call the recursive Task Graph building structure, which generates an ATGraph object. This graph is the
@@ -31,12 +39,21 @@ using namespace std;
 			-> A recursive implementation seems to be the best approach
 			-> Let's not deal with the OPT or the FALLBACK case for the moment (29/11)
 */ 
-ATGraph build_at_graph(map<string,vector<AbstractTask>> at_instances, map<string,vector<vector<task>>> at_decomposition_paths, general_annot* gmannot, GMGraph gm, 
-						vector<ground_literal> init, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_vars_map, KnowledgeBase world_db,
+ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string,vector<AbstractTask>> at_instances, map<string,vector<vector<task>>> at_decomposition_paths, general_annot* gmannot, GMGraph gm, 
+						vector<ground_literal> init, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_vars_map,
 							vector<SemanticMapping> semantic_mapping) {
 	ATGraph mission_decomposition;
 
 	map<string, variant<string,vector<string>>> instantiated_vars;
+
+	shared_ptr<FileKnowledgeBase> world_knowledge_base = fk_manager->get_world_knowledge();
+
+    pt::ptree world_db;
+    if(world_knowledge_base->get_knowledge_file_type() == XML) {
+        XMLKnowledgeBase* xml_base = dynamic_cast<XMLKnowledgeBase*>(world_knowledge_base.get());
+
+        world_db = xml_base->get_knowledge();
+    }
 
 	recursive_at_graph_build(mission_decomposition, init, at_instances, at_decomposition_paths, gmannot, -1, gm, false, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
 
@@ -44,7 +61,7 @@ ATGraph build_at_graph(map<string,vector<AbstractTask>> at_instances, map<string
 }
 
 /*
-    Function: build_at_graph
+    Function: recursive_at_graph_build
     Objective: Call the recursive Task Graph building structure, which generates an ATGraph object. This graph is the
 	graph of all possible combinations of tasks
 
@@ -57,15 +74,15 @@ ATGraph build_at_graph(map<string,vector<AbstractTask>> at_instances, map<string
 	@ Input 7: The goal model as a GMGraph object
 	@ Input 8: A boolean flag indicating if the current node is involved in execution constraints
 	@ Input 9: The map between OCL goal model variables and HDDL variables
-	@ Input 10: The world knowledge as a KnowledgeBase object
+	@ Input 10: The world knowledge as a ptree object
 	@ Input 11: The semantic mappings vector
 	@ Input 12: A map of the instantiated OCL variables at this level of the recursion
     @ Output: Void. The ATGraph object is built
 */
-void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_literal> world_state, map<string,vector<AbstractTask>> at_instances, 
-								map<string,vector<vector<task>>> at_decomposition_paths, general_annot* rannot, int parent, GMGraph gm, bool non_coop,
-									map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_vars_map, KnowledgeBase world_db, 
-										vector<SemanticMapping> semantic_mapping, map<string, variant<string,vector<string>>> instantiated_vars) {
+void FileKnowledgeMissionDecomposer::recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_literal> world_state, map<string,vector<AbstractTask>> at_instances, 
+									map<string,vector<vector<task>>> at_decomposition_paths, general_annot* rannot, int parent, GMGraph gm, bool non_coop,
+										map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_vars_map, pt::ptree world_db, 
+											vector<SemanticMapping> semantic_mapping, map<string, variant<string,vector<string>>> instantiated_vars) {
 	ATNode node;
 	int node_id;
 
@@ -268,6 +285,23 @@ void recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_lite
 
 			boost::add_edge(boost::vertex(node_id, mission_decomposition), boost::vertex(dnode_id, mission_decomposition), d_edge, mission_decomposition);
 		}
+	}
+}
+
+void FileKnowledgeMissionDecomposer::set_fk_manager(FileKnowledgeManager* manager) {
+	fk_manager = manager;
+}
+
+std::shared_ptr<MissionDecomposer> MissionDecomposerFactory::create_mission_decomposer(std::shared_ptr<KnowledgeManager> k_manager) {
+	if(k_manager->get_knowledge_type() == FILEKNOWLEDGE) {
+		shared_ptr<MissionDecomposer> f_mission_decomposer = std::make_shared<FileKnowledgeMissionDecomposer>();
+		f_mission_decomposer->set_mission_decomposer_type(FILEMISSIONDECOMPOSER);
+
+		return f_mission_decomposer;
+	} else {
+		string unsupported_manager_type = "Unsupported manager type found";
+
+		throw std::runtime_error(unsupported_manager_type);
 	}
 }
 

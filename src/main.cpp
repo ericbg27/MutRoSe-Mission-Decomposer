@@ -347,7 +347,6 @@ int main(int argc, char** argv) {
 
 	AnnotManagerFactory annot_manager_factory;
 	shared_ptr<AnnotManager> annot_manager_ptr = annot_manager_factory.create_at_manager(knowledge_manager);
-	
 
 	general_annot* gmannot;
 
@@ -381,9 +380,21 @@ int main(int argc, char** argv) {
 			generated from this process
 	*/
 
-	//ATGraph mission_decomposition = build_at_graph(at_instances, at_decomposition_paths, gmannot, gm, init, gm_var_map, world_db, semantic_mapping);
+	MissionDecomposerFactory mission_decomposer_factory;
+	shared_ptr<MissionDecomposer> mission_decomposer_ptr = mission_decomposer_factory.create_mission_decomposer(knowledge_manager);
 
-	//print_mission_decomposition(mission_decomposition); 
+	ATGraph mission_decomposition;
 
-	//generate_instances_output(mission_decomposition, gm, output, init, semantic_mapping, sorts, sort_definitions, predicate_definitions);
+	if(mission_decomposer_ptr->get_mission_decomposer_type() == FILEMISSIONDECOMPOSER) {
+		FileKnowledgeMissionDecomposer* mission_decomposer = dynamic_cast<FileKnowledgeMissionDecomposer*>(mission_decomposer_ptr.get());
+
+		FileKnowledgeManager* aux = dynamic_cast<FileKnowledgeManager*>(knowledge_manager.get());
+		mission_decomposer->set_fk_manager(aux);
+
+		mission_decomposition = mission_decomposer->build_at_graph(at_instances, at_decomposition_paths, gmannot, gm, init, gm_var_map, semantic_mapping);
+	}
+
+	print_mission_decomposition(mission_decomposition); 
+
+	generate_instances_output(mission_decomposition, gm, output, init, semantic_mapping, sorts, sort_definitions, predicate_definitions);
 }
