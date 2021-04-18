@@ -97,11 +97,13 @@ map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>,
         for(string db : databases) {
             if(config.first == db) {
                 string db_type = config.second.get<string>("type");
+                std::transform(db_type.begin(),db_type.end(),db_type.begin(),::toupper);
 
-                if(db_type == "file") { //Only available type for the moment
+                if(db_type == "FILE") { //Only available type for the moment
                     string file_type = config.second.get<string>("file_type");
+                    std::transform(file_type.begin(),file_type.end(),file_type.begin(),::toupper);
 
-                    if(file_type == "xml") {
+                    if(file_type == "XML") {
                         string db_path = config.second.get<string>("path");
                         string xml_root = config.second.get<string>("xml_root");
 

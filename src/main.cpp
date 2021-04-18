@@ -139,9 +139,11 @@ int main(int argc, char** argv) {
 	
 	vector<string> high_level_loc_types = get<vector<string>>(cfg["location_types"]);
 
-	//Generate Knowledge Bases
-	KnowledgeBase world_db = construct_knowledge_base("world_db", cfg);
-	KnowledgeBase robots_db = construct_knowledge_base("robots_db", cfg);
+	//Generate Knowledge Bases and Knowledge Manager
+	KnowledgeManagerFactory k_manager_factory;
+	shared_ptr<KnowledgeManager> knowledge_manager = k_manager_factory.create_knowledge_manager(cfg);
+	knowledge_manager->construct_knowledge_base("world_db", cfg);
+	knowledge_manager->construct_knowledge_base("robots_db", cfg);
 
 	pair<string,string> output = get<pair<string,string>>(cfg["output"]);
 
@@ -281,9 +283,21 @@ int main(int argc, char** argv) {
 
 	check_undefined_number_of_robots(gm, abstract_tasks, sort_definitions);
 
+	std::cout << "[TESTE]" << std::endl;
+
+	ATManagerFactory at_manager_factory;
+	shared_ptr<ATManager> at_manager_ptr = at_manager_factory.create_at_manager(knowledge_manager);
+
 	map<string,vector<AbstractTask>> at_instances;
 
-	at_instances = generate_at_instances(abstract_tasks, gm, high_level_loc_types, world_db, gm_var_map, variable_mapping);
+	if(at_manager_ptr->get_at_manager_type() == ATFILE) {
+		FileKnowledgeATManager* at_manager = dynamic_cast<FileKnowledgeATManager*>(at_manager_ptr.get());
+
+		FileKnowledgeManager* aux = dynamic_cast<FileKnowledgeManager*>(knowledge_manager.get());
+		at_manager->set_fk_manager(aux);
+
+		at_instances = at_manager->generate_at_instances(abstract_tasks,gm,high_level_loc_types,gm_var_map,variable_mapping);
+	}
 
 	print_at_instances_info(at_instances);
 
@@ -328,19 +342,18 @@ int main(int argc, char** argv) {
 
 	print_at_paths_info(at_decomposition_paths);
 
-	initialize_objects(world_db, robots_db, sorts, high_level_loc_types, at_instances, type_mapping);	
-
-	initialize_world_state(robots_db, world_db, init, init_functions, semantic_mapping, type_mapping, sorts);
+	knowledge_manager->initialize_objects(sorts, high_level_loc_types, at_instances, type_mapping);
+	knowledge_manager->initialize_world_state(init, init_functions, semantic_mapping, type_mapping, sorts);
 
 	print_world_state(init);
 
-	std::cout << "[TESTE1]" << std::endl;
+	/*std::cout << "[TESTE1]" << std::endl;
 	general_annot* gmannot = retrieve_gm_annot(gm, world_db.get_knowledge(), high_level_loc_types, at_instances);
 	std::cout << "[TESTE2]" << std::endl;
 	print_runtime_annot_from_general_annot(gmannot);
 	rename_at_instances_in_runtime_annot(gmannot, at_instances, gm);
 	std::cout << "[TESTE3]" << std::endl;
-	print_runtime_annot_from_general_annot(gmannot);		
+	print_runtime_annot_from_general_annot(gmannot);*/	
 
 	/*
 		We need to associate to trim decomposition paths only to those paths that are allowed
@@ -359,9 +372,9 @@ int main(int argc, char** argv) {
 			generated from this process
 	*/
 
-	ATGraph mission_decomposition = build_at_graph(at_instances, at_decomposition_paths, gmannot, gm, init, gm_var_map, world_db, semantic_mapping);
+	//ATGraph mission_decomposition = build_at_graph(at_instances, at_decomposition_paths, gmannot, gm, init, gm_var_map, world_db, semantic_mapping);
 
-	print_mission_decomposition(mission_decomposition); 
+	//print_mission_decomposition(mission_decomposition); 
 
-	generate_instances_output(mission_decomposition, gm, output, init, semantic_mapping, sorts, sort_definitions, predicate_definitions);
+	//generate_instances_output(mission_decomposition, gm, output, init, semantic_mapping, sorts, sort_definitions, predicate_definitions);
 }
