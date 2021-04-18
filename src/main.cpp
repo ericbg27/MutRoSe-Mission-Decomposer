@@ -283,8 +283,6 @@ int main(int argc, char** argv) {
 
 	check_undefined_number_of_robots(gm, abstract_tasks, sort_definitions);
 
-	std::cout << "[TESTE]" << std::endl;
-
 	ATManagerFactory at_manager_factory;
 	shared_ptr<ATManager> at_manager_ptr = at_manager_factory.create_at_manager(knowledge_manager);
 
@@ -347,13 +345,24 @@ int main(int argc, char** argv) {
 
 	print_world_state(init);
 
-	/*std::cout << "[TESTE1]" << std::endl;
-	general_annot* gmannot = retrieve_gm_annot(gm, world_db.get_knowledge(), high_level_loc_types, at_instances);
-	std::cout << "[TESTE2]" << std::endl;
-	print_runtime_annot_from_general_annot(gmannot);
+	AnnotManagerFactory annot_manager_factory;
+	shared_ptr<AnnotManager> annot_manager_ptr = annot_manager_factory.create_at_manager(knowledge_manager);
+	
+
+	general_annot* gmannot;
+
+	if(annot_manager_ptr->get_annot_manager_type() == FILEANNOTMANAGER) {
+		FileKnowledgeAnnotManager* annot_manager = dynamic_cast<FileKnowledgeAnnotManager*>(annot_manager_ptr.get());
+		
+		FileKnowledgeManager* aux = dynamic_cast<FileKnowledgeManager*>(knowledge_manager.get());
+		annot_manager->set_fk_manager(aux);
+
+		gmannot = annot_manager->retrieve_gm_annot(gm, high_level_loc_types, at_instances);
+	}
+
 	rename_at_instances_in_runtime_annot(gmannot, at_instances, gm);
-	std::cout << "[TESTE3]" << std::endl;
-	print_runtime_annot_from_general_annot(gmannot);*/	
+
+	print_runtime_annot_from_general_annot(gmannot);	
 
 	/*
 		We need to associate to trim decomposition paths only to those paths that are allowed
