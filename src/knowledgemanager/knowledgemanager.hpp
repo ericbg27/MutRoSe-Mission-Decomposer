@@ -12,7 +12,7 @@
 
 #include "../at.hpp"
 #include "../config.hpp"
-#include "../knowledgebase.hpp"
+#include "../knowledgebase/knowledgebase.hpp"
 
 namespace pt = boost::property_tree;
 
