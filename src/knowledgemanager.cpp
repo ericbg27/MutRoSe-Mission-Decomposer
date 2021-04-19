@@ -11,6 +11,47 @@
 
 using namespace std;
 
+std::shared_ptr<KnowledgeManager> KnowledgeManagerFactory::create_knowledge_manager(std::map<std::string, std::variant<std::map<std::string,std::string>, std::vector<std::string>, std::vector<SemanticMapping>, std::vector<VariableMapping>, pair<std::string,std::string>>> cfg) {
+    string dbs_type = "";
+
+    vector<string> dbs = {"world_db","robots_db"};
+
+    for(unsigned int i = 0; i < dbs.size(); i++) {
+        string db_name = dbs.at(i);
+        string db_type = std::get<map<string,string>>(cfg[db_name])["type"];
+
+        if(dbs_type == "") {
+            dbs_type = db_type;
+        } else {
+            if(db_type != dbs_type) {
+                string invalid_databases_types_error = "Databases should be of the same type";
+
+                throw std::runtime_error(invalid_databases_types_error);
+            }
+        }
+    }
+
+    if(dbs_type == "FILE") {
+        shared_ptr<KnowledgeManager> file_manager = std::make_shared<FileKnowledgeManager>();
+
+        file_manager->set_knowledge_type(FILEKNOWLEDGE);
+
+        return file_manager;
+    } else {
+        string unsupported_db_type_error = "Type [" + dbs_type + "] is not supported as database type";
+
+        throw std::runtime_error(unsupported_db_type_error);
+    }
+}
+
+void KnowledgeManager::set_knowledge_type(knowledge_type kt) {
+    k_type = kt;
+}
+
+knowledge_type KnowledgeManager::get_knowledge_type() {
+    return k_type;
+}
+
 /*
     Function: construct_knowledge_base
     Objective: Construct a knowledge base given the database name and the configuration map
@@ -23,23 +64,30 @@ using namespace std;
 		   -> When (and if) more types are allowed we need to delegate the task of opening these files to functions
 		    passing the configuration file as a function parameter
 */ 
-KnowledgeBase construct_knowledge_base(string db_name, map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> cfg) {
-    string db_type = std::get<map<string,string>>(cfg[db_name])["type"];
-
-    pt::ptree db_knowledge;
+void FileKnowledgeManager::construct_knowledge_base(string db_name, map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> cfg) {
+	string db_file_type = std::get<map<string,string>>(cfg[db_name])["file_type"];
     string db_root = "";
-	if(db_type == "file") {
-		string db_file_type = std::get<map<string,string>>(cfg[db_name])["file_type"];
-		if(db_file_type == "xml") {
-			pt::read_xml(std::get<map<string,string>>(cfg[db_name])["path"], db_knowledge);
-            
-            db_root = std::get<map<string,string>>(cfg[db_name])["xml_root"];
-		}
-	}
+        
+    if(db_file_type == "XML") {
+        pt::ptree db_knowledge;
+        pt::read_xml(std::get<map<string,string>>(cfg[db_name])["path"], db_knowledge);
+                    
+        db_root = std::get<map<string,string>>(cfg[db_name])["xml_root"];
 
-    KnowledgeBase kb(db_name, db_knowledge, db_root);
+        if(db_name == "world_db") {
+            XMLKnowledgeBase wk(db_name, db_knowledge, db_root);
 
-    return kb;
+            world_knowledge = make_shared<XMLKnowledgeBase>(wk);
+        } else if(db_name == "robots_db") {
+            XMLKnowledgeBase rk(db_name, db_knowledge, db_root);
+
+            robots_knowledge = make_shared<XMLKnowledgeBase>(rk);
+        }
+    } else {
+        string unsupported_db_file_type_error = "File type " + db_file_type + " is not supported as a database";
+
+        throw std::runtime_error(unsupported_db_file_type_error);
+    }
 }
 
 /*
@@ -54,21 +102,20 @@ KnowledgeBase construct_knowledge_base(string db_name, map<string, variant<map<s
     @ Input 6: The mapping between HDDL types and OCL types
     @ Output: Void. The sorts are initialized
 */ 
-void initialize_objects(KnowledgeBase worlddb, KnowledgeBase robotsdb, map<string,set<string>>& sorts, vector<string> high_level_loc_types,
-                            map<string,vector<AbstractTask>>& at_instances, map<string,string> type_mapping) {
-
+void FileKnowledgeManager::initialize_objects(map<string,set<string>>& sorts, vector<string> high_level_loc_types, map<string,vector<AbstractTask>>& at_instances, map<string,string> type_mapping) {
     pt::ptree worlddb_root;
-    if(worlddb.get_root_key() == "") {
-        worlddb_root = worlddb.get_knowledge(); 
+
+    if(world_knowledge->get_root_key() == "") {
+        worlddb_root = world_knowledge->get_knowledge(); 
     } else {
-        worlddb_root = worlddb.get_knowledge().get_child(worlddb.get_root_key());
+        worlddb_root = world_knowledge->get_knowledge().get_child(world_knowledge->get_root_key());
     }
 
     pt::ptree robotsdb_root;
-    if(robotsdb.get_root_key() == "") {
-        robotsdb_root = robotsdb.get_knowledge();
+    if(robots_knowledge->get_root_key() == "") {
+        robotsdb_root = robots_knowledge->get_knowledge();
     } else {
-        robotsdb_root = robotsdb.get_knowledge().get_child(robotsdb.get_root_key());
+        robotsdb_root = robots_knowledge->get_knowledge().get_child(robots_knowledge->get_root_key());
     }
     /*
         All the robots considered for the mission are present in the assignments file. In order to add them as constants we need to check
@@ -192,8 +239,7 @@ void initialize_objects(KnowledgeBase worlddb, KnowledgeBase robotsdb, map<strin
     @ Input 7: The sorts map with the existing objects
     @ Output: Void. The reference to the initial world state vector is initialized
 */ 
-void initialize_world_state(KnowledgeBase robotsdb, KnowledgeBase worlddb, vector<ground_literal>& init, vector<pair<ground_literal,int>>& init_functions, 
-                                vector<SemanticMapping> semantic_mapping, map<string,string> type_mapping, map<string,set<string>> sorts) {
+void FileKnowledgeManager::initialize_world_state(vector<ground_literal>& init, vector<pair<ground_literal,int>>& init_functions, vector<SemanticMapping> semantic_mapping, map<string,string> type_mapping, map<string,set<string>> sorts) {
     /*
         Here we will create the following native predicates:
             - at ?r - robot ?rloc - robotlocation
@@ -202,17 +248,17 @@ void initialize_world_state(KnowledgeBase robotsdb, KnowledgeBase worlddb, vecto
         -> When we have the configuration file we can initialize user-defined predicates and probabilistic predicates
     */
     pt::ptree worlddb_root;
-    if(worlddb.get_root_key() == "") {
-        worlddb_root = worlddb.get_knowledge();
+    if(world_knowledge->get_root_key() == "") {
+        worlddb_root = world_knowledge->get_knowledge();
     } else {
-        worlddb_root = worlddb.get_knowledge().get_child(worlddb.get_root_key());
+        worlddb_root = world_knowledge->get_knowledge().get_child(world_knowledge->get_root_key());
     }
 
     pt::ptree robotsdb_root;
-    if(robotsdb.get_root_key() == "") {
-        robotsdb_root = robotsdb.get_knowledge();
+    if(robots_knowledge->get_root_key() == "") {
+        robotsdb_root = robots_knowledge->get_knowledge();
     } else {
-        robotsdb_root = robotsdb.get_knowledge().get_child(robotsdb.get_root_key());
+        robotsdb_root = robots_knowledge->get_knowledge().get_child(robots_knowledge->get_root_key());
     }
 
     //Initialize at predicates
@@ -418,6 +464,14 @@ void initialize_world_state(KnowledgeBase robotsdb, KnowledgeBase worlddb, vecto
             - Check Gricel's XML file
         -> For now, we don't deal with reliabilities
     */
+}
+
+shared_ptr<FileKnowledgeBase> FileKnowledgeManager::get_world_knowledge() {
+    return this->world_knowledge;
+}
+
+shared_ptr<FileKnowledgeBase> FileKnowledgeManager::get_robots_knowledge() {
+    return this->robots_knowledge;
 }
 
 /*

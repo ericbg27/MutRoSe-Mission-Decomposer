@@ -37,7 +37,9 @@
 #include "at_manager.hpp"
 #include "annotmanager.hpp"
 #include "missiondecomposer.hpp"
-#include "instancesoutput.hpp"
+#include "outputgenerator/outputgenerator.hpp"
+#include "outputgenerator/xmloutputgenerator.hpp"
+#include "outputgenerator/fileoutputgeneratorfactory.hpp"
 #include "configchecker.hpp"
 
 using namespace std;
@@ -132,18 +134,20 @@ int main(int argc, char** argv) {
 	map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> cfg;
 	cfg = parse_configuration_file(argv[configfile]);
 
-	map<string,string> type_mapping = get<map<string,string>>(cfg["type_mapping"]);
+	map<string,string> type_mapping = std::get<map<string,string>>(cfg["type_mapping"]);
 
-	vector<VariableMapping> variable_mapping = get<vector<VariableMapping>>(cfg["var_mapping"]);
-	vector<SemanticMapping> semantic_mapping = get<vector<SemanticMapping>>(cfg["semantic_mapping"]);
+	vector<VariableMapping> variable_mapping = std::get<vector<VariableMapping>>(cfg["var_mapping"]);
+	vector<SemanticMapping> semantic_mapping = std::get<vector<SemanticMapping>>(cfg["semantic_mapping"]);
 	
-	vector<string> high_level_loc_types = get<vector<string>>(cfg["location_types"]);
+	vector<string> high_level_loc_types = std::get<vector<string>>(cfg["location_types"]);
 
-	//Generate Knowledge Bases
-	KnowledgeBase world_db = construct_knowledge_base("world_db", cfg);
-	KnowledgeBase robots_db = construct_knowledge_base("robots_db", cfg);
+	//Generate Knowledge Bases and Knowledge Manager
+	KnowledgeManagerFactory k_manager_factory;
+	shared_ptr<KnowledgeManager> knowledge_manager = k_manager_factory.create_knowledge_manager(cfg);
+	knowledge_manager->construct_knowledge_base("world_db", cfg);
+	knowledge_manager->construct_knowledge_base("robots_db", cfg);
 
-	pair<string,string> output = get<pair<string,string>>(cfg["output"]);
+	vector<string> output = std::get<vector<string>>(cfg["output"]);
 
 	//Parse HDDL Domain file
 	run_parser_on_file(domain_file, argv[dfile]);
@@ -281,9 +285,19 @@ int main(int argc, char** argv) {
 
 	check_undefined_number_of_robots(gm, abstract_tasks, sort_definitions);
 
+	ATManagerFactory at_manager_factory;
+	shared_ptr<ATManager> at_manager_ptr = at_manager_factory.create_at_manager(knowledge_manager);
+
 	map<string,vector<AbstractTask>> at_instances;
 
-	at_instances = generate_at_instances(abstract_tasks, gm, high_level_loc_types, world_db, gm_var_map, variable_mapping);
+	if(at_manager_ptr->get_at_manager_type() == ATFILE) {
+		FileKnowledgeATManager* at_manager = dynamic_cast<FileKnowledgeATManager*>(at_manager_ptr.get());
+
+		FileKnowledgeManager* aux = dynamic_cast<FileKnowledgeManager*>(knowledge_manager.get());
+		at_manager->set_fk_manager(aux);
+
+		at_instances = at_manager->generate_at_instances(abstract_tasks,gm,high_level_loc_types,gm_var_map,variable_mapping);
+	}
 
 	print_at_instances_info(at_instances);
 
@@ -328,19 +342,28 @@ int main(int argc, char** argv) {
 
 	print_at_paths_info(at_decomposition_paths);
 
-	initialize_objects(world_db, robots_db, sorts, high_level_loc_types, at_instances, type_mapping);	
-
-	initialize_world_state(robots_db, world_db, init, init_functions, semantic_mapping, type_mapping, sorts);
+	knowledge_manager->initialize_objects(sorts, high_level_loc_types, at_instances, type_mapping);
+	knowledge_manager->initialize_world_state(init, init_functions, semantic_mapping, type_mapping, sorts);
 
 	print_world_state(init);
 
-	std::cout << "[TESTE1]" << std::endl;
-	general_annot* gmannot = retrieve_gm_annot(gm, world_db.get_knowledge(), high_level_loc_types, at_instances);
-	std::cout << "[TESTE2]" << std::endl;
-	print_runtime_annot_from_general_annot(gmannot);
+	AnnotManagerFactory annot_manager_factory;
+	shared_ptr<AnnotManager> annot_manager_ptr = annot_manager_factory.create_annot_manager(knowledge_manager);
+
+	general_annot* gmannot;
+
+	if(annot_manager_ptr->get_annot_manager_type() == FILEANNOTMANAGER) {
+		FileKnowledgeAnnotManager* annot_manager = dynamic_cast<FileKnowledgeAnnotManager*>(annot_manager_ptr.get());
+		
+		FileKnowledgeManager* aux = dynamic_cast<FileKnowledgeManager*>(knowledge_manager.get());
+		annot_manager->set_fk_manager(aux);
+
+		gmannot = annot_manager->retrieve_gm_annot(gm, high_level_loc_types, at_instances);
+	}
+
 	rename_at_instances_in_runtime_annot(gmannot, at_instances, gm);
-	std::cout << "[TESTE3]" << std::endl;
-	print_runtime_annot_from_general_annot(gmannot);		
+
+	print_runtime_annot_from_general_annot(gmannot);	
 
 	/*
 		We need to associate to trim decomposition paths only to those paths that are allowed
@@ -359,9 +382,32 @@ int main(int argc, char** argv) {
 			generated from this process
 	*/
 
-	ATGraph mission_decomposition = build_at_graph(at_instances, at_decomposition_paths, gmannot, gm, init, gm_var_map, world_db, semantic_mapping);
+	MissionDecomposerFactory mission_decomposer_factory;
+	shared_ptr<MissionDecomposer> mission_decomposer_ptr = mission_decomposer_factory.create_mission_decomposer(knowledge_manager);
+	
+	ATGraph mission_decomposition;
+
+	if(mission_decomposer_ptr->get_mission_decomposer_type() == FILEMISSIONDECOMPOSER) {
+		FileKnowledgeMissionDecomposer* mission_decomposer = dynamic_cast<FileKnowledgeMissionDecomposer*>(mission_decomposer_ptr.get());
+
+		FileKnowledgeManager* aux = dynamic_cast<FileKnowledgeManager*>(knowledge_manager.get());
+		mission_decomposer->set_fk_manager(aux);
+
+		mission_decomposition = mission_decomposer->build_at_graph(at_instances, at_decomposition_paths, gmannot, gm, init, gm_var_map, semantic_mapping);
+	}
 
 	print_mission_decomposition(mission_decomposition); 
 
-	generate_instances_output(mission_decomposition, gm, output, init, semantic_mapping, sorts, sort_definitions, predicate_definitions);
+	if(output.at(0) == "FILE") {
+		FileOutputGeneratorFactory output_gen_factory;
+
+		pair<string,string> file_output_data = std::make_pair(output.at(1),output.at(2));
+		std::shared_ptr<FileOutputGenerator> output_generator_ptr = output_gen_factory.create_file_output_generator(file_output_data.second);
+
+		if(output_generator_ptr->get_file_output_generator_type() == XMLFILEOUTGEN) {
+			XMLOutputGenerator* output_generator = dynamic_cast<XMLOutputGenerator*>(output_generator_ptr.get());
+
+			output_generator->generate_instances_output(mission_decomposition, gm, file_output_data, init, semantic_mapping, sorts, sort_definitions, predicate_definitions);
+		}
+	}
 }

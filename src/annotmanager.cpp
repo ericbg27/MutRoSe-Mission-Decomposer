@@ -17,19 +17,16 @@ int parse_string(const char* in);
 
 map<string,general_annot*> goals_and_rannots;
 
-/*
-    Function: retrieve_runtime_annot
-    Objective: Retrieve the runtime annotation of some given node. We need to have goals_and_rannots initialized
+void AnnotManager::set_annot_manager_type(annot_manager_type atm) {
+    am_type = FILEANNOTMANAGER;
+}
 
-    @ Input: The text of the desired node in the goal model
-    @ Output: The runtime annotation of the given node
-*/ 
-general_annot* retrieve_runtime_annot(string id) {
-    parse_string(id.c_str());
+annot_manager_type AnnotManager::get_annot_manager_type() {
+    return am_type;
+}
 
-    string node_name = get_node_name(id);
-
-    return goals_and_rannots[node_name];
+void FileKnowledgeAnnotManager::set_fk_manager(FileKnowledgeManager* manager) {
+    fk_manager = manager;
 }
 
 /*
@@ -37,12 +34,11 @@ general_annot* retrieve_runtime_annot(string id) {
     Objective: Retrieve the runtime annotation of the whole goal model
 
     @ Input 1: The goal model as a GMGraph object
-    @ Input 2: The ptree object representing the world database
-    @ Input 3: The high-level location type
-    @ Input 4: The abstract task instances vector
+    @ Input 2: The high-level location type
+    @ Input 3: The abstract task instances vector
     @ Output: The goal model runtime annotation
 */ 
-general_annot* retrieve_gm_annot(GMGraph gm, pt::ptree worlddb, vector<string> high_level_loc_types, map<string,vector<AbstractTask>> at_instances) {
+general_annot* FileKnowledgeAnnotManager::retrieve_gm_annot(GMGraph gm, vector<string> high_level_loc_types, map<string,vector<AbstractTask>> at_instances) {
     vector<int> vctr = get_dfs_gm_nodes(gm);
     
     VertexData root = gm[vctr.at(0)];
@@ -68,7 +64,16 @@ general_annot* retrieve_gm_annot(GMGraph gm, pt::ptree worlddb, vector<string> h
 
     root_annot->parent = empty_annot;
 
-    recursive_gm_annot_generation(root_annot, vctr, gm, worlddb, high_level_loc_types, current_node, valid_variables, valid_forAll_conditions, node_depths);
+    shared_ptr<FileKnowledgeBase> world_knowledge_base = fk_manager->get_world_knowledge();
+
+    pt::ptree worlddb;
+    if(world_knowledge_base->get_knowledge_file_type() == XML) {
+        XMLKnowledgeBase* xml_base = dynamic_cast<XMLKnowledgeBase*>(world_knowledge_base.get());
+
+        worlddb = xml_base->get_knowledge();
+    }
+
+    recursive_gm_annot_generation(root_annot, vctr, worlddb, gm, high_level_loc_types, current_node, valid_variables, valid_forAll_conditions, node_depths);
 
     return root_annot;
 }
@@ -79,8 +84,8 @@ general_annot* retrieve_gm_annot(GMGraph gm, pt::ptree worlddb, vector<string> h
 
     @ Input 1: The current node runtime annotation, generated for the whole goal model so far
     @ Input 2: The nodes indexes visited in a depth-first search manner
-    @ Input 3: The goal model as a GMGraph object
-    @ Input 4: The world knowledge ptree object
+    @ Input 3: The world knowledge as a ptree object
+    @ Input 4: The goal model as a GMGraph object
     @ Input 5: The high-level location type
     @ Input 6: The current node index
     @ Input 7: The valid variables, given the query goals select statements
@@ -88,9 +93,8 @@ general_annot* retrieve_gm_annot(GMGraph gm, pt::ptree worlddb, vector<string> h
     @ Input 9: The map of node depths
     @ Output: Void. The runtime goal model annotation is generated
 */ 
-void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr, GMGraph gm, pt::ptree worlddb, vector<string> high_level_loc_types, int current_node,
-                                        map<string,pair<string,vector<pt::ptree>>>& valid_variables, map<int,AchieveCondition> valid_forAll_conditions, 
-                                        map<int,int>& node_depths) {
+void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr, pt::ptree worlddb, GMGraph gm, vector<string> high_level_loc_types, int current_node,
+                                        map<string,pair<string,vector<pt::ptree>>>& valid_variables, map<int,AchieveCondition> valid_forAll_conditions, map<int,int>& node_depths) {    
     set<string> operators {";","#","FALLBACK","OPT","|"};
 
     set<string>::iterator op_it;
@@ -121,9 +125,6 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
 			}
 		}
     }
-
-    std::cout << "Current Node: " << get_node_name(gm[current_node].text) << std::endl;
-    std::cout << "vctr.size(): " << vctr.size() << std::endl;
 
     /*
         -> If we have an operator, simply check its children.
@@ -177,7 +178,7 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
                     for(general_annot* child : node_ch->children) {
                         child->parent = node_ch;
                         vector<int> vctr_aux;
-                        recursive_gm_annot_generation(child, vctr, gm, worlddb, high_level_loc_types, c_node, valid_variables, valid_forAll_conditions, node_depths);
+                        recursive_gm_annot_generation(child, vctr, worlddb, gm, high_level_loc_types, c_node, valid_variables, valid_forAll_conditions, node_depths);
 
                         if(child_index < node_annot->children.size()-1) {
                             unsigned int nodes_diff = vctr_aux.size() - vctr.size();
@@ -210,7 +211,7 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
             for(general_annot* child : node_annot->children) {
                 child->parent = node_annot;
                 int c_node = vctr.at(0);
-                recursive_gm_annot_generation(child, vctr, gm, worlddb, high_level_loc_types, c_node, valid_variables, valid_forAll_conditions, node_depths);
+                recursive_gm_annot_generation(child, vctr, worlddb, gm, high_level_loc_types, c_node, valid_variables, valid_forAll_conditions, node_depths);
             }
         }
     } else {
@@ -320,7 +321,7 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
                         for(general_annot* child : node_ch->children) {
                             child->parent = node_ch;
                             vector<int> vctr_aux = vctr;
-                            recursive_gm_annot_generation(child, vctr, gm, worlddb, high_level_loc_types, c_node, valid_variables, valid_forAll_conditions, node_depths);
+                            recursive_gm_annot_generation(child, vctr, worlddb, gm, high_level_loc_types, c_node, valid_variables, valid_forAll_conditions, node_depths);
                             
                             if(child_index < node_annot->children.size()-1) {
                                 unsigned int nodes_diff = vctr_aux.size() - vctr.size();
@@ -357,11 +358,39 @@ void recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr,
                 for(general_annot* child : node_annot->children) {            
                     int c_node = vctr.at(0);
                     child->parent = node_annot;
-                    recursive_gm_annot_generation(child, vctr, gm, worlddb, high_level_loc_types, c_node, valid_variables, valid_forAll_conditions, node_depths);
+                    recursive_gm_annot_generation(child, vctr, worlddb, gm, high_level_loc_types, c_node, valid_variables, valid_forAll_conditions, node_depths);
                 }
             }
         }
     }
+}
+
+std::shared_ptr<AnnotManager> AnnotManagerFactory::create_annot_manager(std::shared_ptr<KnowledgeManager> k_manager) {
+    if(k_manager->get_knowledge_type() == FILEKNOWLEDGE) {
+		shared_ptr<AnnotManager> f_annot_manager = std::make_shared<FileKnowledgeAnnotManager>();
+		f_annot_manager->set_annot_manager_type(FILEANNOTMANAGER);
+
+		return f_annot_manager;
+	} else {
+		string unsupported_manager_type = "Unsupported manager type found";
+
+		throw std::runtime_error(unsupported_manager_type);
+	}
+}
+
+/*
+    Function: retrieve_runtime_annot
+    Objective: Retrieve the runtime annotation of some given node. We need to have goals_and_rannots initialized
+
+    @ Input: The text of the desired node in the goal model
+    @ Output: The runtime annotation of the given node
+*/ 
+general_annot* retrieve_runtime_annot(string id) {
+    parse_string(id.c_str());
+
+    string node_name = get_node_name(id);
+
+    return goals_and_rannots[node_name];
 }
 
 void recursive_fill_up_runtime_annot(general_annot* rannot, VertexData gm_node) {

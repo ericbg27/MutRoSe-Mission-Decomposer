@@ -11,6 +11,13 @@ using namespace std;
 
 const string world_db_query_var = "location_db";
 
+void ATManager::set_at_manager_type(at_manager_type atm) {
+	atm_type = atm;
+}
+
+at_manager_type ATManager::get_at_manager_type() {
+	return atm_type;
+}
 
 /*
     Function: generate_at_instances
@@ -22,25 +29,30 @@ const string world_db_query_var = "location_db";
     @ Input 1: The set of abstract tasks, taken from the HDDL definition
 	@ Input 2: The GMGraph that represents the GM
 	@ Input 3: The high-level location type (for now only one is accepted)
-	@ Input 4: The KnowledgeBase object representing the world knowledge 
-	@ Input 5: The variable mapping of the GM
-	@ Input 6: The variable mappings between HDDL and the Goal Model
+	@ Input 4: The variable mapping of the GM
+	@ Input 5: The variable mappings between HDDL and the Goal Model
     @ Output: The abstract task instances in a map format
 */
-map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tasks, GMGraph gm, vector<string> high_level_loc_types,
-														KnowledgeBase world_db, map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map,
-															vector<VariableMapping> var_mapping) {
+map<string,vector<AbstractTask>> FileKnowledgeATManager::generate_at_instances(vector<task> abstract_tasks, GMGraph gm, vector<string> high_level_loc_types,
+															map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map,
+																vector<VariableMapping> var_mapping) {
 	vector<int> vctr = get_dfs_gm_nodes(gm);
 
 	/*
 		Get the world knowledge ptree. We disconsider the root key, if any, since we expect it to be
 		just a name like world_db or similar
 	*/
+	shared_ptr<FileKnowledgeBase> world_knowledge = fk_manager->get_world_knowledge();
 	pt::ptree world_tree;
-	if(world_db.get_root_key() == "") {
-		world_tree = world_db.get_knowledge();
-	} else {
-		world_tree = world_db.get_knowledge().get_child(world_db.get_root_key());
+	
+	if(world_knowledge->get_knowledge_file_type() == XML) {
+		XMLKnowledgeBase* world_db = dynamic_cast<XMLKnowledgeBase*>(world_knowledge.get());
+
+		if(world_db->get_root_key() == "") {
+			world_tree = world_db->get_knowledge();
+		} else {
+			world_tree = world_db->get_knowledge().get_child(world_db->get_root_key());
+		}
 	}
 
 	/*
@@ -719,6 +731,23 @@ map<string,vector<AbstractTask>> generate_at_instances(vector<task> abstract_tas
 	}
 
 	return at_instances;
+}
+
+void FileKnowledgeATManager::set_fk_manager(FileKnowledgeManager* manager) {
+	fk_manager = manager;
+}
+
+shared_ptr<ATManager> ATManagerFactory::create_at_manager(shared_ptr<KnowledgeManager> k_manager) {
+	if(k_manager->get_knowledge_type() == FILEKNOWLEDGE) {
+		shared_ptr<ATManager> f_at_manager = std::make_shared<FileKnowledgeATManager>();
+		f_at_manager->set_at_manager_type(ATFILE);
+
+		return f_at_manager;
+	} else {
+		string unsupported_manager_type = "Unsupported manager type found";
+
+		throw std::runtime_error(unsupported_manager_type);
+	}
 }
 
 /*

@@ -5,21 +5,52 @@
 #include <string>
 #include <map>
 #include <variant>
+#include <memory>
 
 #include <boost/property_tree/ptree.hpp>
 
 #include "parsetree.hpp"
 #include "domain.hpp"
-#include "knowledgebase.hpp"
+#include "knowledgemanager.hpp"
 #include "config.hpp"
 #include "gm.hpp"
 #include "at.hpp"
 
 namespace pt = boost::property_tree;
 
-std::map<std::string,std::vector<AbstractTask>> generate_at_instances(std::vector<task> abstract_tasks , GMGraph gm, std::vector<std::string> high_level_loc_types, 
-                                                        KnowledgeBase world_db, std::map<std::string, std::variant<pair<std::string,std::string>,pair<std::vector<std::string>,std::string>>>& gm_var_map,
+enum at_manager_type {ATFILE};
+class ATManager {
+    public:
+        virtual std::map<std::string,std::vector<AbstractTask>> generate_at_instances(std::vector<task> abstract_tasks , GMGraph gm, std::vector<std::string> high_level_loc_types, 
+                                                        std::map<std::string, std::variant<pair<std::string,std::string>,pair<std::vector<std::string>,std::string>>>& gm_var_map, 
+                                                            std::vector<VariableMapping> var_mapping) = 0;
+        
+        void set_at_manager_type(at_manager_type atm);
+
+        at_manager_type get_at_manager_type();
+        
+    private:
+        at_manager_type atm_type;
+};
+
+class FileKnowledgeATManager : public ATManager {
+    public:
+        std::map<std::string,std::vector<AbstractTask>> generate_at_instances(std::vector<task> abstract_tasks , GMGraph gm, std::vector<std::string> high_level_loc_types, 
+                                                        std::map<std::string, std::variant<pair<std::string,std::string>,pair<std::vector<std::string>,std::string>>>& gm_var_map,
                                                             std::vector<VariableMapping> var_mapping);
+    
+        void set_fk_manager(FileKnowledgeManager* manager);
+
+    private:
+        FileKnowledgeManager* fk_manager;
+};
+
+class ATManagerFactory {
+    public:
+        std::shared_ptr<ATManager> create_at_manager(std::shared_ptr<KnowledgeManager> k_manager);
+};
+
+
 
 void print_at_instances_info(std::map<std::string,std::vector<AbstractTask>> at_instances);
 void print_at_paths_info(std::map<std::string,std::vector<std::vector<task>>> at_decomposition_paths);
