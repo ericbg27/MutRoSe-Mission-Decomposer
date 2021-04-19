@@ -37,7 +37,9 @@
 #include "at_manager.hpp"
 #include "annotmanager.hpp"
 #include "missiondecomposer.hpp"
-#include "instancesoutput.hpp"
+#include "outputgenerator/outputgenerator.hpp"
+#include "outputgenerator/xmloutputgenerator.hpp"
+#include "outputgenerator/fileoutputgeneratorfactory.hpp"
 #include "configchecker.hpp"
 
 using namespace std;
