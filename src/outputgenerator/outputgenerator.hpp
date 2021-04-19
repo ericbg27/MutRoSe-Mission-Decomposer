@@ -12,7 +12,7 @@
 
 #include <boost/graph/adjacency_list.hpp>
 
-#include "../missiondecomposer.hpp"
+#include "../missiondecomposer/missiondecomposer.hpp"
 #include "../constraintmanager.hpp"
 #include "../gm.hpp"
 

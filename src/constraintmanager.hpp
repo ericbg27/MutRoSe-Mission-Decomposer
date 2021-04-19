@@ -10,7 +10,7 @@
 #include <set>
 #include <iostream>
 
-#include "missiondecomposer.hpp"
+#include "missiondecomposer/missiondecomposer.hpp"
 #include "gm.hpp"
 
 enum constraint_type {SEQ,PAR,NC,NEX};

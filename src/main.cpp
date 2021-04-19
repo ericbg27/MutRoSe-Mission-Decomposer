@@ -36,7 +36,7 @@
 #include "at.hpp"
 #include "atmanager/at_manager.hpp"
 #include "annotmanager/annotmanager.hpp"
-#include "missiondecomposer.hpp"
+#include "missiondecomposer/missiondecomposer.hpp"
 #include "outputgenerator/outputgenerator.hpp"
 #include "outputgenerator/xmloutputgenerator.hpp"
 #include "outputgenerator/fileoutputgeneratorfactory.hpp"
