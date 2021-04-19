@@ -10,7 +10,7 @@ LINKERFLAG=-O3 -lm -flto -static -static-libgcc
 
 .PHONY = parser clean
 
-pandaPIparser: src/hddl-token.o src/hddl.o src/main.o src/sortexpansion.o src/parsetree.o src/util.o src/domain.o src/output.o src/parametersplitting.o src/cwa.o src/typeof.o src/shopWriter.o src/hpdlWriter.o src/hddlWriter.o src/orderingDecomposition.o src/plan.o src/verify.o src/properties.o src/contextmanager.o src/gm.o src/tdg.o src/annotmanager/annotmanager.o src/rannot-token.o src/rannot.o src/atmanager/at_manager.o src/config.o src/knowledgemanager.o src/knowledgebase.o src/missiondecomposer/missiondecomposer.o src/constraintmanager.o src/outputgenerator/outputgenerator.o src/outputgenerator/xmloutputgenerator.o src/outputgenerator/fileoutputgeneratorfactory.o src/configchecker.o
+pandaPIparser: src/hddl-token.o src/hddl.o src/main.o src/sortexpansion.o src/parsetree.o src/util.o src/domain.o src/output.o src/parametersplitting.o src/cwa.o src/typeof.o src/shopWriter.o src/hpdlWriter.o src/hddlWriter.o src/orderingDecomposition.o src/plan.o src/verify.o src/properties.o src/contextmanager.o src/gm.o src/tdg.o src/annotmanager/annotmanager.o src/rannot-token.o src/rannot.o src/atmanager/at_manager.o src/config.o src/knowledgemanager/knowledgemanager.o src/knowledgebase.o src/missiondecomposer/missiondecomposer.o src/constraintmanager.o src/outputgenerator/outputgenerator.o src/outputgenerator/xmloutputgenerator.o src/outputgenerator/fileoutputgeneratorfactory.o src/configchecker.o
 	${CC} ${LINKERFLAG} $^ -o pandaPIparser 
 
 %.o: %.cpp %.hpp src/hddl.hpp

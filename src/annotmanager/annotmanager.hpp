@@ -7,7 +7,7 @@
 
 #include "../at.hpp"
 #include "../gm.hpp"
-#include "../knowledgemanager.hpp"
+#include "../knowledgemanager/knowledgemanager.hpp"
 
 namespace pt = boost::property_tree;
 

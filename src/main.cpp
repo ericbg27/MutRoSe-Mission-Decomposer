@@ -31,7 +31,7 @@
 #include "verify.hpp"
 #include "properties.hpp"
 #include "tdg.hpp"
-#include "knowledgemanager.hpp"
+#include "knowledgemanager/knowledgemanager.hpp"
 #include "config.hpp"
 #include "at.hpp"
 #include "atmanager/at_manager.hpp"

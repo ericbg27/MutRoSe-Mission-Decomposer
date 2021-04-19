@@ -14,7 +14,7 @@
 #include "../atmanager/at_manager.hpp"
 #include "../annotmanager/annotmanager.hpp"
 #include "../config.hpp"
-#include "../knowledgemanager.hpp"
+#include "../knowledgemanager/knowledgemanager.hpp"
 #include "../contextmanager.hpp"
 
 namespace pt = boost::property_tree;

@@ -11,7 +11,7 @@
 
 #include "../parsetree.hpp"
 #include "../domain.hpp"
-#include "../knowledgemanager.hpp"
+#include "../knowledgemanager/knowledgemanager.hpp"
 #include "../config.hpp"
 #include "../gm.hpp"
 #include "../at.hpp"

@@ -10,9 +10,9 @@
 
 #include <boost/property_tree/ptree.hpp>
 
-#include "at.hpp"
-#include "config.hpp"
-#include "knowledgebase.hpp"
+#include "../at.hpp"
+#include "../config.hpp"
+#include "../knowledgebase.hpp"
 
 namespace pt = boost::property_tree;
 
