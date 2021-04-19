@@ -7,27 +7,47 @@
         </capabilities>
     </action0>
     <action1>
+        <name>clean-rooms-check</name>
+        <capabilities number="0"/>
+    </action1>
+    <action2>
         <name>move-furniture</name>
         <capabilities number="1">
             <capability0>moveobject</capability0>
         </capabilities>
-    </action1>
-    <action2>
+    </action2>
+    <action3>
         <name>open-door</name>
         <capabilities number="1">
             <capability0>door-opening</capability0>
         </capabilities>
-    </action2>
-    <action3>
+    </action3>
+    <action4>
         <name>sanitize-robot</name>
         <capabilities number="1">
             <capability0>sanitize</capability0>
         </capabilities>
-    </action3>
+    </action4>
 </actions>
 <tasks>
     <task0>
         <id>AT1_1|1</id>
+        <name>CheckCleanRooms</name>
+        <locations>
+            <t0>RoomA</t0>
+            <t1>RoomB</t1>
+        </locations>
+        <robots_num fixed="True" num="1"/>
+        <preconditions>
+            <prec0 vars="RoomA" var_types="room">not RoomA.is_clean</prec0>
+            <prec1 vars="RoomB" var_types="room">not RoomB.is_clean</prec1>
+        </preconditions>
+        <decomposition>
+            <action0>clean-rooms-check</action0>
+        </decomposition>
+    </task0>
+    <task1>
+        <id>AT2_1|1</id>
         <name>RoomCleaning</name>
         <locations>
             <t0>RoomA</t0>
@@ -47,9 +67,9 @@
         <decomposition>
             <action0>clean-room</action0>
         </decomposition>
-    </task0>
-    <task1>
-        <id>AT1_1|2</id>
+    </task1>
+    <task2>
+        <id>AT2_1|2</id>
         <name>RoomCleaning</name>
         <locations>
             <t0>RoomA</t0>
@@ -71,9 +91,9 @@
             <action0>open-door</action0>
             <action1>clean-room</action1>
         </decomposition>
-    </task1>
-    <task2>
-        <id>AT2_1|1</id>
+    </task2>
+    <task3>
+        <id>AT3_1|1</id>
         <name>RobotSanitization</name>
         <locations>
             <t0>SanitizationRoom</t0>
@@ -88,9 +108,9 @@
         <decomposition>
             <action0>sanitize-robot</action0>
         </decomposition>
-    </task2>
-    <task3>
-        <id>AT3_1|1</id>
+    </task3>
+    <task4>
+        <id>AT4_1|1</id>
         <name>FurnitureMoving</name>
         <locations>
             <t0>RoomA</t0>
@@ -105,9 +125,9 @@
         <decomposition>
             <action0>move-furniture</action0>
         </decomposition>
-    </task3>
-    <task4>
-        <id>AT1_2|1</id>
+    </task4>
+    <task5>
+        <id>AT2_2|1</id>
         <name>RoomCleaning</name>
         <locations>
             <t0>RoomB</t0>
@@ -127,9 +147,9 @@
         <decomposition>
             <action0>clean-room</action0>
         </decomposition>
-    </task4>
-    <task5>
-        <id>AT1_2|2</id>
+    </task5>
+    <task6>
+        <id>AT2_2|2</id>
         <name>RoomCleaning</name>
         <locations>
             <t0>RoomB</t0>
@@ -151,9 +171,9 @@
             <action0>open-door</action0>
             <action1>clean-room</action1>
         </decomposition>
-    </task5>
-    <task6>
-        <id>AT2_2|1</id>
+    </task6>
+    <task7>
+        <id>AT3_2|1</id>
         <name>RobotSanitization</name>
         <locations>
             <t0>SanitizationRoom</t0>
@@ -168,9 +188,9 @@
         <decomposition>
             <action0>sanitize-robot</action0>
         </decomposition>
-    </task6>
-    <task7>
-        <id>AT3_2|1</id>
+    </task7>
+    <task8>
+        <id>AT4_2|1</id>
         <name>FurnitureMoving</name>
         <locations>
             <t0>RoomB</t0>
@@ -185,111 +205,168 @@
         <decomposition>
             <action0>move-furniture</action0>
         </decomposition>
-    </task7>
+    </task8>
 </tasks>
 <constraints>
     <constraint0>
         <type>SEQ</type>
         <task_instances>
-            <id0>task4</id0>
-            <id1>task6</id1>
+            <id0>task0</id0>
+            <id1>task1</id1>
         </task_instances>
     </constraint0>
     <constraint1>
         <type>SEQ</type>
         <task_instances>
-            <id0>task5</id0>
-            <id1>task6</id1>
+            <id0>task0</id0>
+            <id1>task2</id1>
         </task_instances>
     </constraint1>
     <constraint2>
         <type>SEQ</type>
         <task_instances>
-            <id0>task4</id0>
-            <id1>task7</id1>
+            <id0>task0</id0>
+            <id1>task3</id1>
         </task_instances>
     </constraint2>
     <constraint3>
         <type>SEQ</type>
         <task_instances>
-            <id0>task5</id0>
-            <id1>task7</id1>
+            <id0>task0</id0>
+            <id1>task5</id1>
         </task_instances>
     </constraint3>
     <constraint4>
         <type>SEQ</type>
         <task_instances>
             <id0>task0</id0>
-            <id1>task2</id1>
+            <id1>task6</id1>
         </task_instances>
     </constraint4>
     <constraint5>
         <type>SEQ</type>
         <task_instances>
-            <id0>task1</id0>
-            <id1>task2</id1>
+            <id0>task0</id0>
+            <id1>task7</id1>
         </task_instances>
     </constraint5>
     <constraint6>
         <type>SEQ</type>
         <task_instances>
             <id0>task0</id0>
-            <id1>task3</id1>
+            <id1>task8</id1>
         </task_instances>
     </constraint6>
     <constraint7>
         <type>SEQ</type>
         <task_instances>
-            <id0>task1</id0>
-            <id1>task3</id1>
+            <id0>task0</id0>
+            <id1>task4</id1>
         </task_instances>
     </constraint7>
     <constraint8>
-        <type>EC</type>
+        <type>SEQ</type>
         <task_instances>
-            <id0>task0</id0>
-            <id1>task2</id1>
+            <id0>task1</id0>
+            <id1>task3</id1>
         </task_instances>
-        <group>True</group>
-        <divisible>False</divisible>
     </constraint8>
     <constraint9>
+        <type>SEQ</type>
+        <task_instances>
+            <id0>task2</id0>
+            <id1>task3</id1>
+        </task_instances>
+    </constraint9>
+    <constraint10>
+        <type>SEQ</type>
+        <task_instances>
+            <id0>task1</id0>
+            <id1>task4</id1>
+        </task_instances>
+    </constraint10>
+    <constraint11>
+        <type>SEQ</type>
+        <task_instances>
+            <id0>task2</id0>
+            <id1>task4</id1>
+        </task_instances>
+    </constraint11>
+    <constraint12>
+        <type>SEQ</type>
+        <task_instances>
+            <id0>task5</id0>
+            <id1>task7</id1>
+        </task_instances>
+    </constraint12>
+    <constraint13>
+        <type>SEQ</type>
+        <task_instances>
+            <id0>task6</id0>
+            <id1>task7</id1>
+        </task_instances>
+    </constraint13>
+    <constraint14>
+        <type>SEQ</type>
+        <task_instances>
+            <id0>task5</id0>
+            <id1>task8</id1>
+        </task_instances>
+    </constraint14>
+    <constraint15>
+        <type>SEQ</type>
+        <task_instances>
+            <id0>task6</id0>
+            <id1>task8</id1>
+        </task_instances>
+    </constraint15>
+    <constraint16>
         <type>EC</type>
         <task_instances>
             <id0>task1</id0>
-            <id1>task2</id1>
+            <id1>task3</id1>
         </task_instances>
         <group>True</group>
         <divisible>False</divisible>
-    </constraint9>
-    <constraint10>
+    </constraint16>
+    <constraint17>
         <type>EC</type>
         <task_instances>
-            <id0>task4</id0>
-            <id1>task6</id1>
+            <id0>task2</id0>
+            <id1>task3</id1>
         </task_instances>
         <group>True</group>
         <divisible>False</divisible>
-    </constraint10>
-    <constraint11>
+    </constraint17>
+    <constraint18>
         <type>EC</type>
         <task_instances>
             <id0>task5</id0>
-            <id1>task6</id1>
+            <id1>task7</id1>
         </task_instances>
         <group>True</group>
         <divisible>False</divisible>
-    </constraint11>
+    </constraint18>
+    <constraint19>
+        <type>EC</type>
+        <task_instances>
+            <id0>task6</id0>
+            <id1>task7</id1>
+        </task_instances>
+        <group>True</group>
+        <divisible>False</divisible>
+    </constraint19>
 </constraints>
 <mission_decompositions>
     <decomposition0>
         <tasks>
-            <t0>task1</t0>
+            <t0>task0</t0>
             <t1>task2</t1>
             <t2>task3</t2>
             <t3>task4</t3>
-            <t4>task6</t4>
+            <t4>task5</t4>
             <t5>task7</t5>
+            <t6>task8</t6>
         </tasks>
     </decomposition0>
 </mission_decompositions>

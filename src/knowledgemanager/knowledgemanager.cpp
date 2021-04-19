@@ -124,10 +124,10 @@ void FileKnowledgeManager::initialize_objects(map<string,set<string>>& sorts, ve
         -> If a robot does not have a type we put it as native robot type
         -> Robot locations are given as robotlocation type
     */
-    bool has_object_type = false;
+    /*bool has_object_type = false;
     if(sorts["object"].size() > 0) {    
         has_object_type = true;
-    }
+    }*/
     
     /*
         Here we will add locations and robots. For locations we need to be careful: we need to check what is the type of the location!
