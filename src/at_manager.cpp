@@ -5,7 +5,7 @@
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>
 
-#include "annotmanager.hpp"
+#include "annotmanager/annotmanager.hpp"
 
 using namespace std;
 

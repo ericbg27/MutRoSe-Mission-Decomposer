@@ -17,7 +17,7 @@
     #include <iostream>
     #include <string>
 
-    #include "annotmanager.hpp"
+    #include "annotmanager/annotmanager.hpp"
 
     using namespace std;
 

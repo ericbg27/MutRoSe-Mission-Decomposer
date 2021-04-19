@@ -721,7 +721,7 @@ char *yytext;
 #line 4 "src/rannot-token.l"
 	#include <iostream>
 	#include <vector>
-    #include "annotmanager.hpp"
+    #include "annotmanager/annotmanager.hpp"
 	#include "rannot.hpp"
 	//#define YY_USER_ACTION yylloc.first_line = yylloc.last_line = yylineno;
 	using namespace std;

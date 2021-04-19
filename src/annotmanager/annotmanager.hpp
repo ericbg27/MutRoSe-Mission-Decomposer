@@ -5,9 +5,9 @@
 #include <string>
 #include <vector>
 
-#include "at.hpp"
-#include "gm.hpp"
-#include "knowledgemanager.hpp"
+#include "../at.hpp"
+#include "../gm.hpp"
+#include "../knowledgemanager.hpp"
 
 namespace pt = boost::property_tree;
 

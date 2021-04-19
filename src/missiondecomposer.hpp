@@ -12,7 +12,7 @@
 #include "gm.hpp"
 #include "at.hpp"
 #include "at_manager.hpp"
-#include "annotmanager.hpp"
+#include "annotmanager/annotmanager.hpp"
 #include "config.hpp"
 #include "knowledgemanager.hpp"
 #include "contextmanager.hpp"
