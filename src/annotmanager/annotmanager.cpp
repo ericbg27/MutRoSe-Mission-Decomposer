@@ -7,7 +7,7 @@
 #include <sstream>
 #include <set>
 
-#include "../rannot.hpp"
+#include "../rannot/rannot.hpp"
 
 using namespace std;
 

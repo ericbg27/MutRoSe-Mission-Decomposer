@@ -1,7 +1,11 @@
 *.o
-hddl-token.cpp
-hddl.cpp
-hddl.hpp
-hddl.output
+hddl/hddl-token.cpp
+hddl/hddl.cpp
+hddl/hddl.hpp
+hddl/hddl.output
+rannot/rannot-token.cpp
+rannot/rannot.cpp
+rannot/rannot.hpp
+rannot/rannot.output
 xml/Room\ Preparation/Multiple\ Locations/V2/task_output.xml
 xml/Object\ Picking/task_output.xml

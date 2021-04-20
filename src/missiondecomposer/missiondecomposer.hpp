@@ -9,13 +9,13 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/graph/adjacency_list.hpp>
 
-#include "../gm.hpp"
-#include "../at.hpp"
+#include "../gm/gm.hpp"
+#include "../atmanager/at.hpp"
 #include "../atmanager/at_manager.hpp"
 #include "../annotmanager/annotmanager.hpp"
-#include "../config.hpp"
+#include "../config/config.hpp"
 #include "../knowledgemanager/knowledgemanager.hpp"
-#include "../contextmanager.hpp"
+#include "../contextmanager/contextmanager.hpp"
 
 namespace pt = boost::property_tree;
 

@@ -9,12 +9,12 @@
 
 #include <boost/property_tree/ptree.hpp>
 
-#include "../parsetree.hpp"
-#include "../domain.hpp"
+#include "../utils/parsetree.hpp"
+#include "../utils/domain.hpp"
 #include "../knowledgemanager/knowledgemanager.hpp"
-#include "../config.hpp"
-#include "../gm.hpp"
-#include "../at.hpp"
+#include "../config/config.hpp"
+#include "../gm/gm.hpp"
+#include "at.hpp"
 
 namespace pt = boost::property_tree;
 
