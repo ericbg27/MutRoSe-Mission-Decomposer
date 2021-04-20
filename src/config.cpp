@@ -98,25 +98,94 @@ map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>,
         vector<string> databases {"robots_db","world_db"};
         for(string db : databases) {
             if(config.first == db) {
-                string db_type = config.second.get<string>("type");
-                std::transform(db_type.begin(),db_type.end(),db_type.begin(),::toupper);
+                boost::optional<string> db_type_attr = config.second.get_optional<string>("type");
 
-                if(db_type == "FILE") { //Only available type for the moment
-                    string file_type = config.second.get<string>("file_type");
-                    std::transform(file_type.begin(),file_type.end(),file_type.begin(),::toupper);
+                string db_type = "";
+                if(db_type_attr) {
+                    db_type = db_type_attr.get();
+                    std::transform(db_type.begin(),db_type.end(),db_type.begin(),::toupper);
+                } else {
+                    string undefined_db_type_error = "Database type for [" + db + "] was not defined";
 
+                    throw std::runtime_error(undefined_db_type_error);
+                }
+
+                if(db_type == "FILE") { 
+                    boost::optional<string> file_type_attr = config.second.get_optional<string>("file_type");
+
+                    string file_type = "";
+                    if(file_type_attr) {
+                        file_type = file_type_attr.get();
+                        std::transform(file_type.begin(),file_type.end(),file_type.begin(),::toupper);
+                    } else {
+                        string undefined_file_type_error = "Database file type for [" + db + "] was not defined";
+
+                        throw std::runtime_error(undefined_file_type_error);
+                    }
+
+                    vector<string> undefined_attrs;
                     if(file_type == "XML") {
-                        string db_path = config.second.get<string>("path");
-                        string xml_root = config.second.get<string>("xml_root");
+                        
+                        boost::optional<string> db_path_attr = config.second.get_optional<string>("path");
+
+                        string db_path = "";
+                        if(db_path_attr) {
+                            db_path = db_path_attr.get();
+                        } else {
+                            undefined_attrs.push_back("path");
+                        }
+
+                        boost::optional<string> xml_root_attr = config.second.get_optional<string>("xml_root");
+
+                        string xml_root = "";
+                        if(xml_root_attr) {
+                            xml_root = xml_root_attr.get();
+                        } else {
+                            string xml_root_missing_warning = "\n\n###################################################################################################################################\n"; 
+                            xml_root_missing_warning += "WARNING: attribute [xml_root] is missing for XML file type database [" + db + "]. Unexpected behaviors (or even errors) may happen!";
+                            xml_root_missing_warning += "\n###################################################################################################################################\n";
+
+                            std::cout << xml_root_missing_warning << std::endl;
+
+                            std::cout << "[PRESS ENTER TO CONTINUE OR CTRL+C TO END]" << std::endl;
+
+                            getchar();
+                        }
 
                         map<string,string> map_db;
+
                         map_db["type"] = db_type;
                         map_db["file_type"] = file_type;
                         map_db["path"] = db_path;
                         map_db["xml_root"] = xml_root;
 
                         config_info[db] = map_db;
+                    } else {
+                        string unsupported_file_database_type_error = "Database file type [" + file_type + "] is not supported";
+
+                        throw std::runtime_error(unsupported_file_database_type_error);
                     }
+
+                    if(undefined_attrs.size() > 0) {
+                        string undefined_db_attrs_error = "Missing attributes ";
+
+                        unsigned int index = 1;
+                        for(string attr : undefined_attrs) {
+                            if(index == undefined_attrs.size()) {
+                                undefined_db_attrs_error += "[" + attr + "] ";
+                            } else {
+                                undefined_db_attrs_error += "[" + attr + "], ";
+                            }
+                        }
+                        
+                        undefined_db_attrs_error += "in " + db + " definition";
+
+                        throw std::runtime_error(undefined_db_attrs_error);
+                    }
+                } else {
+                    string unsupported_db_type_error = "Database type [" + db_type + "] is not supported";
+
+                    throw std::runtime_error(unsupported_db_type_error);
                 }
             }
         }
@@ -164,7 +233,6 @@ map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>,
                 string type_name = type.second.get<string>("");
                 l_types.push_back(type_name);
             }
-
             
             config_info["location_types"] = l_types;
         }
