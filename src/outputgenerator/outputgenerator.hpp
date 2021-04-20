@@ -12,9 +12,9 @@
 
 #include <boost/graph/adjacency_list.hpp>
 
-#include "../missiondecomposer.hpp"
-#include "../constraintmanager.hpp"
-#include "../gm.hpp"
+#include "../missiondecomposer/missiondecomposer.hpp"
+#include "../constraintmanager/constraintmanager.hpp"
+#include "../gm/gm.hpp"
 
 enum output_generator_type {FILEOUTGEN};
 

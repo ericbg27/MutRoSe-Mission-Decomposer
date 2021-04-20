@@ -10,45 +10,45 @@ LINKERFLAG=-O3 -lm -flto -static -static-libgcc
 
 .PHONY = parser clean
 
-pandaPIparser: src/hddl-token.o src/hddl.o src/main.o src/sortexpansion.o src/parsetree.o src/util.o src/domain.o src/output.o src/parametersplitting.o src/cwa.o src/typeof.o src/shopWriter.o src/hpdlWriter.o src/hddlWriter.o src/orderingDecomposition.o src/plan.o src/verify.o src/properties.o src/contextmanager.o src/gm.o src/tdg.o src/annotmanager.o src/rannot-token.o src/rannot.o src/at_manager.o src/config.o src/knowledgemanager.o src/knowledgebase.o src/missiondecomposer.o src/constraintmanager.o src/outputgenerator/outputgenerator.o src/outputgenerator/xmloutputgenerator.o src/outputgenerator/fileoutputgeneratorfactory.o src/configchecker.o
+pandaPIparser: src/hddl/hddl-token.o src/hddl/hddl.o src/main.o src/utils/sortexpansion.o src/utils/parsetree.o src/utils/util.o src/utils/domain.o src/utils/output.o src/utils/parametersplitting.o src/utils/cwa.o src/utils/typeof.o src/utils/orderingDecomposition.o src/utils/plan.o src/utils/verify.o src/utils/properties.o src/contextmanager/contextmanager.o src/gm/gm.o src/tdg/tdg.o src/annotmanager/annotmanager.o src/rannot/rannot-token.o src/rannot/rannot.o src/atmanager/at_manager.o src/config/config.o src/knowledgemanager/knowledgemanager.o src/knowledgebase/knowledgebase.o src/missiondecomposer/missiondecomposer.o src/constraintmanager/constraintmanager.o src/outputgenerator/outputgenerator.o src/outputgenerator/xmloutputgenerator.o src/outputgenerator/fileoutputgeneratorfactory.o src/configchecker/configchecker.o
 	${CC} ${LINKERFLAG} $^ -o pandaPIparser 
 
-%.o: %.cpp %.hpp src/hddl.hpp
+%.o: %.cpp %.hpp src/hddl/hddl.hpp
 	${CC} ${COMPILEFLAGS} -o $@ -c $<
 
-%.o: %.cpp src/hddl.hpp
+%.o: %.cpp src/hddl/hddl.hpp
 	${CC} ${COMPILEFLAGS} -o $@ -c $<
 
-src/hddl-token.cpp: src/hddl.cpp src/hddl-token.l
-	flex --yylineno -o src/hddl-token.cpp src/hddl-token.l
+src/hddl/hddl-token.cpp: src/hddl/hddl.cpp src/hddl/hddl-token.l
+	flex --yylineno -o src/hddl/hddl-token.cpp src/hddl/hddl-token.l
 
-src/hddl.cpp: src/hddl.y
-	bison -v -d -o src/hddl.cpp src/hddl.y
+src/hddl/hddl.cpp: src/hddl/hddl.y
+	bison -v -d -o src/hddl/hddl.cpp src/hddl/hddl.y
 
-src/hddl.hpp: src/hddl.cpp
+src/hddl/hddl.hpp: src/hddl/hddl.cpp
 
-%.o: %.cpp %.hpp src/rannot.hpp
+%.o: %.cpp %.hpp src/rannot/rannot.hpp
 	${CC} ${COMPILEFLAGS} -o $@ -c $<
 
-%.o: %.cpp src/rannot.hpp
+%.o: %.cpp src/rannot/rannot.hpp
 	${CC} ${COMPILEFLAGS} -o $@ -c $<
 
-src/rannot-token.cpp: src/rannot.cpp src/rannot-token.l
-	flex -o src/rannot-token.cpp src/rannot-token.l
+src/rannot/rannot-token.cpp: src/rannot/rannot.cpp src/rannot/rannot-token.l
+	flex -o src/rannot/rannot-token.cpp src/rannot/rannot-token.l
 
-src/rannot.cpp: src/rannot.y
-	bison -v -d -o src/rannot.cpp src/rannot.y
+src/rannot/rannot.cpp: src/rannot/rannot.y
+	bison -v -d -o src/rannot/rannot.cpp src/rannot/rannot.y
 	
-src/rannot.hpp: src/rannot.cpp
+src/rannot/rannot.hpp: src/rannot/rannot.cpp
 
 clear:
-	rm src/hddl-token.cpp
-	rm src/hddl.cpp
-	rm src/hddl.hpp
-	rm src/*o
+	rm src/hddl/hddl-token.cpp
+	rm src/hddl/hddl.cpp
+	rm src/hddl/hddl.hpp
+	rm src/hddl/*o
 
 clear2:
-	rm src/rannot-token.cpp
-	rm src/rannot.cpp
-	rm src/rannot.hpp
-	rm src/*o
+	rm src/rannot/rannot-token.cpp
+	rm src/rannot/rannot.cpp
+	rm src/rannot/rannot.hpp
+	rm src/rannot/rannot/*o
