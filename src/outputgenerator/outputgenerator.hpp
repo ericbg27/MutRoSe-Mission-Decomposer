@@ -21,7 +21,7 @@ enum output_generator_type {FILEOUTGEN};
 class OutputGenerator {
     public:
         virtual void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, std::pair<std::string,std::string> output, std::vector<ground_literal> world_state, std::vector<SemanticMapping> semantic_mapping,
-                                std::map<std::string,set<std::string>> sorts, std::vector<sort_definition> sort_definitions, std::vector<predicate_definition> predicate_definitions) = 0;
+                                std::map<std::string,set<std::string>> sorts, std::vector<sort_definition> sort_definitions, std::vector<predicate_definition> predicate_definitions, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) = 0;
 };
 
 enum file_output_generator_type {XMLFILEOUTGEN};
@@ -41,11 +41,13 @@ class FileOutputGenerator : public OutputGenerator {
         file_output_generator_type fog_type;
 };
 
-std::vector<std::vector<std::pair<int,ATNode>>> generate_valid_mission_decompositions(ATGraph mission_decomposition, std::vector<Constraint> mission_constraints, std::vector<ground_literal> world_state);
+std::vector<std::vector<std::pair<int,ATNode>>> generate_valid_mission_decompositions(ATGraph mission_decomposition, std::vector<Constraint> mission_constraints, std::vector<ground_literal> world_state,
+                                                                                map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map, vector<SemanticMapping> semantic_mapping, GMGraph gm);
 
 void recursive_valid_mission_decomposition(ATGraph mission_decomposition, std::vector<ground_literal> initial_world_state, std::vector<Constraint> mission_constraints, std::string last_op,
                                             std::queue<std::pair<int,ATNode>>& mission_queue, std::vector<std::pair<std::vector<std::pair<int,ATNode>>,std::vector<ground_literal>>>& valid_mission_decompositions,
-                                                std::vector<std::pair<int,ATNode>>& possible_conflicts);
+                                                std::vector<std::pair<int,ATNode>>& possible_conflicts, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map, vector<SemanticMapping> semantic_mapping,
+                                                    GMGraph gm, map<int,vector<ground_literal>>& effects_to_apply, int depth);
 
 std::queue<std::pair<int,ATNode>> generate_mission_queue(ATGraph mission_decomposition);
 

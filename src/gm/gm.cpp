@@ -889,6 +889,7 @@ void print_gm_var_map_info(map<string, variant<pair<string,string>,pair<vector<s
 	for(gm_var_it = gm_var_map.begin();gm_var_it != gm_var_map.end();++gm_var_it) {
 		cout << "Var name: " << gm_var_it->first << endl;
 		if(holds_alternative<pair<vector<string>,string>>(gm_var_it->second)) {
+            cout << "Var type: " << get<pair<vector<string>,string>>(gm_var_it->second).second << endl;
 			cout << "Mapping: [";
 			unsigned int cnt = 0;
 			vector<string> val_vec = get<pair<vector<string>,string>>(gm_var_it->second).first;
@@ -901,6 +902,7 @@ void print_gm_var_map_info(map<string, variant<pair<string,string>,pair<vector<s
 				cnt++;
 			} 
 		} else {
+            cout << "Var type: " << get<pair<string,string>>(gm_var_it->second).second << endl;
 			cout << "Mapping: " << get<pair<string,string>>(gm_var_it->second).first << endl << endl;
 		}
 	}

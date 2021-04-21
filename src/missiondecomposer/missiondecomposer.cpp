@@ -57,6 +57,8 @@ ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string,vector<Abstrac
 
 	recursive_at_graph_build(mission_decomposition, init, at_instances, at_decomposition_paths, gmannot, -1, gm, false, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
 
+	final_context_dependency_links_generation(mission_decomposition);
+
 	return mission_decomposition;
 }
 
@@ -118,7 +120,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(ATGraph& mission_d
 			int gm_node_id = find_gm_node_by_id(n_id, gm);
 
 			gm_node = gm[gm_node_id];
-
+	
 			is_forAll = true;
 			monitored_var = std::get<vector<pair<string,string>>>(gm_node.custom_props["Monitors"]).at(0);
 			controlled_var = std::get<vector<pair<string,string>>>(gm_node.custom_props["Controls"]).at(0);
@@ -134,6 +136,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(ATGraph& mission_d
 		}
 		node.content = rannot->content;
 		node.parent = parent;
+		node.is_forAll = is_forAll;
 
 		node_id = boost::add_vertex(node, mission_decomposition);
 
@@ -275,9 +278,9 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(ATGraph& mission_d
 			int dnode_id = boost::add_vertex(path_node, mission_decomposition);
 
 			ATEdge d_edge;
-			e.edge_type = NORMAL;
-			e.source = node_id;
-			e.target = dnode_id;
+			d_edge.edge_type = NORMAL;
+			d_edge.source = node_id;
+			d_edge.target = dnode_id;
 
 			mission_decomposition[dnode_id].parent = node_id;
 
@@ -484,6 +487,52 @@ pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decompositi
 	}
 
 	return make_pair(trimmed_mission_decomposition, reverse_ids_map);
+}
+
+void final_context_dependency_links_generation(ATGraph& mission_decomposition) {
+	auto vertices = boost::vertices(mission_decomposition);
+	
+	for(auto v_it = vertices.first; v_it != vertices.second; ++v_it) {
+		ATGraph::out_edge_iterator ei, ei_end;
+		for(boost::tie(ei,ei_end) = out_edges(*v_it,mission_decomposition);ei != ei_end;++ei) {
+			int source = boost::source(*ei,mission_decomposition);
+            int target = boost::target(*ei,mission_decomposition);
+            auto edge = boost::edge(source,target,mission_decomposition).first;
+
+			ATEdge e = mission_decomposition[edge];
+
+			if(e.edge_type == CDEPEND) {
+				auto indexmap = boost::get(boost::vertex_index, mission_decomposition);
+				auto colormap = boost::make_vector_property_map<boost::default_color_type>(indexmap);
+
+				DFSATVisitor vis;
+				boost::depth_first_search(mission_decomposition, vis, colormap, target);
+
+				vector<int> vctr = vis.GetVector();
+
+				int current_node = vctr.at(0);
+				vctr.erase(vctr.begin());
+
+				while(current_node != 0) {
+					if(mission_decomposition[current_node].node_type == ATASK) {
+						ATEdge cd_edge;
+						cd_edge.edge_type = CDEPEND;
+						cd_edge.source = source;
+						cd_edge.target = current_node;
+						
+						boost::add_edge(boost::vertex(source, mission_decomposition), boost::vertex(current_node, mission_decomposition), cd_edge, mission_decomposition);
+					}
+
+					current_node = vctr.at(0);
+					vctr.erase(vctr.begin());
+				}
+
+				boost::remove_edge(edge, mission_decomposition);
+			}
+		}
+
+		//boost::remove_edge(*edge_it, mission_decomposition);
+	}
 }
 
 /*

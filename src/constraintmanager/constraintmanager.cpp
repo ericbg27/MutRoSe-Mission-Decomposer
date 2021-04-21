@@ -815,31 +815,8 @@ vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vecto
                         if(mission_decomposition[target].node_type == ATASK) {
                             if(target == n2.first) {
                                 context_dependency_valid = true;
-                                break;
                             }
-                        } else {
-                            auto indexmap = boost::get(boost::vertex_index, mission_decomposition);
-                            auto colormap = boost::make_vector_property_map<boost::default_color_type>(indexmap);
-
-                            DFSATVisitor vis;
-                            boost::depth_first_search(mission_decomposition, vis, colormap, target);
-
-                            vector<int> vctr = vis.GetVector();
-
-                            int current_node = vctr.at(0);
-                            vctr.erase(vctr.begin());
-                            while(current_node != 0) {
-                                if(mission_decomposition[current_node].node_type == ATASK) {
-                                    if(current_node == n2.first) {
-                                        context_dependency_valid = true;
-                                        break;
-                                    }
-                                }
-
-                                current_node = vctr.at(0);
-                                vctr.erase(vctr.begin());
-                            }
-                        }
+                        } 
                     }
 
                     if(context_dependency_valid) {

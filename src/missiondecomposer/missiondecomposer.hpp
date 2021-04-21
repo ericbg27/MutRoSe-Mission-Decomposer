@@ -35,6 +35,7 @@ struct ATNode {
     bool non_coop;
     bool group;
     bool divisible;
+    bool is_forAll;
     int parent;
 };
 
@@ -110,6 +111,8 @@ class MissionDecomposerFactory {
 };
 
 std::pair<ATGraph,std::map<int,int>> generate_trimmed_at_graph(ATGraph mission_decomposition);
+
+void final_context_dependency_links_generation(ATGraph& mission_decomposition);
 
 void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_vars_map);
     
