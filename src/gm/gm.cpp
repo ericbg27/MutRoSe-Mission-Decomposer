@@ -12,6 +12,70 @@ using namespace std;
 
 const set<string> default_props{"Description", "QueriedProperty", "FailureCondition", "AchieveCondition"};
 
+string AchieveCondition::get_iterated_var() {
+    if(has_forAll_expr) {
+        return iterated_var;
+    } else {
+        return "";
+    }
+}
+        
+string AchieveCondition::get_iteration_var() {
+    if(has_forAll_expr) {
+        return iteration_var;
+    } else {
+        return "";
+    }
+}
+
+void AchieveCondition::set_iterated_var(std::string ivar) {
+    iterated_var = ivar;
+}
+
+void AchieveCondition::set_iteration_var(std::string itvar) {
+    iteration_var = itvar;
+}
+
+variant<pair<pair<predicate_definition,vector<string>>,bool>,bool> AchieveCondition::evaluate_condition(vector<SemanticMapping> semantic_mapping, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
+    if(has_forAll_expr) {
+        string iteration_var_type;
+        if(holds_alternative<pair<string,string>>(gm_var_map[iteration_var])) { // For now, the only valid condition
+            iteration_var_type = std::get<pair<string,string>>(gm_var_map[iteration_var]).second;
+        }
+
+        vector<string> iterated_var_values = std::get<pair<vector<string>,string>>(gm_var_map[iterated_var]).first;
+
+        variant<pair<pair<predicate_definition,vector<string>>,bool>,bool> evaluation = Condition::evaluate_condition(make_pair(iterated_var_values,iteration_var_type), semantic_mapping);
+
+        return evaluation;
+    } else {
+        string cond = condition;
+
+        std::replace(cond.begin(), cond.end(), '.', ' ');
+
+        vector<string> split_cond;
+                                
+        stringstream ss(cond);
+        string temp;
+        while(ss >> temp) {
+            split_cond.push_back(temp);
+        }
+
+        string variable;
+        if(split_cond.at(0) == "not") {
+            variable = split_cond.at(1);
+        } else {
+            variable = split_cond.at(0);
+        }
+
+        variant<pair<string,string>,pair<vector<string>,string>> var_value_and_type = get_var_value_and_type(gm_var_map, variable);
+
+        variant<pair<pair<predicate_definition,vector<string>>,bool>,bool> evaluation = Condition::evaluate_condition(var_value_and_type,semantic_mapping);
+
+        return evaluation;
+    }
+}
+
 /*
     Function: get_dfs_gm_nodes
     Objective: Go through the GM using DFS and return nodes in the order they are visited
@@ -585,7 +649,7 @@ AchieveCondition parse_achieve_condition(string cond) {
 
         a.set_iterated_var(forAll_vars.at(0));
         a.set_iteration_var(forAll_vars.at(1));
-        a.set_forAll_condition(forAll_vars.at(2));
+        a.set_condition(forAll_vars.at(2));
     } else {
         a.set_condition(cond);
     }

@@ -35,7 +35,7 @@ struct ATNode {
     bool non_coop;
     bool group;
     bool divisible;
-    bool is_forAll;
+    bool is_achieve_type;
     int parent;
 };
 

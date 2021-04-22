@@ -15,60 +15,29 @@
 
 #include "../utils/parsetree.hpp"
 #include "../contextmanager/contextmanager.hpp"
+#include "../utils/condition.hpp"
 
 namespace pt = boost::property_tree;
 
-class AchieveCondition {
+class AchieveCondition : public Condition {
     public:
         bool has_forAll_expr;
         
-        std::string get_iterated_var() {
-            if(has_forAll_expr) {
-                return iterated_var;
-            } else {
-                return "";
-            }
-        }
-        std::string get_iteration_var() {
-            if(has_forAll_expr) {
-                return iteration_var;
-            } else {
-                return "";
-            }
-        }
-        std::string get_forAll_condition() {
-            if(has_forAll_expr) {
-                return forAll_condition;
-            } else {
-                return "";
-            }
-        }
-        std::string get_condition() {
-            if(!has_forAll_expr) {
-                return condition;
-            } else {
-                return "";
-            }
-        }
+        std::string get_iterated_var();
+        std::string get_iteration_var();
+        std::string get_forAll_condition();
+        std::string get_condition();
 
-        void set_iterated_var(std::string ivar) {
-            iterated_var = ivar;
-        }
-        void set_iteration_var(std::string itvar) {
-            iteration_var = itvar;
-        }
-        void set_forAll_condition(std::string f_cond) {
-            forAll_condition = f_cond;
-        }
-        void set_condition(std::string cond) {
-            condition = cond;
-        }
+        void set_iterated_var(std::string ivar);
+        void set_iteration_var(std::string itvar);
+        void set_forAll_condition(std::string f_cond);
+
+        std::variant<std::pair<std::pair<predicate_definition,std::vector<std::string>>,bool>,bool> evaluate_condition(std::vector<SemanticMapping> semantic_mapping, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_var_map);
 
     private:
         std::string iterated_var;
         std::string iteration_var;
         std::string forAll_condition;
-        std::string condition;
 };
 
 class FailureCondition {

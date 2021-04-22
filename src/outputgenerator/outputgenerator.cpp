@@ -431,149 +431,108 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
             effects_to_apply.erase(key);
         }
 
-        //Check why is this commented code deleting valid mission decompositions!
-        if(current_node.second.is_forAll) {
-            string forAll_goal_id;
+        if(current_node.second.is_achieve_type) {
+            string achievel_goal_id;
 
-            ATGraph::out_edge_iterator ei, ei_end;
+            if(current_node.second.node_type != GOALNODE) {
+                ATGraph::out_edge_iterator ei, ei_end;
 
-            for(boost::tie(ei,ei_end) = out_edges(current_node.first,mission_decomposition);ei != ei_end;++ei) {
-                auto source = boost::source(*ei,mission_decomposition);
-                auto target = boost::target(*ei,mission_decomposition);
-                auto edge = boost::edge(source,target,mission_decomposition);
+                for(boost::tie(ei,ei_end) = out_edges(current_node.first,mission_decomposition);ei != ei_end;++ei) {
+                    auto source = boost::source(*ei,mission_decomposition);
+                    auto target = boost::target(*ei,mission_decomposition);
+                    auto edge = boost::edge(source,target,mission_decomposition);
 
-                if(mission_decomposition[edge.first].edge_type == NORMAL) {
-                    if(mission_decomposition[target].node_type == GOALNODE) {
-                        forAll_goal_id = std::get<string>(mission_decomposition[target].content);
-                        break;
+                    if(mission_decomposition[edge.first].edge_type == NORMAL) {
+                        if(mission_decomposition[target].node_type == GOALNODE) {
+                            achievel_goal_id = std::get<string>(mission_decomposition[target].content);
+                            break;
+                        }
                     }
                 }
+            } else {
+                achievel_goal_id = std::get<string>(current_node.second.content);
             }
 
-            int gm_node_id = find_gm_node_by_id(forAll_goal_id, gm);
+            int gm_node_id = find_gm_node_by_id(achievel_goal_id, gm);
 
-            AchieveCondition forAll_condition = get<AchieveCondition>(gm[gm_node_id].custom_props["AchieveCondition"]);
+            AchieveCondition achieve_condition = get<AchieveCondition>(gm[gm_node_id].custom_props["AchieveCondition"]);
 
-            vector<ground_literal> forAll_condition_predicates;
+            vector<ground_literal> achieve_condition_predicates;
 
-            string cond = forAll_condition.get_forAll_condition();
-            if(cond.find(".") != string::npos) {
-                //This means that we are dealing with attributes of the iteration variable (the checking if the construction is correct should have been done)
-                string iteration_var_type;
-                if(holds_alternative<pair<string,string>>(gm_var_map[forAll_condition.get_iteration_var()])) { // For now, the only valid condition
-                    iteration_var_type = std::get<pair<string,string>>(gm_var_map[forAll_condition.get_iteration_var()]).second;
-                }
+            variant<pair<pair<predicate_definition,vector<string>>,bool>,bool> evaluation = achieve_condition.evaluate_condition(semantic_mapping, gm_var_map);
+            
+            bool need_predicate_checking = false;
+            if(holds_alternative<pair<pair<predicate_definition,vector<string>>,bool>>(evaluation)) {
+                pair<pair<predicate_definition,vector<string>>,bool> eval = std::get<pair<pair<predicate_definition,vector<string>>,bool>>(evaluation);
 
-                std::replace(cond.begin(), cond.end(), '.', ' ');
+                for(string value : eval.first.second) {
+                    ground_literal aux;
 
-                vector<string> split_cond;
-                            
-                stringstream ss(cond);
-                string temp;
-                while(ss >> temp) {
-                    split_cond.push_back(temp);
-                }
+                    aux.predicate = eval.first.first.name;
+                    aux.positive = !eval.second;
+                    aux.args.push_back(value);
 
-                string cond_attr = split_cond.at(split_cond.size()-1);
+                    achieve_condition_predicates.push_back(aux);
+                } 
 
-                predicate_definition map_pred;
-                for(SemanticMapping sm : semantic_mapping) {
-                    if(sm.get_mapping_type() == "attribute") {
-                        if(sm.get_mapped_type() == "predicate") {
-                            string relation = std::get<string>(sm.get_prop("relation"));
-                            if(relation == iteration_var_type) {
-                                if(std::get<string>(sm.get_prop("name")) == cond_attr) {
-                                    map_pred = std::get<predicate_definition>(sm.get_prop("map"));
+                need_predicate_checking = true;
+            }
+
+            if(need_predicate_checking) {
+                vector<int> decompositions_to_erase;
+                int decomposition_index = 0;
+                for(auto decomposition : valid_mission_decompositions) {
+                    vector<ground_literal> world_state = decomposition.second;
+
+                    bool valid_achieve_condition = true;
+                    for(ground_literal forAll_pred : achieve_condition_predicates) {
+                        for(ground_literal state : world_state) {
+                            if(state.predicate == forAll_pred.predicate) {
+                                bool equal_args = true;
+
+                                int arg_index = 0;
+                                for(string arg : state.args) {
+                                    if(arg != forAll_pred.args.at(arg_index)) {
+                                        equal_args = false;
+                                        break;
+                                    }
+                                                
+                                    arg_index++;
+                                }
+                                            
+                                if(!equal_args) {
+                                    break;
+                                }
+
+                                if(state.positive != forAll_pred.positive) {
+                                    valid_achieve_condition = false;
                                     break;
                                 }
                             }
                         }
-                    }
-                }
 
-                vector<string> iterated_var_values = std::get<pair<vector<string>,string>>(gm_var_map[forAll_condition.get_iterated_var()]).first;
-
-                for(string value : iterated_var_values) {
-                    ground_literal aux;
-
-                    aux.predicate = map_pred.name;
-                    if(cond.find("!") != string::npos || split_cond.at(0) == "not") {
-                        std::cout << "Negative pred with " << value << std::endl;
-                        aux.positive = false;
-                    } else {
-                        aux.positive = true;
-                    }
-                    aux.args.push_back(value);
-
-                    forAll_condition_predicates.push_back(aux);
-                } 
-            }
-
-            std::cout << "forAll condition predicates: " << std::endl;
-            for(ground_literal pred : forAll_condition_predicates) {
-                if(!pred.positive) {
-                    std::cout << "not ";
-                }
-                std::cout << pred.predicate << " ";
-                for(string arg : pred.args) {
-                    std::cout << arg << " ";
-                }
-                std::cout << std::endl;
-            }
-
-            vector<int> decompositions_to_erase;
-            int decomposition_index = 0;
-            for(auto decomposition : valid_mission_decompositions) {
-                vector<ground_literal> world_state = decomposition.second;
-
-                bool valid_achieve_condition = true;
-                for(ground_literal forAll_pred : forAll_condition_predicates) {
-                    for(ground_literal state : world_state) {
-                        if(state.predicate == forAll_pred.predicate) {
-                            bool equal_args = true;
-
-                            int arg_index = 0;
-                            for(string arg : state.args) {
-                                if(arg != forAll_pred.args.at(arg_index)) {
-                                    equal_args = false;
-                                    break;
-                                }
-                                            
-                                arg_index++;
-                            }
-                                        
-                            if(!equal_args) {
-                                break;
-                            }
-
-                            if(state.positive != forAll_pred.positive) {
-                                valid_achieve_condition = false;
-                                break;
-                            }
+                        if(!valid_achieve_condition) {
+                            break;
                         }
                     }
 
                     if(!valid_achieve_condition) {
-                        break;
+                        decompositions_to_erase.push_back(decomposition_index);
                     }
+
+                    decomposition_index++;
                 }
 
-                if(!valid_achieve_condition) {
-                    decompositions_to_erase.push_back(decomposition_index);
+                std::sort(decompositions_to_erase.begin(), decompositions_to_erase.end());
+                for(auto i = decompositions_to_erase.rbegin(); i != decompositions_to_erase.rend(); ++i) {
+                    valid_mission_decompositions.erase(valid_mission_decompositions.begin() + *i);
                 }
 
-                decomposition_index++;
-            }
+                if(valid_mission_decompositions.size() == 0) {
+                    string forAll_condition_not_achieved = "No decomposition satisfied achieve condition of goal " + achievel_goal_id;
 
-            std::sort(decompositions_to_erase.begin(), decompositions_to_erase.end());
-            for(auto i = decompositions_to_erase.rbegin(); i != decompositions_to_erase.rend(); ++i) {
-                valid_mission_decompositions.erase(valid_mission_decompositions.begin() + *i);
-            }
-
-            if(valid_mission_decompositions.size() == 0) {
-                string forAll_condition_not_achieved = "No decomposition satisfied achieve condition of goal " + forAll_goal_id;
-
-                throw std::runtime_error(forAll_condition_not_achieved);
+                    throw std::runtime_error(forAll_condition_not_achieved);
+                }
             }
         }
     } else {
@@ -849,18 +808,6 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
                                 }
                             }
                         }
-
-                        /*std::cout << "World state when verifying task " << d.id << ":" << std::endl;
-                        for(ground_literal state : updated_state) {
-                            if(!state.positive) {
-                                std::cout << "not ";
-                            }
-                            std::cout << state.predicate << " ";
-                            for(string a : state.args) {
-                                std::cout << a << " ";
-                            }
-                            std::cout << std::endl;
-                        }*/
 
                         new_valid_mission = make_pair(new_decomposition,updated_state);
                     }

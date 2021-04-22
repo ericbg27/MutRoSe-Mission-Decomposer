@@ -95,6 +95,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(ATGraph& mission_d
 		VertexData gm_node;
 
 		bool is_forAll = false;
+		bool is_achieve = false;
 		pair<string,string> monitored_var;
 		pair<string,string> controlled_var;
 
@@ -109,6 +110,10 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(ATGraph& mission_d
 				if(context.type == "condition") {
 					active_context = check_context(context, world_state, semantic_mapping, instantiated_vars);
 				}
+			}
+
+			if(std::get<string>(gm_node.custom_props["GoalType"]) == "Achieve") {
+				is_achieve = true;
 			}
 		} else {
 			/*
@@ -136,7 +141,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(ATGraph& mission_d
 		}
 		node.content = rannot->content;
 		node.parent = parent;
-		node.is_forAll = is_forAll;
+		node.is_achieve_type = is_forAll || is_achieve;
 
 		node_id = boost::add_vertex(node, mission_decomposition);
 
