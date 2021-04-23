@@ -17,27 +17,9 @@
 #include "../contextmanager/contextmanager.hpp"
 #include "../utils/condition.hpp"
 
-namespace pt = boost::property_tree;
+#include "../utils/gm_utils.hpp"
 
-//************************************************* CONSTANT DECLARATION ****************************************************
-const std::string goal_type_prop = "GoalType";
-const std::string controls_prop = "Controls";
-const std::string monitors_prop = "Monitors";
-const std::string context_prop = "CreationCondition";
-const std::string location_prop = "Location";
-const std::string robot_number_prop = "RobotNumber";
-const std::string params_prop = "Params";
-const std::string achieve_condition_prop = "AchieveCondition";
-const std::string queried_property_prop = "QueriedProperty";
-const std::string description_prop = "Description";
-const std::string failure_condition_prop = "FailureCondition";
-const std::string achieve_goal_type = "Achieve";
-const std::string perform_goal_type = "Perform";
-const std::string query_goal_type = "Query";
-const std::string istar_goal = "istar.Goal";
-const std::string istar_task = "istar.Task";
-const std::set<std::string> default_props{description_prop, queried_property_prop, failure_condition_prop, achieve_condition_prop};
-//***************************************************************************************************************************
+namespace pt = boost::property_tree;
 
 class AchieveCondition : public Condition {
     public:
@@ -133,24 +115,11 @@ GMGraph graph_from_property_tree(pt::ptree root);
 
 void check_undefined_number_of_robots(GMGraph& gm, std::vector<task> abstract_tasks, std::vector<sort_definition> sort_definitions);
 
-std::string get_node_name(std::string node_text);
-std::string parse_gm_var_type(std::string var_type);
-
-std::vector<std::pair<std::string,std::string>> parse_vars(std::string var_decl);
-std::vector<std::pair<std::string,std::string>> parse_var_mapping(std::string text);
-
-std::vector<std::string> parse_forAll_expr(std::string expr);
-
 IterationRule parse_iterate_expr(std::string expr);
 
 AchieveCondition parse_achieve_condition(std::string cond);
 
 QueriedProperty parse_select_expr(std::string expr);
-
-std::pair<std::string,std::string> parse_at_text(std::string text);
-std::pair<std::string,std::string> parse_goal_text(std::string text);
-
-std::pair<int,int> parse_robot_number(std::string text);
 
 void analyze_custom_props(std::map<std::string,std::string> custom_props, VertexData& v);
 
