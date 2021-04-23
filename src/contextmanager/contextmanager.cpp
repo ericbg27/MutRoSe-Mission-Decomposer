@@ -61,7 +61,7 @@ pair<bool,pair<string,predicate_definition>> get_pred_from_context(Context conte
 	string var;
 	bool positive = true;
 
-	if(context.get_context_type() == "condition") {
+	if(context.get_context_type() == condition_context_type) {
 		string condition = context.get_condition();
 		string attr;
 

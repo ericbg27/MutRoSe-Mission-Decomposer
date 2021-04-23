@@ -455,7 +455,7 @@ void recursive_valid_mission_decomposition(ATGraph mission_decomposition, vector
 
             int gm_node_id = find_gm_node_by_id(achievel_goal_id, gm);
 
-            AchieveCondition achieve_condition = get<AchieveCondition>(gm[gm_node_id].custom_props["AchieveCondition"]);
+            AchieveCondition achieve_condition = get<AchieveCondition>(gm[gm_node_id].custom_props[achieve_condition_prop]);
 
             vector<ground_literal> achieve_condition_predicates;
 

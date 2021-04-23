@@ -19,6 +19,26 @@
 
 namespace pt = boost::property_tree;
 
+//************************************************* CONSTANT DECLARATION ****************************************************
+const std::string goal_type_prop = "GoalType";
+const std::string controls_prop = "Controls";
+const std::string monitors_prop = "Monitors";
+const std::string context_prop = "CreationCondition";
+const std::string location_prop = "Location";
+const std::string robot_number_prop = "RobotNumber";
+const std::string params_prop = "Params";
+const std::string achieve_condition_prop = "AchieveCondition";
+const std::string queried_property_prop = "QueriedProperty";
+const std::string description_prop = "Description";
+const std::string failure_condition_prop = "FailureCondition";
+const std::string achieve_goal_type = "Achieve";
+const std::string perform_goal_type = "Perform";
+const std::string query_goal_type = "Query";
+const std::string istar_goal = "istar.Goal";
+const std::string istar_task = "istar.Task";
+const std::set<std::string> default_props{description_prop, queried_property_prop, failure_condition_prop, achieve_condition_prop};
+//***************************************************************************************************************************
+
 class AchieveCondition : public Condition {
     public:
         bool has_forAll_expr;

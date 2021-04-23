@@ -10,8 +10,6 @@
 
 using namespace std;
 
-const set<string> default_props{"Description", "QueriedProperty", "FailureCondition", "AchieveCondition"};
-
 string AchieveCondition::get_iterated_var() {
     if(has_forAll_expr) {
         return iterated_var;
@@ -106,18 +104,20 @@ void check_gm_validity(GMGraph gm) {
     vector<int> vctr = get_dfs_gm_nodes(gm);
 
     for(int v : vctr) {
-        string goal_type = get<string>(gm[v].custom_props["GoalType"]);
+        string goal_type = get<string>(gm[v].custom_props[goal_type_prop]);
+
         vector<pair<string,string>> controlled_vars;
-        if(holds_alternative<vector<pair<string,string>>>(gm[v].custom_props["Controls"])) {
-            controlled_vars = std::get<vector<pair<string,string>>>(gm[v].custom_props["Controls"]);
+        if(holds_alternative<vector<pair<string,string>>>(gm[v].custom_props[controls_prop])) {
+            controlled_vars = std::get<vector<pair<string,string>>>(gm[v].custom_props[controls_prop]);
         }
-        if(goal_type == "Achieve") {
+
+        if(goal_type == achieve_goal_type) {
             vector<pair<string,string>> monitored_vars;
-            if(holds_alternative<vector<pair<string,string>>>(gm[v].custom_props["Monitors"])) {
-                monitored_vars = std::get<vector<pair<string,string>>>(gm[v].custom_props["Monitors"]);
+            if(holds_alternative<vector<pair<string,string>>>(gm[v].custom_props[monitors_prop])) {
+                monitored_vars = std::get<vector<pair<string,string>>>(gm[v].custom_props[monitors_prop]);
             }
 
-            AchieveCondition ac = std::get<AchieveCondition>(gm[v].custom_props["AchieveCondition"]);
+            AchieveCondition ac = std::get<AchieveCondition>(gm[v].custom_props[achieve_condition_prop]);
             
             bool found_iterated_var = false;
             for(auto monitored : monitored_vars) {
@@ -141,6 +141,24 @@ void check_gm_validity(GMGraph gm) {
             if(!found_iteration_var) {
                 string iteration_var_err = "Did not find iteration variable " + ac.get_iteration_var() + " in " + get_node_name(gm[v].text) + "'s monitored variables list";
                 throw std::runtime_error(iteration_var_err);
+            }
+        } else if(goal_type == query_goal_type) {
+            // TODO: verify correctness of queried property
+        }
+
+        if(goal_type != achieve_goal_type) {
+            if(gm[v].custom_props.find(achieve_condition_prop) != gm[v].custom_props.end()) {
+                string achieve_condition_error = "Goal of type " + goal_type + " cannot contain an Achieve Condition";
+
+                throw std::runtime_error(achieve_condition_error);
+            }
+        }
+
+        if(goal_type != query_goal_type) {
+            if(gm[v].custom_props.find(queried_property_prop) != gm[v].custom_props.end()) {
+                string queried_property_error = "Goal of type " + goal_type + " cannot contain a Queried Property";
+
+                throw std::runtime_error(queried_property_error);
             }
         }
     }
@@ -194,7 +212,7 @@ int find_gm_node_by_id(string id, GMGraph gm) {
 
     for(boost::tie(v,vend) = vertices(gm);v != vend;++v) {
         string node_id;
-        if(gm[*v].type == "istar.Goal") {
+        if(gm[*v].type == istar_goal) {
             node_id = parse_goal_text(gm[*v].text).first;
         } else {
             node_id = parse_at_text(gm[*v].text).first;
@@ -236,8 +254,8 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
         } else if(cp_it->first == "Deadline") { //Problem if deadline is symbolic (solve this later!)
             stringstream ss(cp_it->second);
             ss >> v.deadline;
-        } else if(cp_it->first == "GoalType") {
-            v.custom_props["GoalType"] = cp_it->second;
+        } else if(cp_it->first == goal_type_prop) {
+            v.custom_props[goal_type_prop] = cp_it->second;
         } else if(cp_it->first == "Period") {
             stringstream ss(cp_it->second);
             ss >> v.period;
@@ -251,9 +269,9 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
             transform(aux.begin(), aux.end(), aux.begin(), ::tolower);
             //istringstream(boost::to_lower_copy(cp_it->second)) >> std::boolalpha >> v.non_cooperative;
             istringstream(aux) >> std::boolalpha >> v.divisible;
-        } else if(cp_it->first == "Controls" || cp_it->first == "Monitors") {
+        } else if(cp_it->first == controls_prop || cp_it->first == monitors_prop) {
             v.custom_props[cp_it->first] = parse_vars(cp_it->second);
-        } else if(cp_it->first == "CreationCondition") {
+        } else if(cp_it->first == context_prop) {
             Context c;
             size_t pos1 = cp_it->second.find('\"');
             size_t pos2 = cp_it->second.find('\"',pos1+1);
@@ -262,18 +280,18 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
 
             string aux = cp_it->second;
             std::transform(aux.begin(),aux.end(),aux.begin(),::tolower);  
-            if(aux.find("trigger") != string::npos) {
-                c.set_context_type("trigger");
-            } else if(aux.find("condition") != string::npos) {
-                c.set_context_type("condition");
+            if(aux.find(trigger_context_type) != string::npos) {
+                c.set_context_type(trigger_context_type);
+            } else if(aux.find(condition_context_type) != string::npos) {
+                c.set_context_type(condition_context_type);
             }
             v.custom_props[cp_it->first] = c;
-        } else if(cp_it->first == "Location") {
+        } else if(cp_it->first == location_prop) {
             v.custom_props[cp_it->first] = cp_it->second;
-        } else if(cp_it->first == "RobotNumber") {
+        } else if(cp_it->first == robot_number_prop) {
             v.fixed_robot_num = false;
             v.robot_num = parse_robot_number(cp_it->second);
-        } else if(cp_it->first == "Params") {
+        } else if(cp_it->first == params_prop) {
             vector<string> params;
 
             string params_str = cp_it->second;
@@ -294,34 +312,36 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
         }
     }
 
-    if(v.custom_props.find("GoalType") == v.custom_props.end()) {
-        v.custom_props["GoalType"] = "Perform";
+    if(v.custom_props.find(goal_type_prop) == v.custom_props.end()) {
+        v.custom_props[goal_type_prop] = perform_goal_type;
     }
 
-    if(std::get<string>(v.custom_props["GoalType"]) == "Achieve") {
+    if(std::get<string>(v.custom_props[goal_type_prop]) == achieve_goal_type) {
         AchieveCondition a;
-        a = parse_achieve_condition(custom_props["AchieveCondition"]);
-        v.custom_props["AchieveCondition"] = a;
-        if(custom_props.find("FailureCondition") != custom_props.end()) {
+        a = parse_achieve_condition(custom_props[achieve_condition_prop]);
+        v.custom_props[achieve_condition_prop] = a;
+        if(custom_props.find(failure_condition_prop) != custom_props.end()) {
             FailureCondition f;
-            f.set_condition(custom_props["FailureCondition"]);
-            v.custom_props["FailureCondition"] = f;
+            f.set_condition(custom_props[failure_condition_prop]);
+            v.custom_props[failure_condition_prop] = f;
         }
-    } else if(std::get<string>(v.custom_props["GoalType"]) == "Query") {
-        if(custom_props["QueriedProperty"].find("select")) {
-            v.custom_props["QueriedProperty"] = parse_select_expr(custom_props["QueriedProperty"]);
+    } else if(std::get<string>(v.custom_props[goal_type_prop]) == query_goal_type) {
+        string aux = custom_props[queried_property_prop];
+        std::transform(aux.begin(),aux.end(),aux.begin(),::tolower);
+        if(aux.find("select")) {
+            v.custom_props[queried_property_prop] = parse_select_expr(custom_props[queried_property_prop]);
         } else {
-            v.custom_props["QueriedProperty"] = custom_props["QueriedProperty"];
+            v.custom_props[queried_property_prop] = custom_props[queried_property_prop];
         }
-    } else if(std::get<string>(v.custom_props["GoalType"]) == "Perform") {
-        if(custom_props.find("FailureCondition") != custom_props.end()) {
+    } else if(std::get<string>(v.custom_props[goal_type_prop]) == perform_goal_type) {
+        if(custom_props.find(failure_condition_prop) != custom_props.end()) {
             FailureCondition f;
-            f.set_condition(custom_props["FailureCondition"]);
-            v.custom_props["FailureCondition"] = f;
+            f.set_condition(custom_props[failure_condition_prop]);
+            v.custom_props[failure_condition_prop] = f;
         }
-    } /*else if(std::get<string>(v.custom_props["GoalType"]) == "Loop") {
+    } /*else if(std::get<string>(v.custom_props[goal_type_prop]) == "Loop") {
         v.custom_props["IterationRule"] = parse_iterate_expr(custom_props["IterationRule"]);
-    } else if(std::get<string>(v.custom_props["GoalType"]) == "Trigger") {
+    } else if(std::get<string>(v.custom_props[goal_type_prop]) == "Trigger") {
         v.custom_props["TriggeredEvent"] = custom_props["TriggeredEvent"];
     } */
 }
@@ -354,7 +374,7 @@ vector<pair<int,VertexData>> parse_gm_nodes(pt::ptree nodes) {
 
         analyze_custom_props(custom_props, v);
 
-        if(v.type == "istar.Goal" || v.type == "istar.Task") {
+        if(v.type == istar_goal || v.type == istar_task) {
             string name = v.text.substr(0,v.text.find(':'));
             smatch m;
             regex e("[0-9]+");
@@ -494,7 +514,7 @@ void check_undefined_number_of_robots(GMGraph& gm, vector<task> abstract_tasks, 
 
     for(int gm_index = 0;gm_index < graph_size;gm_index++) {
         VertexData vertex = gm[gm_index];
-        if(vertex.type == "istar.Task" && vertex.fixed_robot_num) {
+        if(vertex.type == istar_task && vertex.fixed_robot_num) {
             pair<string,string> at_id_name = parse_at_text(vertex.text);
 
             int robot_number = 0;
@@ -923,8 +943,8 @@ void print_gm_nodes_info(GMGraph gm) {
 
 		Context c;
 			
-		if(node.custom_props.find("CreationCondition") != node.custom_props.end()) {
-			c = get<Context>(node.custom_props["CreationCondition"]);
+		if(node.custom_props.find(context_prop) != node.custom_props.end()) {
+			c = get<Context>(node.custom_props[context_prop]);
 
 			std::cout << "\tType: " << c.get_context_type() << std::endl;
 			std::cout << "\tCondition: " << c.get_condition() << std::endl;
@@ -934,8 +954,8 @@ void print_gm_nodes_info(GMGraph gm) {
 
         std::cout << "Parameters: " << std::endl;
 
-        if(node.custom_props.find("Params") != node.custom_props.end()) {
-            for(string param : get<vector<string>>(node.custom_props["Params"])) {
+        if(node.custom_props.find(params_prop) != node.custom_props.end()) {
+            for(string param : get<vector<string>>(node.custom_props[params_prop])) {
                 std::cout << "\tParam: " << param << std::endl;
             }
         }

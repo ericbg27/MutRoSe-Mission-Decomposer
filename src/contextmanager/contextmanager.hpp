@@ -9,6 +9,9 @@
 #include "../config/config.hpp"
 #include "../utils/condition.hpp"
 
+const std::string trigger_context_type = "trigger";
+const std::string condition_context_type = "condition";
+
 class Context : public Condition {
     public:
         std::string get_context_type();

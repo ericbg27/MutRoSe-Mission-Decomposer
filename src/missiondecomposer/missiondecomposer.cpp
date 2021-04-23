@@ -104,15 +104,15 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(ATGraph& mission_d
 			int gm_node_id = find_gm_node_by_id(n_id, gm);
 
 			gm_node = gm[gm_node_id];
-			if(gm_node.custom_props.find("CreationCondition") != gm_node.custom_props.end()) {
-				context = std::get<Context>(gm_node.custom_props["CreationCondition"]);
+			if(gm_node.custom_props.find(context_prop) != gm_node.custom_props.end()) {
+				context = std::get<Context>(gm_node.custom_props[context_prop]);
 
-				if(context.type == "condition") {
+				if(context.get_context_type() == condition_context_type) {
 					active_context = check_context(context, world_state, semantic_mapping, instantiated_vars);
 				}
 			}
 
-			if(std::get<string>(gm_node.custom_props["GoalType"]) == "Achieve") {
+			if(std::get<string>(gm_node.custom_props[goal_type_prop]) == achieve_goal_type) {
 				is_achieve = true;
 			}
 		} else {
@@ -128,7 +128,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(ATGraph& mission_d
 	
 			is_forAll = true;
 			monitored_var = std::get<vector<pair<string,string>>>(gm_node.custom_props["Monitors"]).at(0);
-			controlled_var = std::get<vector<pair<string,string>>>(gm_node.custom_props["Controls"]).at(0);
+			controlled_var = std::get<vector<pair<string,string>>>(gm_node.custom_props[controls_prop]).at(0);
 		}
 		
 		node.non_coop = rannot->non_coop;
