@@ -257,12 +257,15 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
             Context c;
             size_t pos1 = cp_it->second.find('\"');
             size_t pos2 = cp_it->second.find('\"',pos1+1);
-            c.condition = cp_it->second.substr(pos1+1,pos2);
-            c.condition = c.condition.substr(0,c.condition.size()-1);   
-            if(cp_it->second.find("trigger") != string::npos) {
-                c.type = "trigger";
-            } else if(cp_it->second.find("condition") != string::npos) {
-                c.type = "condition";
+            string cond = cp_it->second.substr(pos1+1,pos2);
+            c.set_condition(cond.substr(0,cond.size()-1)); 
+
+            string aux = cp_it->second;
+            std::transform(aux.begin(),aux.end(),aux.begin(),::tolower);  
+            if(aux.find("trigger") != string::npos) {
+                c.set_context_type("trigger");
+            } else if(aux.find("condition") != string::npos) {
+                c.set_context_type("condition");
             }
             v.custom_props[cp_it->first] = c;
         } else if(cp_it->first == "Location") {
@@ -301,7 +304,7 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
         v.custom_props["AchieveCondition"] = a;
         if(custom_props.find("FailureCondition") != custom_props.end()) {
             FailureCondition f;
-            f.condition = custom_props["FailureCondition"];
+            f.set_condition(custom_props["FailureCondition"]);
             v.custom_props["FailureCondition"] = f;
         }
     } else if(std::get<string>(v.custom_props["GoalType"]) == "Query") {
@@ -313,7 +316,7 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
     } else if(std::get<string>(v.custom_props["GoalType"]) == "Perform") {
         if(custom_props.find("FailureCondition") != custom_props.end()) {
             FailureCondition f;
-            f.condition = custom_props["FailureCondition"];
+            f.set_condition(custom_props["FailureCondition"]);
             v.custom_props["FailureCondition"] = f;
         }
     } /*else if(std::get<string>(v.custom_props["GoalType"]) == "Loop") {
@@ -923,8 +926,8 @@ void print_gm_nodes_info(GMGraph gm) {
 		if(node.custom_props.find("CreationCondition") != node.custom_props.end()) {
 			c = get<Context>(node.custom_props["CreationCondition"]);
 
-			std::cout << "\tType: " << c.type << std::endl;
-			std::cout << "\tCondition: " << c.condition << std::endl;
+			std::cout << "\tType: " << c.get_context_type() << std::endl;
+			std::cout << "\tCondition: " << c.get_condition() << std::endl;
 		} else {
 			std::cout << "\tNo Context" << std::endl;
 		}

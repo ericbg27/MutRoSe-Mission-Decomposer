@@ -2,6 +2,14 @@
 
 using namespace std;
 
+string Context::get_context_type() {
+	return type;
+}
+
+void Context::set_context_type(string tp) {
+	type = tp;
+}
+
 /*
     Function: check_context
     Objective: Check if a given context is active given a world_state
@@ -53,8 +61,8 @@ pair<bool,pair<string,predicate_definition>> get_pred_from_context(Context conte
 	string var;
 	bool positive = true;
 
-	if(context.type == "condition") {
-		string condition = context.condition;
+	if(context.get_context_type() == "condition") {
+		string condition = context.get_condition();
 		string attr;
 
 		size_t cond_sep = condition.find('.');
@@ -79,7 +87,7 @@ pair<bool,pair<string,predicate_definition>> get_pred_from_context(Context conte
 		}
 
 		if(!found_pred) {
-			std::string predicate_not_found_err = "Could not build predicate from context: " + context.condition;
+			std::string predicate_not_found_err = "Could not build predicate from context: " + context.get_condition();
 			throw std::runtime_error(predicate_not_found_err);
 		}
 

@@ -216,8 +216,8 @@ map<string,vector<AbstractTask>> FileKnowledgeATManager::generate_at_instances(v
 
 			if(gm[v].custom_props.find("CreationCondition") != gm[v].custom_props.end()) {
 				Context c = get<Context>(gm[v].custom_props["CreationCondition"]);
-				if(c.type == "trigger") {
-					valid_events[depth].push_back(c.condition);
+				if(c.get_context_type() == "trigger") {
+					valid_events[depth].push_back(c.get_condition());
 					insert_events = true;
 				}
 			}

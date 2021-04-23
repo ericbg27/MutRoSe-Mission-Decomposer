@@ -40,10 +40,7 @@ class AchieveCondition : public Condition {
         std::string forAll_condition;
 };
 
-class FailureCondition {
-    public:
-        std::string condition;
-};
+class FailureCondition : public Condition {};
 
 struct IterationRule {
     std::string iterated_var;
