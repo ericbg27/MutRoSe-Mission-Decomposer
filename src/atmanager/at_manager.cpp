@@ -216,12 +216,12 @@ map<string,vector<AbstractTask>> FileKnowledgeATManager::generate_at_instances(v
 
 			if(gm[v].custom_props.find(context_prop) != gm[v].custom_props.end()) {
 				Context c = get<Context>(gm[v].custom_props[context_prop]);
-				if(c.get_context_type() == "trigger") {
+				if(c.get_context_type() == trigger_context_type) {
 					valid_events[depth].push_back(c.get_condition());
 					insert_events = true;
 				}
 			}
-		} else if(gm[v].type == "istar.Task") {
+		} else if(gm[v].type == istar_task) {
 
 			/*
 				If we are dealing with a task vertex we:
