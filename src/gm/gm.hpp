@@ -16,47 +16,9 @@
 #include "../utils/parsetree.hpp"
 #include "../contextmanager/contextmanager.hpp"
 #include "../utils/condition.hpp"
-
 #include "../utils/gm_utils.hpp"
 
 namespace pt = boost::property_tree;
-
-class AchieveCondition : public Condition {
-    public:
-        bool has_forAll_expr;
-        
-        std::string get_iterated_var();
-        std::string get_iteration_var();
-        std::string get_forAll_condition();
-        std::string get_condition();
-
-        void set_iterated_var(std::string ivar);
-        void set_iteration_var(std::string itvar);
-        void set_forAll_condition(std::string f_cond);
-
-        std::variant<std::pair<std::pair<predicate_definition,std::vector<std::string>>,bool>,bool> evaluate_condition(std::vector<SemanticMapping> semantic_mapping, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_var_map);
-
-    private:
-        std::string iterated_var;
-        std::string iteration_var;
-        std::string forAll_condition;
-};
-
-class FailureCondition : public Condition {};
-
-struct IterationRule {
-    std::string iterated_var;
-    std::string iteration_var;
-    std::pair<std::string,std::string> result_var;
-    std::string result_init;
-    std::string end_loop;
-};
-
-struct QueriedProperty {
-    std::string queried_var;
-    std::pair<std::string,std::string> query_var;
-    std::vector<std::string> query;
-};
 
 struct VertexData {
     int parent;
@@ -114,12 +76,6 @@ std::vector<std::pair<std::pair<int,int>, EdgeData>> parse_gm_edges(pt::ptree li
 GMGraph graph_from_property_tree(pt::ptree root);
 
 void check_undefined_number_of_robots(GMGraph& gm, std::vector<task> abstract_tasks, std::vector<sort_definition> sort_definitions);
-
-IterationRule parse_iterate_expr(std::string expr);
-
-AchieveCondition parse_achieve_condition(std::string cond);
-
-QueriedProperty parse_select_expr(std::string expr);
 
 void analyze_custom_props(std::map<std::string,std::string> custom_props, VertexData& v);
 

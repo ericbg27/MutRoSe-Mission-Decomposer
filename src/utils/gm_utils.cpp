@@ -5,6 +5,221 @@
 
 using namespace std;
 
+string AchieveCondition::get_iterated_var() {
+    if(has_forAll_expr) {
+        return iterated_var;
+    } else {
+        return "";
+    }
+}
+        
+string AchieveCondition::get_iteration_var() {
+    if(has_forAll_expr) {
+        return iteration_var;
+    } else {
+        return "";
+    }
+}
+
+void AchieveCondition::set_iterated_var(std::string ivar) {
+    iterated_var = ivar;
+}
+
+void AchieveCondition::set_iteration_var(std::string itvar) {
+    iteration_var = itvar;
+}
+
+variant<pair<pair<predicate_definition,vector<string>>,bool>,bool> AchieveCondition::evaluate_condition(vector<SemanticMapping> semantic_mapping, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
+    if(has_forAll_expr) {
+        string iteration_var_type;
+        if(holds_alternative<pair<string,string>>(gm_var_map[iteration_var])) { // For now, the only valid condition
+            iteration_var_type = std::get<pair<string,string>>(gm_var_map[iteration_var]).second;
+        }
+
+        vector<string> iterated_var_values = std::get<pair<vector<string>,string>>(gm_var_map[iterated_var]).first;
+
+        variant<pair<pair<predicate_definition,vector<string>>,bool>,bool> evaluation = Condition::evaluate_condition(make_pair(iterated_var_values,iteration_var_type), semantic_mapping);
+
+        return evaluation;
+    } else {
+        string cond = condition;
+
+        std::replace(cond.begin(), cond.end(), '.', ' ');
+
+        vector<string> split_cond;
+                                
+        stringstream ss(cond);
+        string temp;
+        while(ss >> temp) {
+            split_cond.push_back(temp);
+        }
+
+        string variable;
+        if(split_cond.at(0) == "not") {
+            variable = split_cond.at(1);
+        } else {
+            variable = split_cond.at(0);
+        }
+
+        variant<pair<string,string>,pair<vector<string>,string>> var_value_and_type = get_var_value_and_type(gm_var_map, variable);
+
+        variant<pair<pair<predicate_definition,vector<string>>,bool>,bool> evaluation = Condition::evaluate_condition(var_value_and_type,semantic_mapping);
+
+        return evaluation;
+    }
+}
+
+/*
+    Function: parse_achieve_condition
+    Objective: Parse AchieveCondition, which must be a forAll statement. With this we create an
+    AchieveCondition object and return it
+
+    @ Input: The string representing the achieve condition
+    @ Output: The generated achieve condition
+*/ 
+AchieveCondition parse_achieve_condition(string cond) {
+    AchieveCondition a;
+    if(cond.find("forAll") != string::npos) {
+        a.has_forAll_expr = true;
+    } else {
+        a.has_forAll_expr = false;
+    }
+
+    if(a.has_forAll_expr) {
+        vector<string> forAll_vars = parse_forAll_expr(cond);
+
+        a.set_iterated_var(forAll_vars.at(0));
+        a.set_iteration_var(forAll_vars.at(1));
+        a.set_condition(forAll_vars.at(2));
+    } else {
+        a.set_condition(cond);
+    }
+
+    return a;
+}
+
+IterationRule parse_iterate_expr(string expr) {
+    IterationRule it;
+    stringstream ss(expr);
+    string aux;
+
+    regex e1("[a-zA-Z]+[a-zA-z_.0-9]*");
+    smatch m;
+
+    getline(ss, aux, '>');
+    regex_search(aux,m,e1);
+    it.iterated_var = m[0];
+
+    getline(ss, aux, ';');
+    aux.substr(aux.find('(')+1);
+    regex_search(aux,m,e1);
+    it.iteration_var = m[0];
+
+    if(ss.str().find(":") == string::npos) {
+        getline(ss, aux, '=');
+        regex_search(aux,m,e1);
+        it.result_var.first = m[0];
+        it.result_var.second = "";
+    } else {
+        getline(ss, aux, ':');
+        regex_search(aux,m,e1);
+        it.result_var.first = m[0];
+
+        getline(ss, aux, '=');
+        regex_search(aux,m,e1);
+        it.result_var.second = m[0];
+    }
+
+    regex e2("[a-zA-Z]+[a-zA-Z_.0-9]*");
+    getline(ss, aux, '|');
+    regex_search(aux,m,e2);
+    it.result_init = m[0];
+
+    regex e3("[a-zA-Z]{1}[a-zA-z0-9_]*(->([a-zA-z]+)[(]{1}[a-zA-Z]{1}[a-zA-z0-9]*[)]{1})?");
+    getline(ss, aux, ')');
+    string end_str;
+    getline(ss,end_str);
+
+    if(count(end_str.begin(),end_str.end(),')') > 0) {
+        aux += ')';
+    }
+    regex_search(aux,m,e3);
+    it.end_loop = m[0];
+
+    return it;
+}
+
+/*
+    Function: parse_select_expr
+    Objective: Parse OCL select expression, returning a QueriedProperty object. This is done due to
+    the fact that select statements are used in Query goals
+
+    @ Input: The string representing the select expression
+    @ Output: A QueriedProperty object generated from the select statement
+*/ 
+QueriedProperty parse_select_expr(string expr) {
+    bool error = false;
+
+    std::regex select_reg("[a-zA-Z]{1}[a-zA-z_.0-9]*(->select)[(][a-zA-Z]{1}[a-zA-z_.0-9]*[:][a-zA-z]+[a-zA-Z0-9]+[ ]*[|][ ]*(([!]?[a-zA-Z]+[a-zA-z_.0-9]*)?|[a-zA-Z]+[a-zA-z_.0-9]*[ ]*((==)|(!=))?[ ]*([a-zA-z]+[a-zA-Z0-9]+|\"[a-zA-z]+[a-zA-Z0-9]+\"?))[)]");
+    
+    if(!std::regex_match(expr, select_reg)) {
+        error = true;
+    }
+
+    QueriedProperty q;
+    stringstream ss(expr);
+    string aux;
+
+    regex e1("[a-zA-Z]+[a-zA-z_.0-9]*");
+    smatch m;
+
+    getline(ss, aux, '>');
+    regex_search(aux,m,e1);
+    q.queried_var = m[0];
+
+    getline(ss, aux, ':');
+    aux = aux.substr(aux.find('(')+1);
+    regex_search(aux,m,e1);
+    q.query_var.first = m[0];
+
+    if(ss.str().find(":") == string::npos) {
+        q.query_var.second = "";
+    } else {
+        getline(ss, aux, '|');
+        regex_search(aux,m,e1);
+        q.query_var.second = m[0];
+    }
+
+    regex e2("[!a-zA-Z]{1}[a-zA-Z_.0-9]*");
+    regex e3("[a-zA-Z]{1}[a-zA-Z_.0-9]*");
+    if((ss.str().find("==") == string::npos) && (ss.str().find("!=") == string::npos)) {
+        getline(ss, aux, ')');
+        regex_search(aux,m,e2);
+        q.query.push_back(m[0]);
+    } else {
+        getline(ss,aux,'=');
+        regex_search(aux,m,e3);
+        q.query.push_back(m[0]);
+        
+        if(ss.str().find("==") != string::npos) {
+            q.query.push_back("==");
+        } else {
+            q.query.push_back("!=");
+        }
+
+        getline(ss,aux,')');
+        regex_search(aux,m,e3);
+        q.query.push_back(m[0]);
+    }
+
+    if(error == true) {
+        string select_err = "Invalid select statement " + expr + " in GM.";
+        throw std::runtime_error(select_err);
+    }
+
+    return q;
+}
+
 /*
     Function: get_node_name
     Objective: Return the user-defined ID of some node given its text
