@@ -31,8 +31,8 @@ void check_types_in_var_mapping(map<string,vector<VariableMapping>> gm_vars, map
     vector<int> gm_dfs_nodes = get_dfs_gm_nodes(gm);
 
     for(int v : gm_dfs_nodes) {
-        if(gm[v].custom_props.find("Controls") != gm[v].custom_props.end()) {
-            vector<pair<string,string>> controlled_vars = get<vector<pair<string,string>>>(gm[v].custom_props["Controls"]);
+        if(gm[v].custom_props.find(controls_prop) != gm[v].custom_props.end()) {
+            vector<pair<string,string>> controlled_vars = get<vector<pair<string,string>>>(gm[v].custom_props[controls_prop]);
             for(pair<string,string> cvar : controlled_vars) {
                 ocl_types.insert(cvar.second);
                 if(gm_vars.find(cvar.first) != gm_vars.end()) {

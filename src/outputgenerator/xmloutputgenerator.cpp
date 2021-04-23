@@ -21,7 +21,7 @@ using namespace std;
     @ Output: Void. The output file is generated in the given relative path
 */
 void XMLOutputGenerator::generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<string,string> output, vector<ground_literal> world_state, vector<SemanticMapping> semantic_mapping,
-                                map<string,set<string>> sorts, vector<sort_definition> sort_definitions, vector<predicate_definition> predicate_definitions) {
+                                map<string,set<string>> sorts, vector<sort_definition> sort_definitions, vector<predicate_definition> predicate_definitions, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
     pair<ATGraph,map<int,int>> trimmed_mission_decomposition = generate_trimmed_at_graph(mission_decomposition);  
 
     vector<Constraint> mission_constraints = generate_at_constraints(trimmed_mission_decomposition.first);
@@ -54,7 +54,7 @@ void XMLOutputGenerator::generate_instances_output(ATGraph mission_decomposition
 
     pt::ptree output_file;
 
-    vector<vector<pair<int,ATNode>>> valid_mission_decompositions = generate_valid_mission_decompositions(mission_decomposition, final_mission_constraints, world_state);
+    vector<vector<pair<int,ATNode>>> valid_mission_decompositions = generate_valid_mission_decompositions(mission_decomposition, final_mission_constraints, world_state, gm_var_map, semantic_mapping, gm);
 
     vector<Decomposition> task_instances;
     map<string,task> actions;

@@ -152,7 +152,7 @@ map<string,vector<AbstractTask>> FileKnowledgeATManager::generate_at_instances(v
 			}
 		}
 
-		if(gm[v].type == "istar.Goal") { 
+		if(gm[v].type == istar_goal) { 
 			/*
 				If current vertex is a goal in the GM we check its type
 
@@ -195,18 +195,18 @@ map<string,vector<AbstractTask>> FileKnowledgeATManager::generate_at_instances(v
 				we add the event to the valid_events list of the current depth
 			*/
 
-			if(std::get<string>(gm[v].custom_props["GoalType"]) == "Query") {
+			if(std::get<string>(gm[v].custom_props[goal_type_prop]) == query_goal_type) {
 				pt::ptree queried_tree = get_query_ptree(gm, v, valid_variables, valid_forAll_conditions, props_to_query, gm_var_map, world_tree);
-				QueriedProperty q = std::get<QueriedProperty>(gm[v].custom_props["QueriedProperty"]);
+				QueriedProperty q = std::get<QueriedProperty>(gm[v].custom_props[queried_property_prop]);
 
 				solve_query_statement(queried_tree, q, gm, v, valid_variables, gm_var_map);
-			} else if(std::get<string>(gm[v].custom_props["GoalType"]) == "Achieve") {
-				AchieveCondition a = std::get<AchieveCondition>(gm[v].custom_props["AchieveCondition"]);
+			} else if(std::get<string>(gm[v].custom_props[goal_type_prop]) == achieve_goal_type) {
+				AchieveCondition a = std::get<AchieveCondition>(gm[v].custom_props[achieve_condition_prop]);
 				if(a.has_forAll_expr) {
 					valid_forAll_conditions[depth] = a;
 				}
 
-				vector<pair<string,string>> controlled_vars = std::get<vector<pair<string,string>>>(gm[v].custom_props["Controls"]);
+				vector<pair<string,string>> controlled_vars = std::get<vector<pair<string,string>>>(gm[v].custom_props[controls_prop]);
 				for(pair<string,string> var : controlled_vars) {
 					if(var.first == a.get_iteration_var()) {
 						gm_var_map[var.first] = make_pair("",var.second);
@@ -214,14 +214,14 @@ map<string,vector<AbstractTask>> FileKnowledgeATManager::generate_at_instances(v
 				}
 			}
 
-			if(gm[v].custom_props.find("CreationCondition") != gm[v].custom_props.end()) {
-				Context c = get<Context>(gm[v].custom_props["CreationCondition"]);
-				if(c.type == "trigger") {
-					valid_events[depth].push_back(c.condition);
+			if(gm[v].custom_props.find(context_prop) != gm[v].custom_props.end()) {
+				Context c = get<Context>(gm[v].custom_props[context_prop]);
+				if(c.get_context_type() == trigger_context_type) {
+					valid_events[depth].push_back(c.get_condition());
 					insert_events = true;
 				}
 			}
-		} else if(gm[v].type == "istar.Task") {
+		} else if(gm[v].type == istar_task) {
 
 			/*
 				If we are dealing with a task vertex we:
@@ -273,8 +273,8 @@ map<string,vector<AbstractTask>> FileKnowledgeATManager::generate_at_instances(v
 			*/
 			if(!valid_forAll_conditions.empty()) { // We have valid forAll conditions
 				string location_var;
-				if(gm[v].custom_props.find("Location") != gm[v].custom_props.end()) {
-					location_var = std::get<string>(gm[v].custom_props["Location"]);
+				if(gm[v].custom_props.find(location_prop) != gm[v].custom_props.end()) {
+					location_var = std::get<string>(gm[v].custom_props[location_prop]);
 				} else {
 					location_var = "";
 				}
@@ -641,8 +641,8 @@ map<string,vector<AbstractTask>> FileKnowledgeATManager::generate_at_instances(v
 			} else { // We don't have valid forAll statements
 				string location_var;
 
-				if(gm[v].custom_props.find("Location") != gm[v].custom_props.end()) {
-					location_var = get<string>(gm[v].custom_props["Location"]);
+				if(gm[v].custom_props.find(location_prop) != gm[v].custom_props.end()) {
+					location_var = get<string>(gm[v].custom_props[location_prop]);
 				} else {
 					location_var = "";
 				}
@@ -1016,8 +1016,8 @@ void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm
 			}
 		}
 
-		string var_name = std::get<vector<pair<string,string>>>(gm[node_id].custom_props["Controls"]).at(0).first;
-		string var_type = std::get<vector<pair<string,string>>>(gm[node_id].custom_props["Controls"]).at(0).second;
+		string var_name = std::get<vector<pair<string,string>>>(gm[node_id].custom_props[controls_prop]).at(0).first;
+		string var_type = std::get<vector<pair<string,string>>>(gm[node_id].custom_props[controls_prop]).at(0).second;
 
 		valid_variables[var_name] = make_pair(var_type,aux);
 					
@@ -1039,7 +1039,7 @@ void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm
 pt::ptree get_query_ptree(GMGraph gm, int node_id, map<string,pair<string,vector<pt::ptree>>> valid_variables, map<int,AchieveCondition> valid_forAll_conditions, map<string,pair<int,QueriedProperty>>& props_to_query,
 							map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map, pt::ptree world_tree) {
 	pt::ptree queried_tree;
-	QueriedProperty q = std::get<QueriedProperty>(gm[node_id].custom_props["QueriedProperty"]);
+	QueriedProperty q = std::get<QueriedProperty>(gm[node_id].custom_props[queried_property_prop]);
 
 	if(q.queried_var == world_db_query_var) {
 		queried_tree = world_tree;
@@ -1138,7 +1138,7 @@ pt::ptree get_query_ptree(GMGraph gm, int node_id, map<string,pair<string,vector
 					}
 
 					if(valid_query) {
-						string queried_var_type = std::get<vector<pair<string,string>>>(gm[node_id].custom_props["Controls"]).at(0).second;
+						string queried_var_type = std::get<vector<pair<string,string>>>(gm[node_id].custom_props[controls_prop]).at(0).second;
 										
 						string gm_var_type = parse_gm_var_type(queried_var_type);
 						if(gm_var_type == "COLLECTION") {

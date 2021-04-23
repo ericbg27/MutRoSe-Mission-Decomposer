@@ -36,3 +36,6 @@ cd ..
 cd tdg
 rm -rf *.o
 cd ..
+cd utils
+rm -rf *.o
+cd ..

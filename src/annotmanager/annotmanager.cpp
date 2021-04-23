@@ -110,16 +110,16 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
     }
 
     bool is_forAll_goal = false;
-    if(gm[current_node].type == "istar.Goal") {
-		if(std::get<string>(gm[current_node].custom_props["GoalType"]) == "Query") {
-            QueriedProperty q = std::get<QueriedProperty>(gm[current_node].custom_props["QueriedProperty"]);
+    if(gm[current_node].type == istar_goal) {
+		if(std::get<string>(gm[current_node].custom_props[goal_type_prop]) == query_goal_type) {
+            QueriedProperty q = std::get<QueriedProperty>(gm[current_node].custom_props[queried_property_prop]);
 
             pt::ptree query_ptree = get_query_ptree(gm, current_node, valid_variables, valid_forAll_conditions, worlddb.get_child("world_db"));
 
             solve_query_statement(query_ptree,q,gm,current_node,valid_variables);
-		} else if(std::get<string>(gm[current_node].custom_props["GoalType"]) == "Achieve") {
+		} else if(std::get<string>(gm[current_node].custom_props[goal_type_prop]) == achieve_goal_type) {
             is_forAll_goal = true;
-			AchieveCondition a = std::get<AchieveCondition>(gm[current_node].custom_props["AchieveCondition"]);
+			AchieveCondition a = std::get<AchieveCondition>(gm[current_node].custom_props[achieve_condition_prop]);
 			if(a.has_forAll_expr) {
 				valid_forAll_conditions[depth] = a;
 			}
@@ -655,8 +655,8 @@ void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm
 			}
 		}
 
-		string var_name = std::get<vector<pair<string,string>>>(gm[node_id].custom_props["Controls"]).at(0).first;
-		string var_type = std::get<vector<pair<string,string>>>(gm[node_id].custom_props["Controls"]).at(0).second;
+		string var_name = std::get<vector<pair<string,string>>>(gm[node_id].custom_props[controls_prop]).at(0).first;
+		string var_type = std::get<vector<pair<string,string>>>(gm[node_id].custom_props[controls_prop]).at(0).second;
 
 		valid_variables[var_name] = make_pair(var_type,aux);
 	}
@@ -664,7 +664,7 @@ void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm
 
 pt::ptree get_query_ptree(GMGraph gm, int node_id, map<string,pair<string,vector<pt::ptree>>> valid_variables, map<int,AchieveCondition> valid_forAll_conditions, pt::ptree world_tree) {
 	pt::ptree queried_tree;
-	QueriedProperty q = std::get<QueriedProperty>(gm[node_id].custom_props["QueriedProperty"]);
+	QueriedProperty q = std::get<QueriedProperty>(gm[node_id].custom_props[queried_property_prop]);
 
 	if(q.queried_var == world_db_query_var) {
 		queried_tree = world_tree;
@@ -735,7 +735,7 @@ pt::ptree get_query_ptree(GMGraph gm, int node_id, map<string,pair<string,vector
 				}
 
 				if(valid_query) {
-					string queried_var_type = std::get<vector<pair<string,string>>>(gm[node_id].custom_props["Controls"]).at(0).second;
+					string queried_var_type = std::get<vector<pair<string,string>>>(gm[node_id].custom_props[controls_prop]).at(0).second;
 										
 					string gm_var_type = parse_gm_var_type(queried_var_type);
 					if(gm_var_type == "COLLECTION") {
