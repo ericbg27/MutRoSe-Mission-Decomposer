@@ -4,6 +4,8 @@
 #include <sstream>
 #include <iostream>
 
+#include "..utils/gm_utils.hpp"
+
 using namespace std;
 
 string Condition::get_condition() {
@@ -52,7 +54,7 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,bool> Condition::ev
             string type = value_and_type.second;
             std::transform(type.begin(),type.end(),type.begin(),::toupper);
 
-            if(type.find("SEQUENCE") != string::npos) {
+            if(parse_gm_var_type(type) == "COLLECTION") {
                 size_t type_begin = value_and_type.second.find("(")+1;
                 size_t type_end = value_and_type.second.find(")",type_begin);
 
