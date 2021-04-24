@@ -4,7 +4,7 @@
 #include <sstream>
 #include <iostream>
 
-#include "..utils/gm_utils.hpp"
+#include "../utils/gm_utils.hpp"
 
 using namespace std;
 
