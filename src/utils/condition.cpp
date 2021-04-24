@@ -17,10 +17,10 @@ void Condition::set_condition(string cond) {
 }
 
 variant<pair<pair<predicate_definition,vector<string>>,bool>,bool> Condition::evaluate_condition(variant<pair<string,string>,pair<vector<string>,string>> var_value_and_type, vector<SemanticMapping> semantic_mapping) {
-    regex r1("(\\bnot\\b)?[ ]*[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*"); // (not) [VAR].[ATTR]
-    regex r2("[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]*((==)|(!=))?[ ]*[\"][A-Za-z0-9]*[\"]){1}"); // [VAR].[ATTR] == "[VALUE]" || [VAR].[ATTR] != "[VALUE]"
+    regex r1("((\\bnot\\b)[ ]+)?[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*"); // (not) [VAR].[ATTR]
+    regex r2("[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((==)|(!=)){1}[ ]+[\"][A-Za-z0-9]*[\"]){1}"); // [VAR].[ATTR] == "[VALUE]" || [VAR].[ATTR] != "[VALUE]"
     
-    bool invalid_condition = false;
+    bool invalid_condition = false; 
 
     string cond = condition;
     if(regex_match(condition, r1)) {
@@ -100,7 +100,8 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,bool> Condition::ev
             return make_pair(make_pair(map_pred,pred_args), negative_condition);
         }
     } else if(regex_match(condition, r2)) {
-        std::replace(cond.begin(), cond.end(), '.', ' ');
+        // TO CHANGE
+        /*std::replace(cond.begin(), cond.end(), '.', ' ');
 
         vector<string> split_cond;
                                 
@@ -110,7 +111,18 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,bool> Condition::ev
             split_cond.push_back(temp);
         }
 
-        return true; // To change
+        bool negative_condition = false;
+        string variable, attribute;
+        if(split_cond.at(2) == "!=") {
+            negative_condition = true;
+        } 
+        variable = split_cond.at(0);
+        attribute = split_cond.at(1);
+
+        pair<string,string> value_and_type = std::get<pair<string,string>>(var_value_and_type);
+
+        return true;*/
+        invalid_condition = true;
     } else if(condition == "") {
         return true;
     } else {
