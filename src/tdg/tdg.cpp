@@ -90,28 +90,6 @@ vector<vector<task>> TDG::decomposition_recursion(vector<int> dfs_nodes, int cur
 
     NodeData n = tdg[node];
 
-    /*if(n.type != M) {
-        cout << "TASK: " << n.t.name << endl;
-    } else {
-        cout << "METHOD: " << n.m.name << endl;
-    }
-
-    cout << "WORLD STATE" << endl;
-    for(literal state : world_state) {
-        if(state.positive) {
-            cout << state.predicate << " ";
-        } else {
-            cout << "not " << state.predicate << " ";
-        }
-        for(string arg : state.arguments) {
-            cout << arg << " ";
-        }
-        cout << endl;
-    }
-    cout << endl;*/
-
-    //getchar();
-
     vector<vector<task>> generated_paths;
     if(n.type == M) {
         /*
@@ -194,24 +172,6 @@ vector<vector<task>> TDG::decomposition_recursion(vector<int> dfs_nodes, int cur
 
             child_paths.clear();
         }
-
-        /*if(method_exec) {
-            for(auto aux : child_paths) {
-                vector<vector<task>> g_paths_temp = generated_paths;
-                generated_paths.clear();
-                for(auto p : aux) {
-                    if(g_paths_temp.size() > 0) {
-                        for(auto g_pt : g_paths_temp) {
-                            vector<task> p_temp = p;
-                            p_temp.insert(p_temp.begin(),g_pt.begin(),g_pt.end());
-                            generated_paths.push_back(p_temp);
-                        }
-                    } else {
-                        generated_paths.push_back(p);
-                    }
-                }
-            }
-        }*/
     } else if(n.type == AT) {
         vector<literal> initial_world_state = world_state;
         for(int c : n.children) {
@@ -487,17 +447,6 @@ bool TDG::check_predicates(task t, vector<pair<string,string>> var_mapping, int 
     vector<literal> t_precs, precs_to_add;
 
     t_precs = t.prec;
-    /*cout << "Task " << t.name << " preconditions: " << endl;
-    for(auto prec : t_precs) {
-        if(!prec.positive) {
-            cout << "not ";
-        }
-        cout << prec.predicate << " ";
-        for(auto arg : prec.arguments) {
-            cout << arg << " ";
-        }
-        cout << endl;
-    }*/
 
     //Rename predicates variables
     for(literal& prec : t_precs) {
@@ -510,18 +459,6 @@ bool TDG::check_predicates(task t, vector<pair<string,string>> var_mapping, int 
             }
         }
     }
-
-    /*cout << "Task " << t.name << " (renamed) preconditions: " << endl;
-    for(auto prec : t_precs) {
-        if(!prec.positive) {
-            cout << "not ";
-        }
-        cout << prec.predicate << " ";
-        for(auto arg : prec.arguments) {
-            cout << arg << " ";
-        }
-        cout << endl;
-    }*/
 
     bool executable = true;
     if(tdg[t_id].type == PT) {
