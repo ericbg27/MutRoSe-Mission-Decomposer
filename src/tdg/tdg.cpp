@@ -326,7 +326,7 @@ void TDG::add_edge(int s_id, int t_id) {
     tdg[s_id].children.push_back(t_id);
     tdg[t_id].parent = s_id;
 
-     boost::add_edge(s_id,t_id,edge,tdg);
+    boost::add_edge(s_id,t_id,edge,tdg);
 }
 
 /*
