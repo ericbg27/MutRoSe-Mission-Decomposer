@@ -20,8 +20,17 @@ enum output_generator_type {FILEOUTGEN};
 
 class OutputGenerator {
     public:
-        virtual void generate_instances_output(ATGraph mission_decomposition, GMGraph gm, std::pair<std::string,std::string> output, std::vector<ground_literal> world_state, std::vector<SemanticMapping> semantic_mapping,
-                                std::map<std::string,set<std::string>> sorts, std::vector<sort_definition> sort_definitions, std::vector<predicate_definition> predicate_definitions, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) = 0;
+        virtual void generate_instances_output(std::vector<SemanticMapping> semantic_mapping, std::map<std::string,set<std::string>> sorts, std::vector<sort_definition> sort_definitions, 
+                                                std::vector<predicate_definition> predicate_definitions, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_var_map) = 0;
+        
+        void set_mission_decomposition(ATGraph md);
+        void set_gm(GMGraph g);
+        void set_world_state(std::vector<ground_literal> ws);
+
+    protected:
+        ATGraph mission_decomposition;
+        GMGraph gm;
+        std::vector<ground_literal> world_state;
 };
 
 enum file_output_generator_type {XMLFILEOUTGEN};
@@ -36,6 +45,11 @@ class FileOutputGenerator : public OutputGenerator {
         void set_file_output_generator_type(file_output_generator_type fogt);
 
         file_output_generator_type get_file_output_generator_type();
+
+        void set_output(std::pair<std::string,std::string> out);
+
+    protected:
+        std::pair<std::string,std::string> output;
 
     private:
         file_output_generator_type fog_type;

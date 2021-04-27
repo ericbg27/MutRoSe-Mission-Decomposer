@@ -6,7 +6,7 @@
 
 class FileOutputGeneratorFactory {
     public:
-        std::shared_ptr<FileOutputGenerator> create_file_output_generator(std::string file_type);
+        std::shared_ptr<FileOutputGenerator> create_file_output_generator(GMGraph gm, ATGraph mission_decomposition, std::vector<ground_literal> world_state, std::pair<std::string,std::string> output);
 };
 
 #endif

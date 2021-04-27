@@ -20,8 +20,8 @@ using namespace std;
 	@ Input 8: The predicates definitions
     @ Output: Void. The output file is generated in the given relative path
 */
-void XMLOutputGenerator::generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<string,string> output, vector<ground_literal> world_state, vector<SemanticMapping> semantic_mapping,
-                                map<string,set<string>> sorts, vector<sort_definition> sort_definitions, vector<predicate_definition> predicate_definitions, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
+void XMLOutputGenerator::generate_instances_output(vector<SemanticMapping> semantic_mapping, map<string,set<string>> sorts, vector<sort_definition> sort_definitions, 
+                                                    vector<predicate_definition> predicate_definitions, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
     pair<ATGraph,map<int,int>> trimmed_mission_decomposition = generate_trimmed_at_graph(mission_decomposition);  
 
     vector<Constraint> mission_constraints = generate_at_constraints(trimmed_mission_decomposition.first);
