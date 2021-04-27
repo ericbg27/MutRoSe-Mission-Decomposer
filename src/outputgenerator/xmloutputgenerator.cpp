@@ -2,6 +2,8 @@
 
 #include <boost/property_tree/xml_parser.hpp>
 
+#include "../validmissiongenerator/validmissiongenerator.hpp"
+
 using namespace std;
 
 /*
@@ -54,7 +56,8 @@ void XMLOutputGenerator::generate_instances_output(vector<SemanticMapping> seman
 
     pt::ptree output_file;
 
-    vector<vector<pair<int,ATNode>>> valid_mission_decompositions = generate_valid_mission_decompositions(mission_decomposition, final_mission_constraints, world_state, gm_var_map, semantic_mapping, gm);
+    ValidMissionGenerator valid_missions_generator(mission_decomposition, gm, final_mission_constraints, world_state);
+    vector<vector<pair<int,ATNode>>> valid_mission_decompositions = valid_missions_generator.generate_valid_mission_decompositions(gm_var_map, semantic_mapping);
 
     vector<Decomposition> task_instances;
     map<string,task> actions;
