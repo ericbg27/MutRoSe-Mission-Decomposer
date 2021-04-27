@@ -16,14 +16,13 @@ ValidMissionGenerator::ValidMissionGenerator(ATGraph md, GMGraph g, std::vector<
     Objective: Generate the valid mission decompositions based on constraints and on the world knowledge. This
     function iniatilizes variables based on the root node and calls a recursive function that performs the generation
 
-    @ Input 1: The Task Graph as an ATGraph object
-    @ Input 2: The vector of constraints
-    @ Input 3: The world state
+    @ Input 1: The Goal Model variable mappings
+    @ Input 2: The Semantic Mappings defined in the configuration
     @ Output: The valid mission decompositions vector. A mission decomposition is a vector of pairs of the 
     form ([task_id],[task_node])
 */
 vector<vector<pair<int,ATNode>>> ValidMissionGenerator::generate_valid_mission_decompositions(map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map, vector<SemanticMapping> semantic_mapping) {
-    queue<pair<int,ATNode>> mission_queue = generate_mission_queue(mission_decomposition);
+    queue<pair<int,ATNode>> mission_queue = generate_mission_queue();
 
     /*
         The idea here is:
@@ -67,13 +66,13 @@ vector<vector<pair<int,ATNode>>> ValidMissionGenerator::generate_valid_mission_d
     Objective: Generate the valid mission decompositions based on constraints and on the world knowledge. This is the
     recursive function that in fact generates them.
 
-    @ Input 1: The Task Graph as an ATGraph object
-    @ Input 2: The initial world state before visiting the task nodes
-    @ Input 3: The vector of constraints
-    @ Input 4: The last operation found in the recursive calls
-    @ Input 5: A reference to the mission queue
-    @ Input 6: The vector of valid mission decompositions
-    @ Input 7: The possible conflicts that need to be analyzed
+    @ Input 1: The last operation found in the recursive calls
+    @ Input 2: A reference to the mission queue
+    @ Input 3: The possible conflicts that need to be analyzed
+    @ Input 4: The Goal Model variable mappings
+    @ Input 5: The Semantic Mappings defined in the configuration file
+    @ Input 6: The map of effects to be applied
+    @ Input 7: The current node depth
     @ Output: Void. The valid mission decompositions will be generated
 */
 void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op, queue<pair<int,ATNode>>& mission_queue, vector<pair<int,ATNode>>& possible_conflicts, 
@@ -191,7 +190,7 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                     std::cout << std::get<AbstractTask>(t.second.content).name << std::endl;
                 }
                 std::cout << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&" << std::endl;
-                resolve_conflicts(valid_mission_decompositions, possible_conflicts, mission_decomposition, mission_constraints);
+                resolve_conflicts(possible_conflicts);
                 possible_conflicts.clear();
             }
 
@@ -716,10 +715,9 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
     Function: generate_mission_queue
     Objective: Generate the mission queue based on the Task Graph
 
-    @ Input: The Task Graph as an ATGraph object
     @ Output: The generated mission queue
 */
-queue<pair<int,ATNode>> generate_mission_queue(ATGraph mission_decomposition) {
+queue<pair<int,ATNode>> ValidMissionGenerator::generate_mission_queue() {
     auto nodes = vertices(mission_decomposition);
 
     int graph_size = *nodes.second - *nodes.first;
@@ -777,16 +775,12 @@ queue<pair<int,ATNode>> generate_mission_queue(ATGraph mission_decomposition) {
     Objective: Resolve possible conflicts and add actual conflicts to the conflicts vector. If conflicts appears
     we must remove valid decompositions that contain conflicting tasks
 
-    @ Input 1: A reference to the vector of valid mission decompositions
-    @ Input 2: The vector of possible conflicts
-    @ Input 3: The Task Graph as an ATGraph object
-    @ Input 4: The vector of mission constraints
+    @ Input: The vector of possible conflicts
     @ Output: Void. The valid mission decompositions may be trimmed
 
     NOTES: Here we do not consider conditional effects yet!
 */
-void resolve_conflicts(vector<pair<vector<pair<int,ATNode>>,vector<ground_literal>>>& valid_mission_decompositions, vector<pair<int,ATNode>> possible_conflicts,
-                        ATGraph mission_decomposition, vector<Constraint> mission_constraints) {
+void ValidMissionGenerator::resolve_conflicts(vector<pair<int,ATNode>> possible_conflicts) {
     vector<pair<pair<int,ATNode>,pair<int,ATNode>>> actual_conflicts;
 
     map<int,unsigned int> task_decompositions_number;
