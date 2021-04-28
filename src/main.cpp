@@ -345,7 +345,7 @@ int main(int argc, char** argv) {
 	print_world_state(init);
 
 	AnnotManagerFactory annot_manager_factory;
-	shared_ptr<AnnotManager> annot_manager_ptr = annot_manager_factory.create_annot_manager(knowledge_manager);
+	shared_ptr<AnnotManager> annot_manager_ptr = annot_manager_factory.create_annot_manager(knowledge_manager, gm, high_level_loc_types, at_instances);
 
 	general_annot* gmannot;
 
@@ -355,7 +355,7 @@ int main(int argc, char** argv) {
 		FileKnowledgeManager* aux = dynamic_cast<FileKnowledgeManager*>(knowledge_manager.get());
 		annot_manager->set_fk_manager(aux);
 
-		gmannot = annot_manager->retrieve_gm_annot(gm, high_level_loc_types, at_instances);
+		gmannot = annot_manager->retrieve_gm_annot();
 	}
 
 	rename_at_instances_in_runtime_annot(gmannot, at_instances, gm);

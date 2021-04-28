@@ -9,8 +9,6 @@
 
 using namespace std;
 
-const string world_db_query_var = "location_db";
-
 void ATManager::set_at_manager_type(at_manager_type atm) {
 	atm_type = atm;
 }
