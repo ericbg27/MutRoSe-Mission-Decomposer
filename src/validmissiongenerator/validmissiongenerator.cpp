@@ -93,11 +93,6 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
        */
         string op = get<string>(current_node.second.content);
 
-        /*
-            std::cout << "Next Node: " << next_node.first << std::endl;
-            std::cout << "Is forAll? " << next_node.second.is_forAll << std::endl;
-        */
-
         if(op == "#") {
             /*
                 If the operator is parallel we:
@@ -183,13 +178,9 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                 Here we have to deal with the possible conflicts and then erase them
             */
             if(possible_conflicts.size() > 1) {
-                std::cout << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&" << std::endl;
-                std::cout << "Resolving conflicts..." << std::endl;
-                std::cout << "Possible conflicts: " << std::endl;
                 for(pair<int,ATNode> t : possible_conflicts) {
                     std::cout << std::get<AbstractTask>(t.second.content).name << std::endl;
                 }
-                std::cout << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&" << std::endl;
                 resolve_conflicts(possible_conflicts);
                 possible_conflicts.clear();
             }
@@ -498,9 +489,10 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                     if(preconditions_hold) {
                         ATGraph::in_edge_iterator iei, ied;
 
-                        bool found_cdepend_node = false;
-                        bool has_cdependency = false;
                         for(boost::tie(iei,ied) = boost::in_edges(task_decomposition.first,mission_decomposition); iei != ied; ++iei) {
+                            bool found_cdepend_node = false;
+                            bool has_cdependency = false;
+
                             int source = boost::source(*iei,mission_decomposition);
                             int target = boost::target(*iei,mission_decomposition);
                             auto edge = boost::edge(source,target,mission_decomposition).first;
@@ -516,13 +508,12 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                                 }
                             }
 
-                            if(found_cdepend_node) {
-                                break;
+                            if(has_cdependency) {
+                                if(!found_cdepend_node) {
+                                    preconditions_hold = false;
+                                    break;
+                                }
                             }
-                        }
-
-                        if(!found_cdepend_node && has_cdependency) {
-                            preconditions_hold = false;
                         }
                     }
 
@@ -600,7 +591,11 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
 
             valid_mission_decompositions = new_valid_mission_decompositions;
         } else {
-            //Here is the case where we have no valid mission decompositions yet
+            /*
+                Here is the case where we have no valid mission decompositions yet
+
+                -> We don't check for context dependencies since this is the first task and we do not have context dependencies from right to left
+            */
             bool at_least_one_decomposition_valid = false;
 
             for(pair<int,ATNode> task_decomposition : task_decompositions) {
