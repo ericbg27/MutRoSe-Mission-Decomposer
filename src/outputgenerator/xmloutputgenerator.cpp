@@ -12,14 +12,11 @@ using namespace std;
     decompositions. By valid we mean that are viable given the knowledge that we have about the world. Robot-related
     predicates are not resolved and are left as attributes to be evaluated
 
-    @ Input 1: The Task Graph as an ATGraph object
-    @ Input 2: The goal model as a GMGraph object
-    @ Input 3: The output file name and path
-    @ Input 4: The world state
-    @ Input 5: The semantic mappings vector
-	@ Input 6: The sorts map, where we have our objects
-	@ Input 7: The sort definitions
-	@ Input 8: The predicates definitions
+    @ Input 1: The semantic mappings vector
+	@ Input 2: The sorts map, where we have our objects
+	@ Input 3: The sort definitions
+	@ Input 4: The predicates definitions
+    @ Input 5: The mapping of Goal Model variables and their values/types
     @ Output: Void. The output file is generated in the given relative path
 */
 void XMLOutputGenerator::generate_instances_output(vector<SemanticMapping> semantic_mapping, map<string,set<string>> sorts, vector<sort_definition> sort_definitions, 
