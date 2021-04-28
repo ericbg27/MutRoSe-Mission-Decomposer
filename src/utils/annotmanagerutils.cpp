@@ -28,6 +28,14 @@ general_annot* retrieve_runtime_annot(string id) {
     return goals_and_rannots[node_name];
 }
 
+/*
+    Function: recursive_fill_up_runtime_annot
+    Objective: Based on a current node, fill up execution constraints related attributes of runtime annotation nodes
+
+    @ Input 1: The runtime annotation to be filled
+    @ Input 2: The vertex of the Goal Model
+    @ Output: None. The runtime annotation nodes are filled
+*/
 void recursive_fill_up_runtime_annot(general_annot* rannot, VertexData gm_node) {
     if(!gm_node.group || (gm_node.group && !gm_node.divisible)) {
         rannot->non_coop = true;
@@ -250,6 +258,17 @@ string recursive_rt_annot_build(general_annot* rt) {
     return annot;
 }
 
+/*
+    Function: solve_query_statement
+    Objective: Solve a query statement filling up the valid variables at the end
+
+    @ Input 1: The ptree where the query is being performed
+    @ Input 2: The QueriedProperty itself
+    @ Input 3: The Goal Model as a GMGraph object
+    @ Input 4: The node ID
+    @ Input 5: The valid variables map
+    @ Output: Void. The valid variables map is filled with new variables
+*/
 void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm, int node_id, map<string,pair<string,vector<pt::ptree>>>& valid_variables) {
     vector<pt::ptree> aux;
 				
@@ -297,6 +316,17 @@ void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm
 	}
 }
 
+/*
+    Function: get_query_ptree
+    Objective: Based on a queried property, find the ptree that corresponds to the object being queried
+
+    @ Input 1: The Goal Model as a GMGraph object
+    @ Input 2: The Query goal node ID
+    @ Input 3: The valid variables map
+    @ Input 4: The valid forAll conditions map
+    @ Input 5: The world knowledge ptree
+    @ Output: The ptree corresponding to the queried object
+*/
 pt::ptree get_query_ptree(GMGraph gm, int node_id, map<string,pair<string,vector<pt::ptree>>> valid_variables, map<int,AchieveCondition> valid_forAll_conditions, pt::ptree world_tree) {
 	pt::ptree queried_tree;
 	QueriedProperty q = std::get<QueriedProperty>(gm[node_id].custom_props[queried_property_prop]);
