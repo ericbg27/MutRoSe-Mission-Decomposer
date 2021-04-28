@@ -256,7 +256,7 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map
 
 										inst_prec.push_back(p);
 									}
-									//string not_implemented_collection_pred_error = "Collection-related predicates are not supported yet.";
+									//string  = "Collection-related predicates are not supported yet.";
 									//throw std::runtime_error(not_implemented_collection_pred_error);
 								}
 							}

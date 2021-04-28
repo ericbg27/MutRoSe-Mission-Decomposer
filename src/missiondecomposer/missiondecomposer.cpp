@@ -152,10 +152,10 @@ bool MissionDecomposer::check_context_dependency(int parent_node, int current_no
 				for(task t : path) {
 					for(literal eff : t.eff) {
 						bool instantiated_eff = true;
-						vector<pair<string,string>> arg_map;
+						vector<variant<pair<string,string>,pair<string,vector<string>>>> arg_map;
 						for(string arg : eff.arguments) {
 							bool found_arg = false;
-							string mapped_var;
+							variant<string,vector<string>> mapped_var;
 							// Here is probably one place where we have to expand collection related predicates
 							for(pair<pair<variant<vector<string>,string>,string>,string> var_map : at.variable_mapping) {
 								if(arg == var_map.second) {
@@ -163,8 +163,9 @@ bool MissionDecomposer::check_context_dependency(int parent_node, int current_no
 									if(holds_alternative<string>(var_map.first.first)) {
 										mapped_var = std::get<string>(var_map.first.first);
 									} else {
-										string not_implemented_collection_pred_error = "Collection-related predicates are not supported yet.";
-										throw std::runtime_error(not_implemented_collection_pred_error);
+										//string not_implemented_collection_pred_error = "Collection-related predicates are not supported yet.";
+										//throw std::runtime_error(not_implemented_collection_pred_error);
+										mapped_var = std::get<vector<string>>(var_map.first.first);
 									}
 									break;
 								}
@@ -175,38 +176,70 @@ bool MissionDecomposer::check_context_dependency(int parent_node, int current_no
 								break;
 							}
 
-							arg_map.push_back(make_pair(arg,mapped_var));
+							if(holds_alternative<string>(mapped_var)) {
+								arg_map.push_back(make_pair(arg,std::get<string>(mapped_var)));
+							} else {
+								arg_map.push_back(make_pair(arg,std::get<vector<string>>(mapped_var)));
+							}
 						}
 
 						if(instantiated_eff) {
-							ground_literal inst_eff;
-							inst_eff.positive = eff.positive;
-							inst_eff.predicate = eff.predicate;
-							for(pair<string,string> arg_inst : arg_map) {
-								inst_eff.args.push_back(arg_inst.second);
-							}
+							vector<ground_literal> inst_eff;
 
-							bool effect_applied = false;
-							for(ground_literal& state : world_state_copy) {
-								if(state.predicate == inst_eff.predicate) {
-									bool equal_args = true;
-									for(unsigned int arg_index = 0;arg_index < state.args.size();arg_index++) {
-										if(state.args.at(arg_index) != inst_eff.args.at(arg_index)) {
-											equal_args = false;
-											break;
+							for(variant<pair<string,string>,pair<string,vector<string>>> arg_inst : arg_map) {
+								if(inst_eff.size() == 0) {
+									ground_literal e;
+									e.positive = eff.positive;
+									e.predicate = eff.predicate;
+
+									inst_eff.push_back(e);
+								}
+
+								if(holds_alternative<pair<string,string>>(arg_inst)) {
+									pair<string,string> inst = std::get<pair<string,string>>(arg_inst);
+									for(ground_literal& e : inst_eff) {
+										e.args.push_back(inst.second);
+									}
+								} else {
+									pair<string,vector<string>> inst = std::get<pair<string,vector<string>>>(arg_inst);
+
+									vector<ground_literal> new_inst_eff;
+									for(ground_literal e : inst_eff) {
+										for(unsigned int index = 0; index < inst.second.size(); index++) {
+											ground_literal aux = e;
+											aux.args.push_back(inst.second.at(index));
+
+											new_inst_eff.push_back(aux);
 										}
 									}
 
-									if(equal_args && (eff.positive != state.positive)) {
-										state.positive = eff.positive;
-										effect_applied = true;
-										break;
-									}
+									inst_eff = new_inst_eff;
 								}
 							}
 
-							if(!effect_applied) {
-								world_state_copy.push_back(inst_eff);
+							for(ground_literal e : inst_eff) {
+								bool effect_applied = false;
+								for(ground_literal& state : world_state_copy) {
+									if(state.predicate == e.predicate) {
+										bool equal_args = true;
+										for(unsigned int arg_index = 0;arg_index < state.args.size();arg_index++) {
+											if(state.args.at(arg_index) != e.args.at(arg_index)) {
+												equal_args = false;
+												break;
+											}
+										}
+
+										if(equal_args && (eff.positive != state.positive)) {
+											state.positive = eff.positive;
+											effect_applied = true;
+											break;
+										}
+									}
+								}
+
+								if(!effect_applied) {
+									world_state_copy.push_back(e);
+								}
 							}
 						}
 					}
