@@ -10,6 +10,26 @@ void MissionDecomposer::set_mission_decomposer_type(mission_decomposer_type mdt)
 	md_type = mdt;
 }
 
+void MissionDecomposer::set_world_state(std::vector<ground_literal> ws) {
+	world_state = ws;
+}
+
+void MissionDecomposer::set_at_decomposition_paths(std::map<std::string,std::vector<std::vector<task>>> atpaths) {
+	at_decomposition_paths = atpaths;
+}
+
+void MissionDecomposer::set_at_instances(std::map<std::string,std::vector<AbstractTask>> atinst) {
+	at_instances = atinst;
+}
+
+void MissionDecomposer::set_gm_annot(general_annot* gma) {
+	gmannot = gma;
+}
+
+void MissionDecomposer::set_gm(GMGraph g) {
+	gm = g;
+}
+
 mission_decomposer_type MissionDecomposer::get_mission_decomposer_type() {
 	return md_type;
 }
@@ -39,11 +59,8 @@ mission_decomposer_type MissionDecomposer::get_mission_decomposer_type() {
 			-> A recursive implementation seems to be the best approach
 			-> Let's not deal with the OPT or the FALLBACK case for the moment (29/11)
 */ 
-ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string,vector<AbstractTask>> at_instances, map<string,vector<vector<task>>> at_decomposition_paths, general_annot* gmannot, GMGraph gm, 
-						vector<ground_literal> init, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_vars_map,
-							vector<SemanticMapping> semantic_mapping) {
-	ATGraph mission_decomposition;
-
+ATGraph FileKnowledgeMissionDecomposer::build_at_graph(std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_vars_map, 
+                                            						std::vector<SemanticMapping> semantic_mapping) {
 	map<string, variant<string,vector<string>>> instantiated_vars;
 
 	shared_ptr<FileKnowledgeBase> world_knowledge_base = fk_manager->get_world_knowledge();
@@ -55,7 +72,7 @@ ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string,vector<Abstrac
         world_db = xml_base->get_knowledge();
     }
 
-	recursive_at_graph_build(mission_decomposition, init, at_instances, at_decomposition_paths, gmannot, -1, gm, false, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
+	recursive_at_graph_build(-1, gmannot, false, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
 
 	final_context_dependency_links_generation(mission_decomposition);
 
@@ -81,10 +98,8 @@ ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string,vector<Abstrac
 	@ Input 12: A map of the instantiated OCL variables at this level of the recursion
     @ Output: Void. The ATGraph object is built
 */
-void FileKnowledgeMissionDecomposer::recursive_at_graph_build(ATGraph& mission_decomposition, vector<ground_literal> world_state, map<string,vector<AbstractTask>> at_instances, 
-									map<string,vector<vector<task>>> at_decomposition_paths, general_annot* rannot, int parent, GMGraph gm, bool non_coop,
-										map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_vars_map, pt::ptree world_db, 
-											vector<SemanticMapping> semantic_mapping, map<string, variant<string,vector<string>>> instantiated_vars) {
+void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, general_annot* rannot, bool non_coop, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_vars_map, 
+                                                				pt::ptree world_db, std::vector<SemanticMapping> semantic_mapping, std::map<std::string, std::variant<std::string,std::vector<std::string>>> instantiated_vars) {
 	ATNode node;
 	int node_id;
 
@@ -127,7 +142,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(ATGraph& mission_d
 			gm_node = gm[gm_node_id];
 	
 			is_forAll = true;
-			monitored_var = std::get<vector<pair<string,string>>>(gm_node.custom_props["Monitors"]).at(0);
+			monitored_var = std::get<vector<pair<string,string>>>(gm_node.custom_props[monitors_prop]).at(0);
 			controlled_var = std::get<vector<pair<string,string>>>(gm_node.custom_props[controls_prop]).at(0);
 		}
 		
@@ -199,18 +214,18 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(ATGraph& mission_d
 				value_index++;
 
 				if(child_index < rannot->children.size()-1) {
-					recursive_at_graph_build(mission_decomposition, world_state, at_instances, at_decomposition_paths, child, node_id, gm, false, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
+					recursive_at_graph_build(node_id, child, false, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
 				} else {
-					recursive_at_graph_build(mission_decomposition, world_state, at_instances, at_decomposition_paths, child, node_id, gm, non_coop, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
+					recursive_at_graph_build(node_id, child, non_coop, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
 				}
 				child_index++;
 			}
 		} else {
 			for(general_annot* child : rannot->children) {
 				if(child_index < rannot->children.size()-1) {
-					recursive_at_graph_build(mission_decomposition, world_state, at_instances, at_decomposition_paths, child, node_id, gm, false, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
+					recursive_at_graph_build(node_id, child, false, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
 				} else {
-					recursive_at_graph_build(mission_decomposition, world_state, at_instances, at_decomposition_paths, child, node_id, gm, non_coop, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
+					recursive_at_graph_build(node_id, child, non_coop, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
 				}
 				child_index++;
 			}
@@ -298,17 +313,26 @@ void FileKnowledgeMissionDecomposer::set_fk_manager(FileKnowledgeManager* manage
 	fk_manager = manager;
 }
 
-std::shared_ptr<MissionDecomposer> MissionDecomposerFactory::create_mission_decomposer(std::shared_ptr<KnowledgeManager> k_manager) {
+std::shared_ptr<MissionDecomposer> MissionDecomposerFactory::create_mission_decomposer(std::shared_ptr<KnowledgeManager> k_manager, std::vector<ground_literal> ws, std::map<std::string,std::vector<std::vector<task>>> atpaths, 
+																							std::map<std::string,std::vector<AbstractTask>> atinst, general_annot* gma, GMGraph g) {
+	shared_ptr<MissionDecomposer> mission_decomposer;
+	
 	if(k_manager->get_knowledge_type() == FILEKNOWLEDGE) {
-		shared_ptr<MissionDecomposer> f_mission_decomposer = std::make_shared<FileKnowledgeMissionDecomposer>();
-		f_mission_decomposer->set_mission_decomposer_type(FILEMISSIONDECOMPOSER);
-
-		return f_mission_decomposer;
+		mission_decomposer = std::make_shared<FileKnowledgeMissionDecomposer>();
+		mission_decomposer->set_mission_decomposer_type(FILEMISSIONDECOMPOSER);
 	} else {
 		string unsupported_manager_type = "Unsupported manager type found";
 
 		throw std::runtime_error(unsupported_manager_type);
 	}
+
+	mission_decomposer->set_world_state(ws);
+	mission_decomposer->set_at_decomposition_paths(atpaths);
+	mission_decomposer->set_at_instances(atinst);
+	mission_decomposer->set_gm_annot(gma);
+	mission_decomposer->set_gm(g);
+
+	return mission_decomposer;
 }
 
 pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decomposition) {
