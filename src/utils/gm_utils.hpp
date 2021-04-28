@@ -27,6 +27,8 @@ const std::string query_goal_type = "Query";
 const std::string istar_goal = "istar.Goal";
 const std::string istar_task = "istar.Task";
 const std::set<std::string> default_props{description_prop, queried_property_prop, failure_condition_prop, achieve_condition_prop};
+
+const string world_db_query_var = "location_db";
 //**********************************************************************************************************************************
 
 class AchieveCondition : public Condition {

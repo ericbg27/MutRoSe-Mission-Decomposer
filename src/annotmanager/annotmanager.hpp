@@ -5,24 +5,8 @@
 #include <string>
 #include <vector>
 
-#include "../atmanager/at.hpp"
-#include "../gm/gm.hpp"
+#include "../utils/annotmanagerutils.hpp"
 #include "../knowledgemanager/knowledgemanager.hpp"
-
-namespace pt = boost::property_tree;
-
-enum rannot_type {OPERATOR, GOAL, TASK, MEANSEND}; //Goal type is useless (needs checking!)
-
-struct general_annot {
-    rannot_type type;
-    std::string content;
-    std::vector<general_annot*> children;
-    general_annot* parent;
-    std::string related_goal;
-    bool non_coop = false;
-    bool group = true;
-    bool divisible = true;
-};
 
 enum annot_manager_type {FILEANNOTMANAGER};
 
@@ -67,11 +51,7 @@ class AnnotManagerFactory {
         std::shared_ptr<AnnotManager> create_annot_manager(std::shared_ptr<KnowledgeManager> k_manager, GMGraph gm, std::vector<std::string> high_level_loc_types, std::map<std::string,std::vector<AbstractTask>> at_instances);
 };
 
-extern std::map<std::string,general_annot*> goals_and_rannots; //Map from goals to runtime annotation
-
 general_annot* retrieve_runtime_annot(std::string id);
-
-general_annot* retrieve_gm_annot(GMGraph gm, pt::ptree worlddb, std::vector<std::string> high_level_loc_types, std::map<std::string,std::vector<AbstractTask>> at_instances);
 
 void recursive_fill_up_runtime_annot(general_annot* rannot, VertexData gm_node);
 
