@@ -380,7 +380,7 @@ int main(int argc, char** argv) {
 	*/
 
 	MissionDecomposerFactory mission_decomposer_factory;
-	shared_ptr<MissionDecomposer> mission_decomposer_ptr = mission_decomposer_factory.create_mission_decomposer(knowledge_manager);
+	shared_ptr<MissionDecomposer> mission_decomposer_ptr = mission_decomposer_factory.create_mission_decomposer(knowledge_manager, init, at_decomposition_paths, at_instances, gmannot, gm);
 	
 	ATGraph mission_decomposition;
 
@@ -390,7 +390,7 @@ int main(int argc, char** argv) {
 		FileKnowledgeManager* aux = dynamic_cast<FileKnowledgeManager*>(knowledge_manager.get());
 		mission_decomposer->set_fk_manager(aux);
 
-		mission_decomposition = mission_decomposer->build_at_graph(at_instances, at_decomposition_paths, gmannot, gm, init, gm_var_map, semantic_mapping);
+		mission_decomposition = mission_decomposer->build_at_graph(gm_var_map, semantic_mapping);
 	}
 
 	print_mission_decomposition(mission_decomposition); 
