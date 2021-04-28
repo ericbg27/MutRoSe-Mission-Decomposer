@@ -27,6 +27,13 @@ class MissionDecomposer {
         
         virtual void recursive_at_graph_build(int parent, general_annot* rannot, bool non_coop, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_vars_map, 
                                                 pt::ptree world_db, std::vector<SemanticMapping> semantic_mapping, std::map<std::string, std::variant<std::string,std::vector<std::string>>> instantiated_vars) = 0;
+        void final_context_dependency_links_generation();
+
+        bool check_context_dependency(int parent_node, int current_node, Context context, general_annot* rannot, std::map<std::string, std::variant<std::string,std::vector<std::string>>> instantiated_vars,
+                                    std::vector<SemanticMapping> semantic_mapping);
+        
+        void create_non_coop_edges(int node_id);
+        
         void set_mission_decomposer_type(mission_decomposer_type mdt);
         void set_world_state(std::vector<ground_literal> ws);
         void set_at_decomposition_paths(std::map<std::string,std::vector<std::vector<task>>> atpaths);

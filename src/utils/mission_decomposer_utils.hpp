@@ -66,22 +66,9 @@ class DFSATVisitor : public boost::default_dfs_visitor {
 
 std::pair<ATGraph,std::map<int,int>> generate_trimmed_at_graph(ATGraph mission_decomposition);
 
-void final_context_dependency_links_generation(ATGraph& mission_decomposition);
-
 void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_vars_map);
-    
-bool check_context(Context context, std::vector<ground_literal> world_state, std::vector<SemanticMapping> semantic_mapping, 
-                        std::map<std::string, std::variant<std::string,std::vector<std::string>>> instantiated_vars);
-
-bool check_context_dependency(ATGraph& mission_decomposition, int parent_node, int current_node, Context context, general_annot* rannot,  std::vector<ground_literal> world_state, 
-                                std::map<std::string, std::variant<std::string,std::vector<std::string>>> instantiated_vars, std::map<std::string,std::vector<std::vector<task>>> at_decomposition_paths,
-                                    std::vector<SemanticMapping> semantic_mapping);
-
-int find_at_graph_node_by_id(std::string id, ATGraph mission);
 
 std::vector<std::pair<int,ATNode>> find_decompositions(ATGraph mission_decomposition, int node_id);
-
-void create_non_coop_edges(ATGraph& mission_decomposition, int node_id);
 
 void find_non_coop_task_ids(ATGraph mission_decomposition, int node_id, set<int>& task_ids);
 
