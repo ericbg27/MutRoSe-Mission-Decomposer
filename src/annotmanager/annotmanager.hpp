@@ -13,7 +13,6 @@ namespace pt = boost::property_tree;
 
 enum rannot_type {OPERATOR, GOAL, TASK, MEANSEND}; //Goal type is useless (needs checking!)
 
-//Create parser using bison for runtime annotations
 struct general_annot {
     rannot_type type;
     std::string content;
@@ -29,14 +28,23 @@ enum annot_manager_type {FILEANNOTMANAGER};
 
 class AnnotManager {
     public:
-        virtual general_annot* retrieve_gm_annot(GMGraph gm, std::vector<std::string> high_level_loc_types, std::map<std::string,std::vector<AbstractTask>> at_instances) = 0;
+        virtual general_annot* retrieve_gm_annot() = 0;
         
-        virtual void recursive_gm_annot_generation(general_annot* node_annot, std::vector<int> &vctr,  pt::ptree worlddb, GMGraph gm, std::vector<std::string> high_level_loc_types, int current_node,
-                                        std::map<std::string,pair<std::string,std::vector<pt::ptree>>>& valid_variables, std::map<int,AchieveCondition> valid_forAll_conditions, 
-                                        std::map<int,int>& node_depths) = 0;
+        virtual void recursive_gm_annot_generation(general_annot* node_annot, std::vector<int> &vctr,  pt::ptree worlddb, int current_node, std::map<std::string,pair<std::string,std::vector<pt::ptree>>>& valid_variables, 
+                                                    std::map<int,AchieveCondition> valid_forAll_conditions, std::map<int,int>& node_depths) = 0;
+
         void set_annot_manager_type(annot_manager_type amt);
+        void set_gm(GMGraph g);
+        void set_high_level_loc_types(std::vector<std::string> hllt);
+        void set_at_instances(std::map<std::string,std::vector<AbstractTask>> atinst);
 
         annot_manager_type get_annot_manager_type();
+    
+    protected: 
+        general_annot* gmannot;
+        GMGraph gm;
+        std::vector<std::string> high_level_loc_types;
+        std::map<std::string,std::vector<AbstractTask>> at_instances;
 
     private:
         annot_manager_type am_type;
@@ -44,11 +52,10 @@ class AnnotManager {
 
 class FileKnowledgeAnnotManager : public AnnotManager {
     public:
-        general_annot* retrieve_gm_annot(GMGraph gm, std::vector<std::string> high_level_loc_types, std::map<std::string,std::vector<AbstractTask>> at_instances);
+        general_annot* retrieve_gm_annot();
 
-        void recursive_gm_annot_generation(general_annot* node_annot, std::vector<int> &vctr, pt::ptree worlddb, GMGraph gm, std::vector<std::string> high_level_loc_types, int current_node,
-                                        std::map<std::string,pair<std::string,std::vector<pt::ptree>>>& valid_variables, std::map<int,AchieveCondition> valid_forAll_conditions, 
-                                        std::map<int,int>& node_depths);
+        void recursive_gm_annot_generation(general_annot* node_annot, std::vector<int> &vctr,  pt::ptree worlddb, int current_node, std::map<std::string,pair<std::string,std::vector<pt::ptree>>>& valid_variables, 
+                                                    std::map<int,AchieveCondition> valid_forAll_conditions, std::map<int,int>& node_depths);
         void set_fk_manager(FileKnowledgeManager* manager);
 
     private:
@@ -57,7 +64,7 @@ class FileKnowledgeAnnotManager : public AnnotManager {
 
 class AnnotManagerFactory {
     public:
-        std::shared_ptr<AnnotManager> create_annot_manager(std::shared_ptr<KnowledgeManager> k_manager);
+        std::shared_ptr<AnnotManager> create_annot_manager(std::shared_ptr<KnowledgeManager> k_manager, GMGraph gm, std::vector<std::string> high_level_loc_types, std::map<std::string,std::vector<AbstractTask>> at_instances);
 };
 
 extern std::map<std::string,general_annot*> goals_and_rannots; //Map from goals to runtime annotation

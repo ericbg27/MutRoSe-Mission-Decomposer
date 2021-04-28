@@ -21,6 +21,18 @@ void AnnotManager::set_annot_manager_type(annot_manager_type atm) {
     am_type = FILEANNOTMANAGER;
 }
 
+void AnnotManager::set_gm(GMGraph g) {
+    gm = g;
+}
+
+void AnnotManager::set_high_level_loc_types(vector<string> hllt){
+    high_level_loc_types = hllt;
+}
+
+void AnnotManager::set_at_instances(map<string,vector<AbstractTask>> atinst) {
+    at_instances = atinst;
+}
+
 annot_manager_type AnnotManager::get_annot_manager_type() {
     return am_type;
 }
@@ -33,19 +45,16 @@ void FileKnowledgeAnnotManager::set_fk_manager(FileKnowledgeManager* manager) {
     Function: retrieve_gm_annot
     Objective: Retrieve the runtime annotation of the whole goal model
 
-    @ Input 1: The goal model as a GMGraph object
-    @ Input 2: The high-level location type
-    @ Input 3: The abstract task instances vector
     @ Output: The goal model runtime annotation
 */ 
-general_annot* FileKnowledgeAnnotManager::retrieve_gm_annot(GMGraph gm, vector<string> high_level_loc_types, map<string,vector<AbstractTask>> at_instances) {
+general_annot* FileKnowledgeAnnotManager::retrieve_gm_annot() {
     vector<int> vctr = get_dfs_gm_nodes(gm);
     
     VertexData root = gm[vctr.at(0)];
 
-    general_annot* root_annot = retrieve_runtime_annot(root.text);
+    gmannot = retrieve_runtime_annot(root.text);
 
-    recursive_fill_up_runtime_annot(root_annot, gm[vctr.at(0)]);
+    recursive_fill_up_runtime_annot(gmannot, gm[vctr.at(0)]);
 
     map<string,pair<string,vector<pt::ptree>>> valid_variables;
 
@@ -62,7 +71,7 @@ general_annot* FileKnowledgeAnnotManager::retrieve_gm_annot(GMGraph gm, vector<s
     empty_annot->content = "";
     empty_annot->related_goal = "";
 
-    root_annot->parent = empty_annot;
+    gmannot->parent = empty_annot;
 
     shared_ptr<FileKnowledgeBase> world_knowledge_base = fk_manager->get_world_knowledge();
 
@@ -73,9 +82,9 @@ general_annot* FileKnowledgeAnnotManager::retrieve_gm_annot(GMGraph gm, vector<s
         worlddb = xml_base->get_knowledge();
     }
 
-    recursive_gm_annot_generation(root_annot, vctr, worlddb, gm, high_level_loc_types, current_node, valid_variables, valid_forAll_conditions, node_depths);
+    recursive_gm_annot_generation(gmannot, vctr, worlddb, current_node, valid_variables, valid_forAll_conditions, node_depths);
 
-    return root_annot;
+    return gmannot;
 }
 
 /*
@@ -85,16 +94,14 @@ general_annot* FileKnowledgeAnnotManager::retrieve_gm_annot(GMGraph gm, vector<s
     @ Input 1: The current node runtime annotation, generated for the whole goal model so far
     @ Input 2: The nodes indexes visited in a depth-first search manner
     @ Input 3: The world knowledge as a ptree object
-    @ Input 4: The goal model as a GMGraph object
-    @ Input 5: The high-level location type
-    @ Input 6: The current node index
-    @ Input 7: The valid variables, given the query goals select statements
-    @ Input 8: The valid forAll conditions, given the achieve goals
-    @ Input 9: The map of node depths
+    @ Input 4: The current node index
+    @ Input 5: The valid variables, given the query goals select statements
+    @ Input 6: The valid forAll conditions, given the achieve goals
+    @ Input 7: The map of node depths
     @ Output: Void. The runtime goal model annotation is generated
 */ 
-void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* node_annot, vector<int>& vctr, pt::ptree worlddb, GMGraph gm, vector<string> high_level_loc_types, int current_node,
-                                        map<string,pair<string,vector<pt::ptree>>>& valid_variables, map<int,AchieveCondition> valid_forAll_conditions, map<int,int>& node_depths) {    
+void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* node_annot, vector<int> &vctr,  pt::ptree worlddb, int current_node, map<string,pair<string,vector<pt::ptree>>>& valid_variables, 
+                                                                map<int,AchieveCondition> valid_forAll_conditions, map<int,int>& node_depths) {    
     set<string> operators {";","#","FALLBACK","OPT","|"};
 
     set<string>::iterator op_it;
@@ -178,7 +185,7 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
                     for(general_annot* child : node_ch->children) {
                         child->parent = node_ch;
                         vector<int> vctr_aux;
-                        recursive_gm_annot_generation(child, vctr, worlddb, gm, high_level_loc_types, c_node, valid_variables, valid_forAll_conditions, node_depths);
+                        recursive_gm_annot_generation(child, vctr, worlddb, c_node, valid_variables, valid_forAll_conditions, node_depths);
 
                         if(child_index < node_annot->children.size()-1) {
                             unsigned int nodes_diff = vctr_aux.size() - vctr.size();
@@ -211,7 +218,7 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
             for(general_annot* child : node_annot->children) {
                 child->parent = node_annot;
                 int c_node = vctr.at(0);
-                recursive_gm_annot_generation(child, vctr, worlddb, gm, high_level_loc_types, c_node, valid_variables, valid_forAll_conditions, node_depths);
+                recursive_gm_annot_generation(child, vctr, worlddb, c_node, valid_variables, valid_forAll_conditions, node_depths);
             }
         }
     } else {
@@ -321,7 +328,7 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
                         for(general_annot* child : node_ch->children) {
                             child->parent = node_ch;
                             vector<int> vctr_aux = vctr;
-                            recursive_gm_annot_generation(child, vctr, worlddb, gm, high_level_loc_types, c_node, valid_variables, valid_forAll_conditions, node_depths);
+                            recursive_gm_annot_generation(child, vctr, worlddb, c_node, valid_variables, valid_forAll_conditions, node_depths);
                             
                             if(child_index < node_annot->children.size()-1) {
                                 unsigned int nodes_diff = vctr_aux.size() - vctr.size();
@@ -358,24 +365,30 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
                 for(general_annot* child : node_annot->children) {            
                     int c_node = vctr.at(0);
                     child->parent = node_annot;
-                    recursive_gm_annot_generation(child, vctr, worlddb, gm, high_level_loc_types, c_node, valid_variables, valid_forAll_conditions, node_depths);
+                    recursive_gm_annot_generation(child, vctr, worlddb, c_node, valid_variables, valid_forAll_conditions, node_depths);
                 }
             }
         }
     }
 }
 
-std::shared_ptr<AnnotManager> AnnotManagerFactory::create_annot_manager(std::shared_ptr<KnowledgeManager> k_manager) {
+shared_ptr<AnnotManager> AnnotManagerFactory::create_annot_manager(shared_ptr<KnowledgeManager> k_manager, GMGraph gm, vector<string> high_level_loc_types, map<string,vector<AbstractTask>> at_instances) {
+    shared_ptr<AnnotManager> annot_manager;
+    
     if(k_manager->get_knowledge_type() == FILEKNOWLEDGE) {
-		shared_ptr<AnnotManager> f_annot_manager = std::make_shared<FileKnowledgeAnnotManager>();
-		f_annot_manager->set_annot_manager_type(FILEANNOTMANAGER);
-
-		return f_annot_manager;
+		annot_manager = std::make_shared<FileKnowledgeAnnotManager>();
+		annot_manager->set_annot_manager_type(FILEANNOTMANAGER);
 	} else {
 		string unsupported_manager_type = "Unsupported manager type found";
 
 		throw std::runtime_error(unsupported_manager_type);
 	}
+
+    annot_manager->set_gm(gm);
+    annot_manager->set_high_level_loc_types(high_level_loc_types);
+    annot_manager->set_at_instances(at_instances);
+
+    return annot_manager;
 }
 
 /*
@@ -615,7 +628,7 @@ string recursive_rt_annot_build(general_annot* rt) {
     return annot;
 }
 
-void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm, int node_id, std::map<std::string,std::pair<std::string,std::vector<pt::ptree>>>& valid_variables) {
+void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm, int node_id, map<string,pair<string,vector<pt::ptree>>>& valid_variables) {
     vector<pt::ptree> aux;
 				
 	if(!queried_tree.empty()) {
