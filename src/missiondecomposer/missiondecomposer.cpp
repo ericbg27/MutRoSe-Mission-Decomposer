@@ -156,15 +156,13 @@ bool MissionDecomposer::check_context_dependency(int parent_node, int current_no
 						for(string arg : eff.arguments) {
 							bool found_arg = false;
 							variant<string,vector<string>> mapped_var;
-							// Here is probably one place where we have to expand collection related predicates
+							// Here one place where we have to expand collection related predicates
 							for(pair<pair<variant<vector<string>,string>,string>,string> var_map : at.variable_mapping) {
 								if(arg == var_map.second) {
 									found_arg = true;
 									if(holds_alternative<string>(var_map.first.first)) {
 										mapped_var = std::get<string>(var_map.first.first);
 									} else {
-										//string not_implemented_collection_pred_error = "Collection-related predicates are not supported yet.";
-										//throw std::runtime_error(not_implemented_collection_pred_error);
 										mapped_var = std::get<vector<string>>(var_map.first.first);
 									}
 									break;
