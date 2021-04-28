@@ -4,6 +4,14 @@
 
 using namespace std;
 
+/*
+    Function: generate_trimmed_at_graph
+    Objective: Trim ATGraph by removing operator nodes with only one child
+
+    @ Input 1: The ATGraph object
+    @ Output: The trimmed ATGraph object and a map of id's to the actual ATGraph object
+*/
+
 pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decomposition) {
 	ATGraph trimmed_mission_decomposition;
 

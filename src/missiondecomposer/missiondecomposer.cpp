@@ -333,19 +333,17 @@ void MissionDecomposer::create_non_coop_edges(int node_id) {
 	}
 }
 
+void FileKnowledgeMissionDecomposer::set_fk_manager(FileKnowledgeManager* manager) {
+	fk_manager = manager;
+}
+
 /*
     Function: build_at_graph
     Objective: Call the recursive Task Graph building structure, which generates an ATGraph object. This graph is the
 	graph of all possible combinations of tasks
 
-    @ Input 1: The abstract tasks instances map
-	@ Input 2: The abstract tasks decomposition paths map
-	@ Input 3: The goal model runtime annotation
-	@ Input 4: The goal model as a GMGraph object
-	@ Input 5: The initial world state, initialized using the knowledge (robots and world)
-	@ Input 6: The map between OCL goal model variables and HDDL variables
-	@ Input 7: The world knowledge as a KnowledgeBase object
-	@ Input 8: The semantic mappings vector
+	@ Input 1: The Goal Model variables map
+	@ Input 2: The semantic mappings vector
     @ Output: The Task Graph as an ATGraph object
 
 	REMEMBER: AT's contained in at_instances are mandatory, their decompositions are alternative
@@ -382,18 +380,13 @@ ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string, variant<pair<
     Objective: Call the recursive Task Graph building structure, which generates an ATGraph object. This graph is the
 	graph of all possible combinations of tasks
 
-	@ Input 1: The partial Task Graph as an ATGraph object (this is the mission decomposition)
-	@ Input 2: The world state in this level of the recursion
-    @ Input 3: The abstract tasks instances map
-	@ Input 4: The abstract tasks decomposition paths map
-	@ Input 5: The goal model runtime annotation
-	@ Input 6: The ID of the parent of the current node
-	@ Input 7: The goal model as a GMGraph object
-	@ Input 8: A boolean flag indicating if the current node is involved in execution constraints
-	@ Input 9: The map between OCL goal model variables and HDDL variables
-	@ Input 10: The world knowledge as a ptree object
-	@ Input 11: The semantic mappings vector
-	@ Input 12: A map of the instantiated OCL variables at this level of the recursion
+	@ Input 1: The ID of the parent of the current node
+	@ Input 2: The current node annotation object
+	@ Input 3: A boolean flag indicating if the current node is involved in execution constraints
+	@ Input 4: The map between OCL goal model variables and HDDL variables
+	@ Input 5: The world knowledge as a ptree object
+	@ Input 6: The semantic mappings vector
+	@ Input 7: A map of the instantiated OCL variables at this level of the recursion
     @ Output: Void. The ATGraph object is built
 */
 void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, general_annot* rannot, bool non_coop, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_vars_map, 
@@ -605,10 +598,6 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 			boost::add_edge(boost::vertex(node_id, mission_decomposition), boost::vertex(dnode_id, mission_decomposition), d_edge, mission_decomposition);
 		}
 	}
-}
-
-void FileKnowledgeMissionDecomposer::set_fk_manager(FileKnowledgeManager* manager) {
-	fk_manager = manager;
 }
 
 shared_ptr<MissionDecomposer> MissionDecomposerFactory::create_mission_decomposer(shared_ptr<KnowledgeManager> k_manager, vector<ground_literal> ws, map<string,vector<vector<task>>> atpaths, 
