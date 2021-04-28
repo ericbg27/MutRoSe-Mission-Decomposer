@@ -232,10 +232,8 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map
 
 				if(can_ground) {
 					vector<ground_literal> inst_prec;
-					//inst_prec.positive = prec.positive;
-					//inst_prec.predicate = prec.predicate;
 
-					// Here is probably one place where we have to expand collection related predicates
+					// Here one place where we have to expand collection related predicates
 					for(string arg : prec.arguments) {
 						for(pair<pair<variant<vector<string>,string>,string>,string> var_map : at.variable_mapping) {
 							if(arg == var_map.second) {
@@ -256,8 +254,6 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map
 
 										inst_prec.push_back(p);
 									}
-									//string not_implemented_collection_pred_error = "Collection-related predicates are not supported yet.";
-									//throw std::runtime_error(not_implemented_collection_pred_error);
 								}
 							}
 						}
@@ -292,10 +288,8 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map
 		
 			if(can_ground) {
 				vector<ground_literal> inst_eff;
-				//inst_eff.positive = eff.positive;
-				//inst_eff.predicate = eff.predicate;
 
-				// Here is probably one place where we have to expand collection related predicates
+				// Here is one place where we have to expand collection related predicates
 				for(string arg : eff.arguments) {
 					for(pair<pair<variant<vector<string>,string>,string>,string> var_map : at.variable_mapping) {
 						if(arg == var_map.second) {
@@ -316,8 +310,6 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map
 
 									inst_eff.push_back(e);
 								}
-								//string not_implemented_collection_pred_error = "Collection-related predicates are not supported yet.";
-								//throw std::runtime_error(not_implemented_collection_pred_error);
 							}
 						}
 					}
