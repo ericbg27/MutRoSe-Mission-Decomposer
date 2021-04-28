@@ -399,12 +399,12 @@ int main(int argc, char** argv) {
 		FileOutputGeneratorFactory output_gen_factory;
 
 		pair<string,string> file_output_data = std::make_pair(output.at(1),output.at(2));
-		std::shared_ptr<FileOutputGenerator> output_generator_ptr = output_gen_factory.create_file_output_generator(file_output_data.second);
+		std::shared_ptr<FileOutputGenerator> output_generator_ptr = output_gen_factory.create_file_output_generator(gm, mission_decomposition, init, file_output_data);
 
 		if(output_generator_ptr->get_file_output_generator_type() == XMLFILEOUTGEN) {
 			XMLOutputGenerator* output_generator = dynamic_cast<XMLOutputGenerator*>(output_generator_ptr.get());
 
-			output_generator->generate_instances_output(mission_decomposition, gm, file_output_data, init, semantic_mapping, sorts, sort_definitions, predicate_definitions, gm_var_map);
+			output_generator->generate_instances_output(semantic_mapping, sorts, sort_definitions, predicate_definitions, gm_var_map);
 		}
 	}
 }

@@ -12,16 +12,7 @@
 
 #include "../missiondecomposer/missiondecomposer.hpp"
 #include "../gm/gm.hpp"
-
-enum constraint_type {SEQ,PAR,NC,NEX};
-
-// Constraint involving two different abstract tasks/decompositions
-struct Constraint {
-    constraint_type type;
-    std::pair<std::pair<int,ATNode>,std::pair<int,ATNode>> nodes_involved;
-    bool group = true;
-    bool divisible = true;
-};
+#include "../utils/constraint.hpp"
 
 std::vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition);
 std::vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, std::vector<Constraint> mission_constraints, GMGraph gm);

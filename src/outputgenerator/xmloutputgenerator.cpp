@@ -2,6 +2,8 @@
 
 #include <boost/property_tree/xml_parser.hpp>
 
+#include "../validmissiongenerator/validmissiongenerator.hpp"
+
 using namespace std;
 
 /*
@@ -10,18 +12,15 @@ using namespace std;
     decompositions. By valid we mean that are viable given the knowledge that we have about the world. Robot-related
     predicates are not resolved and are left as attributes to be evaluated
 
-    @ Input 1: The Task Graph as an ATGraph object
-    @ Input 2: The goal model as a GMGraph object
-    @ Input 3: The output file name and path
-    @ Input 4: The world state
-    @ Input 5: The semantic mappings vector
-	@ Input 6: The sorts map, where we have our objects
-	@ Input 7: The sort definitions
-	@ Input 8: The predicates definitions
+    @ Input 1: The semantic mappings vector
+	@ Input 2: The sorts map, where we have our objects
+	@ Input 3: The sort definitions
+	@ Input 4: The predicates definitions
+    @ Input 5: The mapping of Goal Model variables and their values/types
     @ Output: Void. The output file is generated in the given relative path
 */
-void XMLOutputGenerator::generate_instances_output(ATGraph mission_decomposition, GMGraph gm, pair<string,string> output, vector<ground_literal> world_state, vector<SemanticMapping> semantic_mapping,
-                                map<string,set<string>> sorts, vector<sort_definition> sort_definitions, vector<predicate_definition> predicate_definitions, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
+void XMLOutputGenerator::generate_instances_output(vector<SemanticMapping> semantic_mapping, map<string,set<string>> sorts, vector<sort_definition> sort_definitions, 
+                                                    vector<predicate_definition> predicate_definitions, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
     pair<ATGraph,map<int,int>> trimmed_mission_decomposition = generate_trimmed_at_graph(mission_decomposition);  
 
     vector<Constraint> mission_constraints = generate_at_constraints(trimmed_mission_decomposition.first);
@@ -54,7 +53,8 @@ void XMLOutputGenerator::generate_instances_output(ATGraph mission_decomposition
 
     pt::ptree output_file;
 
-    vector<vector<pair<int,ATNode>>> valid_mission_decompositions = generate_valid_mission_decompositions(mission_decomposition, final_mission_constraints, world_state, gm_var_map, semantic_mapping, gm);
+    ValidMissionGenerator valid_missions_generator(mission_decomposition, gm, final_mission_constraints, world_state);
+    vector<vector<pair<int,ATNode>>> valid_mission_decompositions = valid_missions_generator.generate_valid_mission_decompositions(gm_var_map, semantic_mapping);
 
     vector<Decomposition> task_instances;
     map<string,task> actions;
