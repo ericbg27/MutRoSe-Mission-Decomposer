@@ -30,7 +30,6 @@
 #include "tdg/tdg.hpp"
 #include "knowledgemanager/knowledgemanager.hpp"
 #include "config/config.hpp"
-#include "atmanager/at.hpp"
 #include "atmanager/at_manager.hpp"
 #include "annotmanager/annotmanager.hpp"
 #include "missiondecomposer/missiondecomposer.hpp"
