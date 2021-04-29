@@ -13,6 +13,18 @@ void ATManager::set_at_manager_type(at_manager_type atm) {
 	atm_type = atm;
 }
 
+void ATManager::set_abstract_tasks(vector<task> ats) {
+	abstract_tasks = ats;
+}
+
+void ATManager::set_gm(GMGraph g) {
+	gm = g;
+}
+
+void ATManager::set_high_level_loc_types(vector<string> hllt) {
+	high_level_loc_types = hllt;
+}
+
 at_manager_type ATManager::get_at_manager_type() {
 	return atm_type;
 }
@@ -24,16 +36,11 @@ at_manager_type ATManager::get_at_manager_type() {
 	here we evaluate forAll condition, events, etc.
 	Short Description: Go through the Goal Model and find out how many tasks must be created (and how many of each).
 
-    @ Input 1: The set of abstract tasks, taken from the HDDL definition
-	@ Input 2: The GMGraph that represents the GM
-	@ Input 3: The high-level location type (for now only one is accepted)
-	@ Input 4: The variable mapping of the GM
-	@ Input 5: The variable mappings between HDDL and the Goal Model
+	@ Input 1: The variable mapping of the GM
+	@ Input 2: The variable mappings between HDDL and the Goal Model
     @ Output: The abstract task instances in a map format
 */
-map<string,vector<AbstractTask>> FileKnowledgeATManager::generate_at_instances(vector<task> abstract_tasks, GMGraph gm, vector<string> high_level_loc_types,
-															map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map,
-																vector<VariableMapping> var_mapping) {
+map<string,vector<AbstractTask>> FileKnowledgeATManager::generate_at_instances(map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map, vector<VariableMapping> var_mapping) {
 	vector<int> vctr = get_dfs_gm_nodes(gm);
 
 	/*
@@ -735,17 +742,23 @@ void FileKnowledgeATManager::set_fk_manager(FileKnowledgeManager* manager) {
 	fk_manager = manager;
 }
 
-shared_ptr<ATManager> ATManagerFactory::create_at_manager(shared_ptr<KnowledgeManager> k_manager) {
+shared_ptr<ATManager> ATManagerFactory::create_at_manager(shared_ptr<KnowledgeManager> k_manager, vector<task> abstract_tasks, GMGraph gm, vector<string> high_level_loc_types) {
+	shared_ptr<ATManager> at_manager;
+	
 	if(k_manager->get_knowledge_type() == FILEKNOWLEDGE) {
-		shared_ptr<ATManager> f_at_manager = std::make_shared<FileKnowledgeATManager>();
-		f_at_manager->set_at_manager_type(ATFILE);
-
-		return f_at_manager;
+		at_manager = std::make_shared<FileKnowledgeATManager>();
+		at_manager->set_at_manager_type(ATFILE);
 	} else {
 		string unsupported_manager_type = "Unsupported manager type found";
 
 		throw std::runtime_error(unsupported_manager_type);
 	}
+
+	at_manager->set_abstract_tasks(abstract_tasks);
+	at_manager->set_gm(gm);
+	at_manager->set_high_level_loc_types(high_level_loc_types);
+
+	return at_manager;
 }
 
 /*

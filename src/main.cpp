@@ -283,7 +283,7 @@ int main(int argc, char** argv) {
 	check_undefined_number_of_robots(gm, abstract_tasks, sort_definitions);
 
 	ATManagerFactory at_manager_factory;
-	shared_ptr<ATManager> at_manager_ptr = at_manager_factory.create_at_manager(knowledge_manager);
+	shared_ptr<ATManager> at_manager_ptr = at_manager_factory.create_at_manager(knowledge_manager, abstract_tasks, gm, high_level_loc_types);
 
 	map<string,vector<AbstractTask>> at_instances;
 
@@ -293,7 +293,7 @@ int main(int argc, char** argv) {
 		FileKnowledgeManager* aux = dynamic_cast<FileKnowledgeManager*>(knowledge_manager.get());
 		at_manager->set_fk_manager(aux);
 
-		at_instances = at_manager->generate_at_instances(abstract_tasks,gm,high_level_loc_types,gm_var_map,variable_mapping);
+		at_instances = at_manager->generate_at_instances(gm_var_map,variable_mapping);
 	}
 
 	print_at_instances_info(at_instances);
