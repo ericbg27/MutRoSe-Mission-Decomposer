@@ -65,6 +65,8 @@ forall			{return KEY_FORALL;}
 exists			{return KEY_EXISTS;}
 when			{return KEY_WHEN;}
 increase		{return KEY_INCREASE;}
+decrease		{return KEY_DECREASE;}
+assign			{return KEY_ASSIGN;}
 rewardchange	{return KEY_REWARD_CHANGE;}
 
 typeof			{return KEY_TYPEOF;}

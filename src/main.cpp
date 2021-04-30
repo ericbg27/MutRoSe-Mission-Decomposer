@@ -260,6 +260,33 @@ int main(int argc, char** argv) {
 
 	parsed_method_to_data_structures(false, false, false);
 
+	std::cout << "HDDL Functions: " << std::endl;
+	for(auto f : parsed_functions) {
+		std::cout << "Predicate definition: ";
+		std::cout << f.first.name << " ";
+		for(string arg : f.first.argument_sorts) {
+			std::cout << arg << " ";
+		}
+		std::cout << std::endl;
+		std::cout << "Type: " << f.second << std::endl;
+	}
+
+	std::cout << "Actions cost change effects: " << std::endl;
+	for(task t : primitive_tasks) {
+		std::cout << "Task: " << t.name << std::endl;
+		for(literal ce : t.costExpression) {
+			std::cout << "Eff: " << ce.predicate << " ";
+			for(string arg : ce.arguments) {
+				std::cout << arg << " ";
+			}
+			std::cout << std::endl;
+			std::cout << "Value: " << ce.costValue << std::endl;
+			if(ce.isAssignCostChangeExpression) {
+				std::cout << "Is assign" << std::endl;
+			}
+		}
+	}
+
 	/*
 		Goal Model parsing and generation of Abstract tasks instances
 	*/

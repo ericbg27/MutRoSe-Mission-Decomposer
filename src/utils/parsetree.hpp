@@ -55,7 +55,7 @@ struct function_expression{
 enum formula_type {EMPTY, AND, OR, FORALL, EXISTS, ATOM, NOTATOM,  // formulae
 				   EQUAL, NOTEQUAL, OFSORT, NOTOFSORT,
 				   WHEN,   // conditional effect
-				   VALUE, COST, COST_CHANGE, // cost statement
+				   VALUE, COST, COST_CHANGE, COST_CHANGE_INCREASE, COST_CHANGE_DECREASE, COST_CHANGE_ASSIGN, // cost statement
 				   REWARD, REWARD_CHANGE, FVALUE, PREDVALUE, INTVALUE, // reward statement
 				   PROB //Probabilistic statement
 				  };

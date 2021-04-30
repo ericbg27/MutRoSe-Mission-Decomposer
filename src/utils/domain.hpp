@@ -12,13 +12,14 @@ using namespace std;
 const string dummy_equal_literal = "__equal";
 const string dummy_ofsort_literal = "__ofsort";
 const string dummy_function_type = "__none";
-const string numeric_funtion_type = "number";
+const string numeric_function_type = "number";
 const string method_precondition_action_name = "__method_precondition_";
 
 struct literal{
 	bool positive;
 	bool isConstantCostExpression;
 	bool isCostChangeExpression;
+	bool isAssignCostChangeExpression;
 	string predicate;
 	vector<string> arguments;
 	int costValue;
