@@ -79,7 +79,7 @@
           "y": 448,
           "customProperties": {
             "Description": "",
-            "Divisible": "False",
+            "Group": "False",
             "CreationCondition": "assertion trigger \"E1\""
           }
         },
