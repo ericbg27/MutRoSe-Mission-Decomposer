@@ -368,7 +368,7 @@ int main(int argc, char** argv) {
 	knowledge_manager->initialize_objects(sorts, high_level_loc_types, at_instances, type_mapping);
 	knowledge_manager->initialize_world_state(init, init_functions, semantic_mapping, type_mapping, sorts);
 
-	print_world_state(init);
+	print_world_state(init,init_functions);
 
 	AnnotManagerFactory annot_manager_factory;
 	shared_ptr<AnnotManager> annot_manager_ptr = annot_manager_factory.create_annot_manager(knowledge_manager, gm, high_level_loc_types, at_instances);
@@ -406,7 +406,7 @@ int main(int argc, char** argv) {
 	*/
 
 	MissionDecomposerFactory mission_decomposer_factory;
-	shared_ptr<MissionDecomposer> mission_decomposer_ptr = mission_decomposer_factory.create_mission_decomposer(knowledge_manager, init, at_decomposition_paths, at_instances, gmannot, gm);
+	shared_ptr<MissionDecomposer> mission_decomposer_ptr = mission_decomposer_factory.create_mission_decomposer(knowledge_manager, init, init_functions, at_decomposition_paths, at_instances, gmannot, gm);
 	
 	ATGraph mission_decomposition;
 

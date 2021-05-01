@@ -45,7 +45,7 @@ struct var_and_const{
 	additional_variables newVar; // varname & sort
 };
 
-struct function_expression{
+struct function_expression {
 	bool isOnlyValue;
 	int value;
 	string name;
