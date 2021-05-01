@@ -26,11 +26,13 @@ class OutputGenerator {
         void set_mission_decomposition(ATGraph md);
         void set_gm(GMGraph g);
         void set_world_state(std::vector<ground_literal> ws);
+        void set_world_state_functions(std::vector<std::pair<ground_literal,int>> wsf);
 
     protected:
         ATGraph mission_decomposition;
         GMGraph gm;
         std::vector<ground_literal> world_state;
+        std::vector<std::pair<ground_literal,int>> world_state_functions;
 };
 
 enum file_output_generator_type {XMLFILEOUTGEN};

@@ -4,11 +4,12 @@
 
 using namespace std;
 
-ValidMissionGenerator::ValidMissionGenerator(ATGraph md, GMGraph g, std::vector<Constraint> mc, std::vector<ground_literal> ws) {
+ValidMissionGenerator::ValidMissionGenerator(ATGraph md, GMGraph g, vector<Constraint> mc, vector<ground_literal> ws, vector<pair<ground_literal,int>> wsf) {
     mission_decomposition = md;
     gm = g;
     mission_constraints = mc;
     world_state = ws;
+    world_state_functions = wsf;
 }
 
 /*
