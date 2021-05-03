@@ -20,6 +20,7 @@ struct Decomposition {
     std::vector<task> path;
     std::vector<std::variant<ground_literal,literal>> prec;
     std::vector<std::variant<ground_literal,literal>> eff;
+    std::vector<std::pair<ground_literal,int>> func_eff;
 };
 
 enum at_node_type {ATASK,OP,DECOMPOSITION,GOALNODE};

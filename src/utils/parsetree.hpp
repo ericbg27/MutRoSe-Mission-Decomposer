@@ -22,6 +22,7 @@ struct ground_literal{
 	string predicate;
 	bool positive;
 	vector<string> args;
+	bool isAssignCostChange;
 };
 
 struct sort_definition{
