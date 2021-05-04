@@ -807,7 +807,7 @@ void print_mission_decomposition(ATGraph mission_decomposition) {
 				std::cout << std::get<string>(a_node.content) << "(" << *ai << ")" << "(" << a_node.parent << ")" << "[OP]" << " ";
 			} else {
 				std::cout << std::get<Decomposition>(a_node.content).id << "(" << *ai << ")" << "(" << a_node.parent << ")" << "[D]" << " ";
-				std::cout << "\nCombined func effects for decomposition " << std::get<Decomposition>(a_node.content).id << ":" << std::endl;
+				/*std::cout << "\nCombined func effects for decomposition " << std::get<Decomposition>(a_node.content).id << ":" << std::endl;
 				for(auto f_eff : std::get<Decomposition>(a_node.content).func_eff) {
 					if(holds_alternative<literal>(f_eff)) {
 						literal fe = std::get<literal>(f_eff);
@@ -838,7 +838,7 @@ void print_mission_decomposition(ATGraph mission_decomposition) {
 						}
 						std::cout << fe.second << ")" << std::endl;
 					}
-				}
+				}*/
 			}
 		}	
 		std::cout << std::endl;

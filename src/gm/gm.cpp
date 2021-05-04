@@ -240,11 +240,9 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
             f.set_condition(custom_props[failure_condition_prop]);
             v.custom_props[failure_condition_prop] = f;
         }
-    } /*else if(std::get<string>(v.custom_props[goal_type_prop]) == "Loop") {
+    } else if(std::get<string>(v.custom_props[goal_type_prop]) == loop_goal_type) {
         v.custom_props["IterationRule"] = parse_iterate_expr(custom_props["IterationRule"]);
-    } else if(std::get<string>(v.custom_props[goal_type_prop]) == "Trigger") {
-        v.custom_props["TriggeredEvent"] = custom_props["TriggeredEvent"];
-    } */
+    }
 }
 
 /*

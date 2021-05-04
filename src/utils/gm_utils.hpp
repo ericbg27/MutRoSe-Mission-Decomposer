@@ -24,6 +24,7 @@ const std::string failure_condition_prop = "FailureCondition";
 const std::string achieve_goal_type = "Achieve";
 const std::string perform_goal_type = "Perform";
 const std::string query_goal_type = "Query";
+const std::string loop_goal_type = "Loop";
 const std::string istar_goal = "istar.Goal";
 const std::string istar_task = "istar.Task";
 const std::set<std::string> default_props{description_prop, queried_property_prop, failure_condition_prop, achieve_condition_prop};
