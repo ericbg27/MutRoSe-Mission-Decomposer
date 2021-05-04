@@ -580,7 +580,9 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                                 }
                             }
                             for(auto func_eff : d.func_eff) {
-                                effects_to_apply[depth].push_back(func_eff);
+                                if(holds_alternative<pair<ground_literal,int>>(func_eff)) {
+                                    effects_to_apply[depth].push_back(std::get<pair<ground_literal,int>>(func_eff));
+                                }
                             }
                             add_to_possible_conflicts = true;
                         } else if(last_op == ";") {
@@ -616,33 +618,35 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                                 }
                             }
                             for(auto func_eff : d.func_eff) {
-                                pair<ground_literal,int> e = func_eff;
+                                if(holds_alternative<pair<ground_literal,int>>(func_eff)) {
+                                    pair<ground_literal,int> e = std::get<pair<ground_literal,int>>(func_eff);
 
-                                for(pair<ground_literal,int>& func_state : updated_func_state) {
-                                    if(func_state.first.predicate == e.first.predicate) {
-                                        bool equal_args = true;
+                                    for(pair<ground_literal,int>& func_state : updated_func_state) {
+                                        if(func_state.first.predicate == e.first.predicate) {
+                                            bool equal_args = true;
 
-                                        int index = 0;
-                                        for(string arg : func_state.first.args) {
-                                            if(arg != e.first.args.at(index)) {
-                                                equal_args = false;
+                                            int index = 0;
+                                            for(string arg : func_state.first.args) {
+                                                if(arg != e.first.args.at(index)) {
+                                                    equal_args = false;
+                                                    break;
+                                                }
+
+                                                index++;
+                                            }
+
+                                            if(equal_args) {
+                                                if(e.first.isAssignCostChange) {
+                                                    func_state.second = e.second;
+                                                } else {
+                                                    func_state.second += e.second;
+                                                }
+
                                                 break;
                                             }
-
-                                            index++;
-                                        }
-
-                                        if(equal_args) {
-                                            if(e.first.isAssignCostChange) {
-                                                func_state.second = e.second;
-                                            } else {
-                                                func_state.second += e.second;
-                                            }
-
-                                            break;
                                         }
                                     }
-                                 }
+                                }
                             }
 
                             new_valid_mission_decompositions.push_back(make_pair(m_decomposition,make_pair(updated_state,updated_func_state)));
@@ -737,7 +741,9 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                             } 
                         }
                         for(auto func_eff : d.func_eff) {
-                            effects_to_apply[depth].push_back(func_eff);
+                            if(holds_alternative<pair<ground_literal,int>>(func_eff)) {
+                                effects_to_apply[depth].push_back(std::get<pair<ground_literal,int>>(func_eff));
+                            }
                         }
                         add_to_possible_conflicts = true;
                     } else if(last_op == ";") {
@@ -773,30 +779,32 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                             }
                         }
                         for(auto func_eff : d.func_eff) {
-                            pair<ground_literal,int> e = func_eff;
+                            if(holds_alternative<pair<ground_literal,int>>(func_eff)) {
+                                pair<ground_literal,int> e = std::get<pair<ground_literal,int>>(func_eff);
 
-                            for(pair<ground_literal,int>& func_state : updated_func_state) {
-                                if(func_state.first.predicate == e.first.predicate) {
-                                    bool equal_args = true;
+                                for(pair<ground_literal,int>& func_state : updated_func_state) {
+                                    if(func_state.first.predicate == e.first.predicate) {
+                                        bool equal_args = true;
 
-                                    int index = 0;
-                                    for(string arg : func_state.first.args) {
-                                        if(arg != e.first.args.at(index)) {
-                                            equal_args = false;
+                                        int index = 0;
+                                        for(string arg : func_state.first.args) {
+                                            if(arg != e.first.args.at(index)) {
+                                                equal_args = false;
+                                                break;
+                                            }
+
+                                            index++;
+                                        }
+
+                                        if(equal_args) {
+                                            if(e.first.isAssignCostChange) {
+                                                func_state.second = e.second;
+                                            } else {
+                                                func_state.second += e.second;
+                                            }
+
                                             break;
                                         }
-
-                                        index++;
-                                    }
-
-                                    if(equal_args) {
-                                        if(e.first.isAssignCostChange) {
-                                            func_state.second = e.second;
-                                        } else {
-                                            func_state.second += e.second;
-                                        }
-
-                                        break;
                                     }
                                 }
                             }

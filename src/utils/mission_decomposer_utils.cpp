@@ -210,6 +210,7 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map
 	task_number = d.path.size();
 
 	vector<variant<ground_literal,literal>> combined_effects;
+	vector<variant<pair<ground_literal,int>,literal>> combined_func_effects; //DEAL WITH LITERALS FOR FUNC EFFECTS
 
 	for(task t : d.path) {
 		if(task_counter == 1) { //First task defines preconditions
@@ -381,8 +382,135 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map
 			}
 		}
 
+		// Here we apply the function effects
+		for(literal func_eff : t.costExpression) {
+			bool can_ground = true;
+			for(string arg : func_eff.arguments) {
+				bool found_arg = false;
+				for(pair<pair<variant<vector<string>,string>,string>,string> var_map : at.variable_mapping) {
+					if(arg == var_map.second) {
+						found_arg = true;
+						break;
+					}
+				}
+
+				if(!found_arg) {
+					can_ground = false;
+					break;
+				}
+			}
+		
+			if(can_ground) {
+				vector<pair<ground_literal,int>> inst_func_eff;
+
+				// Here is one place where we have to expand collection related predicates
+				for(string arg : func_eff.arguments) {
+					for(pair<pair<variant<vector<string>,string>,string>,string> var_map : at.variable_mapping) {
+						if(arg == var_map.second) {
+							if(holds_alternative<string>(var_map.first.first)) {
+								ground_literal e;
+								e.positive = func_eff.positive;
+								e.predicate = func_eff.predicate;
+								e.args.push_back(std::get<string>(var_map.first.first));
+								e.isAssignCostChange = func_eff.isAssignCostChangeExpression;
+
+								inst_func_eff.push_back(make_pair(e,func_eff.costValue));
+							} else {
+								vector<string> eff_vars = std::get<vector<string>>(var_map.first.first);
+								for(string var : eff_vars) {
+									ground_literal e;
+									e.positive = func_eff.positive;
+									e.predicate = func_eff.predicate;
+									e.args.push_back(var);
+									e.isAssignCostChange = func_eff.isAssignCostChangeExpression;
+
+									inst_func_eff.push_back(make_pair(e,func_eff.costValue));
+								}
+							}
+						}
+					}
+				}
+
+				bool applied_effect = false;
+				for(unsigned int i = 0;i < combined_func_effects.size();i++) {
+					if(holds_alternative<pair<ground_literal,int>>(combined_func_effects.at(i))) {
+						pair<ground_literal,int> ceff = std::get<pair<ground_literal,int>>(combined_func_effects.at(i));
+						for(pair<ground_literal,int> e : inst_func_eff) {
+							if(e.first.predicate == ceff.first.predicate) {
+								bool equal_args = true;
+								int index = 0;
+								for(auto arg : e.first.args) {
+									if(arg != ceff.first.args.at(index)) {
+										equal_args = false;
+										break;
+									}
+
+									index++;
+								}
+
+								if(equal_args) {
+									if(e.first.isAssignCostChange) {
+										ceff.second = e.second;
+									} else {	
+										ceff.second += e.second;
+									}
+
+									combined_func_effects.at(i) = ceff; 
+
+									applied_effect = true;
+									break;
+								}
+							}
+						}
+					}
+				}
+
+				if(!applied_effect) {
+					for(pair<ground_literal,int> e : inst_func_eff) {
+						combined_func_effects.push_back(e);
+					}
+				}
+			} else {
+				bool applied_effect = false;
+				for(unsigned int i = 0;i < combined_func_effects.size();i++) {
+					if(holds_alternative<literal>(combined_func_effects.at(i))) {
+					literal ceff = std::get<literal>(combined_func_effects.at(i));
+					if(func_eff.predicate == ceff.predicate) {
+							bool equal_args = true;
+							int index = 0;
+							for(auto arg : func_eff.arguments) {
+								if(arg != ceff.arguments.at(index)) {
+									equal_args = false;
+									break;
+								}
+
+								index++;
+							}
+
+							if(equal_args) {
+								if(func_eff.isAssignCostChangeExpression) {
+									combined_func_effects.at(i) = func_eff;
+								} else {
+									ceff.costValue += func_eff.costValue;
+									combined_func_effects.at(i) = ceff;
+								}
+								
+								applied_effect = true;
+								break;
+							}
+						}
+					}
+				}
+
+				if(!applied_effect) {
+					combined_func_effects.push_back(func_eff);
+				}
+			}
+		}
+
 		if(task_counter == task_number) { //Last task defines effects
 			d.eff = combined_effects;
+			d.func_eff = combined_func_effects;
 		}
 
 		task_counter++;
@@ -679,6 +807,38 @@ void print_mission_decomposition(ATGraph mission_decomposition) {
 				std::cout << std::get<string>(a_node.content) << "(" << *ai << ")" << "(" << a_node.parent << ")" << "[OP]" << " ";
 			} else {
 				std::cout << std::get<Decomposition>(a_node.content).id << "(" << *ai << ")" << "(" << a_node.parent << ")" << "[D]" << " ";
+				std::cout << "\nCombined func effects for decomposition " << std::get<Decomposition>(a_node.content).id << ":" << std::endl;
+				for(auto f_eff : std::get<Decomposition>(a_node.content).func_eff) {
+					if(holds_alternative<literal>(f_eff)) {
+						literal fe = std::get<literal>(f_eff);
+						std::cout << "(= (" << fe.predicate << " ";
+						unsigned int index = 1;
+						for(string arg : fe.arguments) {
+							if(index == fe.arguments.size()) {
+								std::cout << arg << ") ";
+							} else {
+								std::cout << arg << " ";
+							}
+
+							index++;
+						}
+						std::cout << fe.costValue << ")" << std::endl;
+					} else {
+						pair<ground_literal,int> fe = std::get<pair<ground_literal,int>>(f_eff);
+						std::cout << "(= (" << fe.first.predicate << " ";
+						unsigned int index = 1;
+						for(string arg : fe.first.args) {
+							if(index == fe.first.args.size()) {
+								std::cout << arg << ") ";
+							} else {
+								std::cout << arg << " ";
+							}
+
+							index++;
+						}
+						std::cout << fe.second << ")" << std::endl;
+					}
+				}
 			}
 		}	
 		std::cout << std::endl;
