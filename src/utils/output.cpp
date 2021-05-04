@@ -143,7 +143,7 @@ void simple_hddl_output(ostream & dout){
 	map<string,int> function_declarations;
 	vector<predicate_definition> functions_out;
 	for (auto p : parsed_functions){
-		if (p.second != numeric_funtion_type){
+		if (p.second != numeric_function_type){
 			cerr << "the parser currently supports only numeric (type \"number\") functions." << endl;
 			exit(1);
 		}

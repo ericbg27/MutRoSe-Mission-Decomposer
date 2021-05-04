@@ -14,6 +14,10 @@ void MissionDecomposer::set_world_state(vector<ground_literal> ws) {
 	world_state = ws;
 }
 
+void MissionDecomposer::set_world_state_functions(std::vector<std::pair<ground_literal,int>> wsf) {
+	world_state_functions = wsf;
+}
+
 void MissionDecomposer::set_at_decomposition_paths(map<string,vector<vector<task>>> atpaths) {
 	at_decomposition_paths = atpaths;
 }
@@ -631,7 +635,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 	}
 }
 
-shared_ptr<MissionDecomposer> MissionDecomposerFactory::create_mission_decomposer(shared_ptr<KnowledgeManager> k_manager, vector<ground_literal> ws, map<string,vector<vector<task>>> atpaths, 
+shared_ptr<MissionDecomposer> MissionDecomposerFactory::create_mission_decomposer(shared_ptr<KnowledgeManager> k_manager, vector<ground_literal> ws, vector<pair<ground_literal,int>> wsf, map<string,vector<vector<task>>> atpaths, 
 																							map<string,vector<AbstractTask>> atinst, general_annot* gma, GMGraph g) {
 	shared_ptr<MissionDecomposer> mission_decomposer;
 	
@@ -645,6 +649,7 @@ shared_ptr<MissionDecomposer> MissionDecomposerFactory::create_mission_decompose
 	}
 
 	mission_decomposer->set_world_state(ws);
+	mission_decomposer->set_world_state_functions(wsf);
 	mission_decomposer->set_at_decomposition_paths(atpaths);
 	mission_decomposer->set_at_instances(atinst);
 	mission_decomposer->set_gm_annot(gma);

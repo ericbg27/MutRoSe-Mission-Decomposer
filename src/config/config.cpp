@@ -279,7 +279,9 @@ map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>,
             vector<SemanticMapping> mappings;
             BOOST_FOREACH(pt::ptree::value_type& mapping, config.second) {
                 string mapping_type = mapping.second.get<string>("type");
+                std::transform(mapping_type.begin(),mapping_type.end(),mapping_type.begin(),::tolower);
                 string mapped_type = mapping.second.get<string>("mapped_type");
+                std::transform(mapped_type.begin(),mapped_type.end(),mapped_type.begin(),::tolower);
                 SemanticMapping sm(mapping_type, mapped_type);
 
                 if(mapping_type == "attribute") {
@@ -295,7 +297,7 @@ map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>,
                     }
                 }
 
-                if(mapped_type == "predicate") {
+                if(mapped_type == "predicate" || mapped_type == "function") {
                     boost::optional<string> p_type = mapping.second.get_optional<string>("predicate_type");
                     if(p_type) {
                         sm.add_prop("predicate_type", p_type.get());

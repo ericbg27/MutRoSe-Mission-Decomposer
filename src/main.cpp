@@ -260,6 +260,33 @@ int main(int argc, char** argv) {
 
 	parsed_method_to_data_structures(false, false, false);
 
+	std::cout << "HDDL Functions: " << std::endl;
+	for(auto f : parsed_functions) {
+		std::cout << "Predicate definition: ";
+		std::cout << f.first.name << " ";
+		for(string arg : f.first.argument_sorts) {
+			std::cout << arg << " ";
+		}
+		std::cout << std::endl;
+		std::cout << "Type: " << f.second << std::endl;
+	}
+
+	std::cout << "Actions cost change effects: " << std::endl;
+	for(task t : primitive_tasks) {
+		std::cout << "Task: " << t.name << std::endl;
+		for(literal ce : t.costExpression) {
+			std::cout << "Eff: " << ce.predicate << " ";
+			for(string arg : ce.arguments) {
+				std::cout << arg << " ";
+			}
+			std::cout << std::endl;
+			std::cout << "Value: " << ce.costValue << std::endl;
+			if(ce.isAssignCostChangeExpression) {
+				std::cout << "Is assign" << std::endl;
+			}
+		}
+	}
+
 	/*
 		Goal Model parsing and generation of Abstract tasks instances
 	*/
@@ -341,7 +368,7 @@ int main(int argc, char** argv) {
 	knowledge_manager->initialize_objects(sorts, high_level_loc_types, at_instances, type_mapping);
 	knowledge_manager->initialize_world_state(init, init_functions, semantic_mapping, type_mapping, sorts);
 
-	print_world_state(init);
+	print_world_state(init,init_functions);
 
 	AnnotManagerFactory annot_manager_factory;
 	shared_ptr<AnnotManager> annot_manager_ptr = annot_manager_factory.create_annot_manager(knowledge_manager, gm, high_level_loc_types, at_instances);
@@ -379,7 +406,7 @@ int main(int argc, char** argv) {
 	*/
 
 	MissionDecomposerFactory mission_decomposer_factory;
-	shared_ptr<MissionDecomposer> mission_decomposer_ptr = mission_decomposer_factory.create_mission_decomposer(knowledge_manager, init, at_decomposition_paths, at_instances, gmannot, gm);
+	shared_ptr<MissionDecomposer> mission_decomposer_ptr = mission_decomposer_factory.create_mission_decomposer(knowledge_manager, init, init_functions, at_decomposition_paths, at_instances, gmannot, gm);
 	
 	ATGraph mission_decomposition;
 
@@ -398,7 +425,7 @@ int main(int argc, char** argv) {
 		FileOutputGeneratorFactory output_gen_factory;
 
 		pair<string,string> file_output_data = std::make_pair(output.at(1),output.at(2));
-		std::shared_ptr<FileOutputGenerator> output_generator_ptr = output_gen_factory.create_file_output_generator(gm, mission_decomposition, init, file_output_data);
+		std::shared_ptr<FileOutputGenerator> output_generator_ptr = output_gen_factory.create_file_output_generator(gm, mission_decomposition, init, init_functions, file_output_data);
 
 		if(output_generator_ptr->get_file_output_generator_type() == XMLFILEOUTGEN) {
 			XMLOutputGenerator* output_generator = dynamic_cast<XMLOutputGenerator*>(output_generator_ptr.get());

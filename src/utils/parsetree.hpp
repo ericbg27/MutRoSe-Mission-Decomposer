@@ -22,6 +22,7 @@ struct ground_literal{
 	string predicate;
 	bool positive;
 	vector<string> args;
+	bool isAssignCostChange;
 };
 
 struct sort_definition{
@@ -45,7 +46,7 @@ struct var_and_const{
 	additional_variables newVar; // varname & sort
 };
 
-struct function_expression{
+struct function_expression {
 	bool isOnlyValue;
 	int value;
 	string name;
@@ -55,7 +56,7 @@ struct function_expression{
 enum formula_type {EMPTY, AND, OR, FORALL, EXISTS, ATOM, NOTATOM,  // formulae
 				   EQUAL, NOTEQUAL, OFSORT, NOTOFSORT,
 				   WHEN,   // conditional effect
-				   VALUE, COST, COST_CHANGE, // cost statement
+				   VALUE, COST, COST_CHANGE, COST_CHANGE_INCREASE, COST_CHANGE_DECREASE, COST_CHANGE_ASSIGN, // cost statement
 				   REWARD, REWARD_CHANGE, FVALUE, PREDVALUE, INTVALUE, // reward statement
 				   PROB //Probabilistic statement
 				  };

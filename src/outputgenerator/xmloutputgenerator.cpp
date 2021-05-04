@@ -53,7 +53,7 @@ void XMLOutputGenerator::generate_instances_output(vector<SemanticMapping> seman
 
     pt::ptree output_file;
 
-    ValidMissionGenerator valid_missions_generator(mission_decomposition, gm, final_mission_constraints, world_state);
+    ValidMissionGenerator valid_missions_generator(mission_decomposition, gm, final_mission_constraints, world_state, world_state_functions);
     vector<vector<pair<int,ATNode>>> valid_mission_decompositions = valid_missions_generator.generate_valid_mission_decompositions(gm_var_map, semantic_mapping);
 
     vector<Decomposition> task_instances;

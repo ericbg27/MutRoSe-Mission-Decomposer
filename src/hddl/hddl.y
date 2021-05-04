@@ -57,7 +57,7 @@
 %token KEY_TYPES KEY_DEFINE KEY_DOMAIN KEY_PROBLEM KEY_REQUIREMENTS KEY_PREDICATES KEY_FUNCTIONS
 %token KEY_TASK KEY_CONSTANTS KEY_ACTION KEY_PARAMETERS KEY_PRECONDITION KEY_EFFECT KEY_METHOD
 %token KEY_GOAL KEY_INIT KEY_OBJECTS KEY_HTN KEY_TIHTN KEY_MIMIZE KEY_METRIC   
-%token KEY_AND KEY_OR KEY_NOT KEY_IMPLY KEY_FORALL KEY_EXISTS KEY_WHEN KEY_INCREASE KEY_TYPEOF
+%token KEY_AND KEY_OR KEY_NOT KEY_IMPLY KEY_FORALL KEY_EXISTS KEY_WHEN KEY_INCREASE KEY_DECREASE KEY_ASSIGN KEY_TYPEOF
 %token KEY_CAUSAL_LINKS KEY_CONSTRAINTS KEY_ORDER KEY_ORDER_TASKS KEY_TASKS 
 %token KEY_REWARDS KEY_REWARD_CHANGE
 %token KEY_CAPABILITIES KEY_REQUIRED_CAPABILITIES
@@ -101,6 +101,9 @@
 %type <prob_vec> prob_list
 %type <formula> literal
 %type <formula> p_effect
+%type <formula> p_effect_increase
+%type <formula> p_effect_decrease
+%type <formula> p_effect_assign
 %type <formula> reward_change_effect
 %type <formula> prob_effect
 %type <formula> neg_atomic_formula 
@@ -335,7 +338,7 @@ typed_atomic_function_def-list : atomic_function_def-list typed_function_list_co
 	}
 	delete $1;
 }
-typed_function_list_continuation : '-' NAME typed_atomic_function_def-list { $$ = $2; } | { $$ = strdup(numeric_funtion_type.c_str()); }
+typed_function_list_continuation : '-' NAME typed_atomic_function_def-list { $$ = $2; } | { $$ = strdup(numeric_function_type.c_str()); }
 
 atomic_function_def-list : atomic_function_def-list atomic_predicate_def { $$->push_back($2); } | { $$ = new std::vector<predicate_definition*>();}
 
@@ -568,8 +571,14 @@ literal : neg_atomic_formula {$$ = $1;} | atomic_formula {$$ = $1;}
 neg_atomic_formula : '(' KEY_NOT atomic_formula ')' {$$ = $3; $$->negate();}
 
 // these rules are just here to be able to parse action consts in the future
-p_effect : '(' assign_op f_head f_exp ')' {$$ = new general_formula(); $$->type=COST_CHANGE; $$->subformulae.push_back($3); $$->subformulae.push_back($4); }
-assign_op : KEY_INCREASE
+p_effect : p_effect_increase
+		 | p_effect_decrease
+		 | p_effect_assign
+
+p_effect_increase: '(' KEY_INCREASE f_head f_exp ')' {$$ = new general_formula(); $$->type=COST_CHANGE_INCREASE; $$->subformulae.push_back($3); $$->subformulae.push_back($4); }
+p_effect_decrease: '(' KEY_DECREASE f_head f_exp ')' {$$ = new general_formula(); $$->type=COST_CHANGE_DECREASE; $$->subformulae.push_back($3); $$->subformulae.push_back($4); }
+p_effect_assign: '(' KEY_ASSIGN f_head f_exp ')' {$$ = new general_formula(); $$->type=COST_CHANGE_ASSIGN; $$->subformulae.push_back($3); $$->subformulae.push_back($4); }
+//assign_op : KEY_INCREASE
 f_head : NAME { $$ = new general_formula(); $$->type = COST; $$->predicate = $1; }
 f_head : '(' NAME var_or_const-list ')' { $$ = new general_formula(); $$->type = COST; $$->predicate = $2; $$->arguments = *($3); }
 f_exp : INT { $$ = new general_formula(); $$->type = VALUE; $$->value = $1; $$->fvalue = 0.0; $$->predvalue = new literal; }

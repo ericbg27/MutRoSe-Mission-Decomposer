@@ -57,7 +57,7 @@ struct Robot {
     std::string pos;
 };
 
-void print_world_state(std::vector<ground_literal> world_state);
+void print_world_state(std::vector<ground_literal> world_state, vector<pair<ground_literal,int>> world_functions);
 
 inline bool operator==(const Robot& r1, const Robot& r2) {
     return (r1.name == r2.name);

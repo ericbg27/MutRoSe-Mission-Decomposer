@@ -39,3 +39,6 @@ cd ..
 cd utils
 rm -rf *.o
 cd ..
+cd validmissiongenerator
+rm -rf *.o
+cd ..

@@ -21,7 +21,10 @@ void general_formula::negate(){
 	else if (this->type == NOTATOM) this->type = ATOM;
 	else if (this->type == WHEN) assert(false); // conditional effect cannot be negated 
 	else if (this->type == VALUE) assert(false); // conditional effect cannot be negated 
-	else if (this->type == COST_CHANGE) assert(false); // conditional effect cannot be negated 
+	else if (this->type == COST_CHANGE) assert(false);
+	else if (this->type == COST_CHANGE_INCREASE) assert(false); // conditional effect cannot be negated 
+	else if (this->type == COST_CHANGE_DECREASE) assert(false);
+	else if (this->type == COST_CHANGE_ASSIGN) assert(false);
 	else if (this->type == COST) assert(false); // conditional effect cannot be negated 
 
 	for(auto sub : this->subformulae) sub->negate();
@@ -39,6 +42,9 @@ bool general_formula::isEmpty(){
 	if (this->type == VALUE) return false;
 	if (this->type == COST) return false;
 	if (this->type == COST_CHANGE) return false;
+	if (this->type == COST_CHANGE_INCREASE) return false;
+	if (this->type == COST_CHANGE_DECREASE) return false;
+	if (this->type == COST_CHANGE_ASSIGN) return false;
 
 
 	for(auto sub : this->subformulae) if (!sub->isEmpty()) return false;
@@ -110,6 +116,9 @@ set<string> general_formula::occuringUnQuantifiedVariables(){
 	// things that I don't want to support ...
 	if (this->type == VALUE) assert(false);
 	if (this->type == COST_CHANGE) assert(false);
+	if (this->type == COST_CHANGE_INCREASE) assert(false);
+	if (this->type == COST_CHANGE_DECREASE) assert(false);
+	if (this->type == COST_CHANGE_ASSIGN) assert(false);
 	if (this->type == COST) assert(false);
 	if (this->type == OFSORT) assert(false);
 	if (this->type == NOTOFSORT) assert(false);
@@ -162,6 +171,9 @@ bool general_formula::isDisjunctive(){
 	else if (this->type == NOTATOM) return false;
 	else if (this->type == VALUE) return false;
 	else if (this->type == COST_CHANGE) return false;
+	else if (this->type == COST_CHANGE_INCREASE) return false;
+	else if (this->type == COST_CHANGE_DECREASE) return false;
+	else if (this->type == COST_CHANGE_ASSIGN) return false;
 	else if (this->type == COST) return false;
 	// or and when are disjunctive	
 	else if (this->type == OR) return true;
@@ -279,7 +291,7 @@ vector<pair<pair<vector<variant<literal,conditional_effect>>,vector<literal> >, 
 		ret.push_back(make_pair(make_pair(ls,empty),vars));	
 	}
 	
-	if (this->type == COST_CHANGE){
+	if (this->type == COST_CHANGE || this->type == COST_CHANGE_INCREASE || this->type == COST_CHANGE_DECREASE || this->type == COST_CHANGE_ASSIGN) {
 		assert(subresults.size() == 2);
 		assert(subresults[0].size() == 1);
 		assert(subresults[0][0].first.first.size() == 1);
@@ -595,17 +607,69 @@ vector<pair<pair<vector<variant<literal,conditional_effect,reward_change,conditi
 		ret.push_back(make_pair(make_pair(ls,empty),vars));	
 	}
 	
-	if (this->type == COST_CHANGE){
+	if (this->type == COST_CHANGE_INCREASE || this->type == COST_CHANGE){
 		assert(subresults.size() == 2);
 		assert(subresults[0].size() == 1);
 		assert(subresults[0][0].first.first.size() == 1);
 		assert(holds_alternative<literal>(subresults[0][0].first.first[0]));
-		assert(get<literal>(subresults[0][0].first.first[0]).predicate == metric_target);
-		assert(get<literal>(subresults[0][0].first.first[0]).arguments.size() == 0);
+		//These seem like assertions in order to induce failure
+		//assert(get<literal>(subresults[0][0].first.first[0]).predicate == metric_target);
+		//assert(get<literal>(subresults[0][0].first.first[0]).arguments.size() == 0);
 
 		assert(subresults[1].size() == 1);
 		assert(subresults[1][0].first.first.size() == 1);
-		get<literal>(subresults[1][0].first.first[0]).isCostChangeExpression = true;
+
+		literal p = get<literal>(subresults[0][0].first.first[0]);
+		literal ce = get<literal>(subresults[1][0].first.first[0]);
+		ce.isCostChangeExpression = true;
+		ce.isAssignCostChangeExpression = false;
+		ce.predicate = p.predicate;
+		ce.arguments = p.arguments;
+
+		subresults[1][0].first.first[0] = ce;
+		ret.push_back(subresults[1][0]);
+	} else if(this->type == COST_CHANGE_DECREASE) {
+		assert(subresults.size() == 2);
+		assert(subresults[0].size() == 1);
+		assert(subresults[0][0].first.first.size() == 1);
+		assert(holds_alternative<literal>(subresults[0][0].first.first[0]));
+		//These seem like assertions in order to induce failure
+		//assert(get<literal>(subresults[0][0].first.first[0]).predicate == metric_target);
+		//assert(get<literal>(subresults[0][0].first.first[0]).arguments.size() == 0);
+
+		assert(subresults[1].size() == 1);
+		assert(subresults[1][0].first.first.size() == 1);
+
+		literal p = get<literal>(subresults[0][0].first.first[0]);
+		literal ce = get<literal>(subresults[1][0].first.first[0]);
+		ce.isCostChangeExpression = true;
+		ce.isAssignCostChangeExpression = false;
+		ce.predicate = p.predicate;
+		ce.arguments = p.arguments;
+		ce.costValue *= -1;
+
+		subresults[1][0].first.first[0] = ce;
+		ret.push_back(subresults[1][0]);
+	} else if(this->type == COST_CHANGE_ASSIGN) {
+		assert(subresults.size() == 2);
+		assert(subresults[0].size() == 1);
+		assert(subresults[0][0].first.first.size() == 1);
+		assert(holds_alternative<literal>(subresults[0][0].first.first[0]));
+		//These seem like assertions in order to induce failure
+		//assert(get<literal>(subresults[0][0].first.first[0]).predicate == metric_target);
+		//assert(get<literal>(subresults[0][0].first.first[0]).arguments.size() == 0);
+
+		assert(subresults[1].size() == 1);
+		assert(subresults[1][0].first.first.size() == 1);
+
+		literal p = get<literal>(subresults[0][0].first.first[0]);
+		literal ce = get<literal>(subresults[1][0].first.first[0]);
+		ce.isCostChangeExpression = true;
+		ce.predicate = p.predicate;
+		ce.arguments = p.arguments;
+		ce.isAssignCostChangeExpression = true;
+
+		subresults[1][0].first.first[0] = ce;
 		ret.push_back(subresults[1][0]);
 	}
 

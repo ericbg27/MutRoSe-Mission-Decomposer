@@ -430,7 +430,7 @@ pair<task,bool> flatten_primitive_task(parsed_task & a,
 							subCounter++;
 						}
 						
-					} else if (f->type == WHEN || f->type == VALUE || f->type == COST_CHANGE || f->type == COST) {
+					} else if (f->type == WHEN || f->type == VALUE || f->type == COST_CHANGE || f->type == COST_CHANGE_INCREASE || f->type == COST_CHANGE_DECREASE || f->type == COST_CHANGE_ASSIGN || f->type == COST) {
 						assert(false); // not allowed
 					} else if (f->type == FORALL){
 						auto [var_replace, additional_vars] = f->forallVariableReplacement();

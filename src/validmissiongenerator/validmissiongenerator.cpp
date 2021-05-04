@@ -4,11 +4,12 @@
 
 using namespace std;
 
-ValidMissionGenerator::ValidMissionGenerator(ATGraph md, GMGraph g, std::vector<Constraint> mc, std::vector<ground_literal> ws) {
+ValidMissionGenerator::ValidMissionGenerator(ATGraph md, GMGraph g, vector<Constraint> mc, vector<ground_literal> ws, vector<pair<ground_literal,int>> wsf) {
     mission_decomposition = md;
     gm = g;
     mission_constraints = mc;
     world_state = ws;
+    world_state_functions = wsf;
 }
 
 /*
@@ -35,8 +36,8 @@ vector<vector<pair<int,ATNode>>> ValidMissionGenerator::generate_valid_mission_d
         -> If the operator succeds a task, we know that this operator relates to the last two tasks
     */
     vector<pair<int,ATNode>> possible_conflicts;
-    map<int,vector<ground_literal>> effects_to_apply;
-    recursive_valid_mission_decomposition("", mission_queue, possible_conflicts, gm_var_map, semantic_mapping, effects_to_apply, -1);
+    map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> effects_to_apply;
+    recursive_valid_mission_decomposition("", mission_queue, possible_conflicts, gm_var_map, effects_to_apply, -1, semantic_mapping);
 
     vector<vector<pair<int,ATNode>>> final_valid_mission_decompositions;
     for(auto mission_decomposition : valid_mission_decompositions) {
@@ -76,8 +77,9 @@ vector<vector<pair<int,ATNode>>> ValidMissionGenerator::generate_valid_mission_d
     @ Output: Void. The valid mission decompositions will be generated
 */
 void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op, queue<pair<int,ATNode>>& mission_queue, vector<pair<int,ATNode>>& possible_conflicts, 
-                                                                    map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map, vector<SemanticMapping> semantic_mapping, 
-                                                                        map<int,vector<ground_literal>>& effects_to_apply, int depth) {
+                                                                        map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map,
+                                                                            map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>& effects_to_apply, 
+                                                                                int depth, vector<SemanticMapping> semantic_mapping) {
     /*
         Here we will get the current node and check whether it is an operator or an Abstract Task
     */
@@ -168,7 +170,7 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                 }
 
                 if(is_child) {
-                    recursive_valid_mission_decomposition("#",mission_queue,possible_conflicts, gm_var_map, semantic_mapping, effects_to_apply, depth);
+                    recursive_valid_mission_decomposition("#",mission_queue,possible_conflicts, gm_var_map, effects_to_apply, depth, semantic_mapping);
                 } else {
                     checking_children = false;
                 }
@@ -246,7 +248,7 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                 }
 
                 if(is_child) {
-                    recursive_valid_mission_decomposition(";", mission_queue, possible_conflicts, gm_var_map, semantic_mapping, effects_to_apply, depth);
+                    recursive_valid_mission_decomposition(";", mission_queue, possible_conflicts, gm_var_map, effects_to_apply, depth, semantic_mapping);
                 } else {
                     checking_children = false;
                 }
@@ -255,41 +257,81 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
 
         vector<int> keys_to_erase;
 
-        map<int,vector<ground_literal>>::iterator eff_it;
+        map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>::iterator eff_it;
         for(eff_it = effects_to_apply.begin(); eff_it != effects_to_apply.end(); ++eff_it) {
             if(eff_it->first >= depth) {
                 for(auto& vmd : valid_mission_decompositions) {
-                    for(ground_literal eff : eff_it->second) {
+                    for(auto eff : eff_it->second) {
                         bool found_pred = false;
 
-                        for(ground_literal& state : vmd.second) {
-                            if(state.predicate == eff.predicate) {
-                                bool equal_args = true;
+                        if(holds_alternative<ground_literal>(eff)) { 
+                            ground_literal e = std::get<ground_literal>(eff);
+                            for(auto& state : vmd.second.first) {                           
+                                if(state.predicate == e.predicate) {
+                                    bool equal_args = true;
 
-                                int arg_index = 0;
-                                for(string arg : state.args) {
-                                    if(arg != eff.args.at(arg_index)) {
-                                        equal_args = false;
+                                    int arg_index = 0;
+                                    for(string arg : state.args) {
+                                        if(arg != e.args.at(arg_index)) {
+                                            equal_args = false;
+                                            break;
+                                        }
+
+                                        arg_index++;
+                                    }
+
+                                    if(equal_args) {
+                                        found_pred = true;
+
+                                        if(state.positive != e.positive) {
+                                            state.positive = e.positive;
+                                        }
+
                                         break;
                                     }
-
-                                    arg_index++;
-                                }
-
-                                if(equal_args) {
-                                    found_pred = true;
-
-                                    if(state.positive != eff.positive) {
-                                        state.positive = eff.positive;
-                                    }
-
-                                    break;
                                 }
                             }
-                        }
 
-                        if(!found_pred) {
-                            vmd.second.push_back(eff);
+                            if(!found_pred) {
+                                vmd.second.first.push_back(e);
+                            }
+                        } else {
+                            pair<ground_literal,int> e = std::get<pair<ground_literal,int>>(eff);
+                            for(auto& func_state : vmd.second.second) {
+                                if(func_state.first.predicate == e.first.predicate) {
+                                    bool equal_args = true;
+
+                                    int arg_index = 0;
+                                    for(string arg : func_state.first.args) {
+                                        if(arg != e.first.args.at(arg_index)) {
+                                            equal_args = false;
+                                            break;
+                                        }
+
+                                        arg_index++;
+                                    }
+
+                                    if(equal_args) {
+                                        found_pred = true;
+
+                                        if(e.first.isAssignCostChange) {
+                                            func_state.second = e.second;
+                                        } else {
+                                            func_state.second += e.second;
+                                        }
+
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            if(!found_pred) {
+                                if(e.first.isAssignCostChange) {
+                                    e.first.isAssignCostChange = false;
+                                }
+
+                                vmd.second.second.push_back(e);
+                            } 
                         }
                     }
                 }   
@@ -353,7 +395,8 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                 vector<int> decompositions_to_erase;
                 int decomposition_index = 0;
                 for(auto decomposition : valid_mission_decompositions) {
-                    vector<ground_literal> world_state = decomposition.second;
+                    vector<ground_literal> world_state = decomposition.second.first;
+                    vector<pair<ground_literal,int>> world_state_func = decomposition.second.second;
 
                     bool valid_achieve_condition = true;
                     for(ground_literal forAll_pred : achieve_condition_predicates) {
@@ -440,14 +483,15 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                 -> We must have at least one decomposition valid for each valid mission decomposition
                     - If we don't have, we must raise an error
             */
-            vector<pair<vector<pair<int,ATNode>>,vector<ground_literal>>> new_valid_mission_decompositions;
+            vector<pair<vector<pair<int,ATNode>>,pair<vector<ground_literal>,vector<pair<ground_literal,int>>>>> new_valid_mission_decompositions;
             for(auto valid_mission_decomposition : valid_mission_decompositions) {
                 bool valid_task_decomposition = false; //Check if one task decomposition is valid for this mission decomposition
 
                 for(pair<int,ATNode> task_decomposition : task_decompositions) {
                     Decomposition d = get<Decomposition>(task_decomposition.second.content);
                     
-                    vector<ground_literal> world_state = valid_mission_decomposition.second;
+                    vector<ground_literal> world_state = valid_mission_decomposition.second.first;
+                    vector<pair<ground_literal,int>> world_state_func = valid_mission_decomposition.second.second;
                     vector<pair<int,ATNode>> m_decomposition = valid_mission_decomposition.first;
 
                     bool preconditions_hold = true;
@@ -465,6 +509,8 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                                             equal_args = false;
                                             break;
                                         }
+
+                                        index++;
                                     }
 
                                     if(equal_args) {
@@ -527,19 +573,25 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                         m_decomposition.push_back(task_decomposition);
 
                         if(last_op == "#") {
-                            new_valid_mission_decompositions.push_back(make_pair(m_decomposition,world_state));
+                            new_valid_mission_decompositions.push_back(make_pair(m_decomposition,make_pair(world_state,world_state_func)));
                             for(auto eff : d.eff) {
                                 if(holds_alternative<ground_literal>(eff)) {
                                     effects_to_apply[depth].push_back(std::get<ground_literal>(eff));
+                                }
+                            }
+                            for(auto func_eff : d.func_eff) {
+                                if(holds_alternative<pair<ground_literal,int>>(func_eff)) {
+                                    effects_to_apply[depth].push_back(std::get<pair<ground_literal,int>>(func_eff));
                                 }
                             }
                             add_to_possible_conflicts = true;
                         } else if(last_op == ";") {
                             //Update initial world state
                             vector<ground_literal> updated_state = world_state;
+                            vector<pair<ground_literal,int>> updated_func_state = world_state_func;
                             for(auto eff : d.eff) {
                                 if(holds_alternative<ground_literal>(eff)) {
-                                    ground_literal e = get<ground_literal>(eff);
+                                    ground_literal e = std::get<ground_literal>(eff);
 
                                     for(ground_literal& state : updated_state) {
                                         if(state.predicate == e.predicate) {
@@ -551,6 +603,8 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                                                     equal_args = false;
                                                     break;
                                                 }
+
+                                                index++;
                                             }
 
                                             if(equal_args) {
@@ -563,8 +617,39 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                                     }
                                 }
                             }
+                            for(auto func_eff : d.func_eff) {
+                                if(holds_alternative<pair<ground_literal,int>>(func_eff)) {
+                                    pair<ground_literal,int> e = std::get<pair<ground_literal,int>>(func_eff);
 
-                            new_valid_mission_decompositions.push_back(make_pair(m_decomposition,updated_state));
+                                    for(pair<ground_literal,int>& func_state : updated_func_state) {
+                                        if(func_state.first.predicate == e.first.predicate) {
+                                            bool equal_args = true;
+
+                                            int index = 0;
+                                            for(string arg : func_state.first.args) {
+                                                if(arg != e.first.args.at(index)) {
+                                                    equal_args = false;
+                                                    break;
+                                                }
+
+                                                index++;
+                                            }
+
+                                            if(equal_args) {
+                                                if(e.first.isAssignCostChange) {
+                                                    func_state.second = e.second;
+                                                } else {
+                                                    func_state.second += e.second;
+                                                }
+
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            new_valid_mission_decompositions.push_back(make_pair(m_decomposition,make_pair(updated_state,updated_func_state)));
                         }
 
                         valid_task_decomposition = true;
@@ -616,6 +701,8 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                                         equal_args = false;
                                         break;
                                     }
+
+                                    index++;
                                 }
 
                                 if(equal_args) {
@@ -641,22 +728,28 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                         -> If we have a sequential operator we update the world state and put it into the valid mission decomposition
                     */
                     AbstractTask at1 = get<AbstractTask>(current_node.second.content);
-                    pair<vector<pair<int,ATNode>>,vector<ground_literal>> new_valid_mission;
+                    pair<vector<pair<int,ATNode>>,pair<vector<ground_literal>,vector<pair<ground_literal,int>>>> new_valid_mission;
 
                     vector<pair<int,ATNode>> new_decomposition;
                     new_decomposition.push_back(task_decomposition);
 
                     if(last_op == "#") {
-                        new_valid_mission = make_pair(new_decomposition,world_state);
+                        new_valid_mission = make_pair(new_decomposition,make_pair(world_state,world_state_functions));
                         for(auto eff : d.eff) {
                             if(holds_alternative<ground_literal>(eff)) {
                                 effects_to_apply[depth].push_back(std::get<ground_literal>(eff));
+                            } 
+                        }
+                        for(auto func_eff : d.func_eff) {
+                            if(holds_alternative<pair<ground_literal,int>>(func_eff)) {
+                                effects_to_apply[depth].push_back(std::get<pair<ground_literal,int>>(func_eff));
                             }
                         }
                         add_to_possible_conflicts = true;
                     } else if(last_op == ";") {
                         //Update initial world state
                         vector<ground_literal> updated_state = world_state;
+                        vector<pair<ground_literal,int>> updated_func_state = world_state_functions;
                         for(auto eff : d.eff) {
                             if(holds_alternative<ground_literal>(eff)) {
                                 ground_literal e = get<ground_literal>(eff);
@@ -671,6 +764,8 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                                                 equal_args = false;
                                                 break;
                                             }
+
+                                            index++;
                                         }
 
                                         if(equal_args) {
@@ -683,8 +778,39 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                                 }
                             }
                         }
+                        for(auto func_eff : d.func_eff) {
+                            if(holds_alternative<pair<ground_literal,int>>(func_eff)) {
+                                pair<ground_literal,int> e = std::get<pair<ground_literal,int>>(func_eff);
 
-                        new_valid_mission = make_pair(new_decomposition,updated_state);
+                                for(pair<ground_literal,int>& func_state : updated_func_state) {
+                                    if(func_state.first.predicate == e.first.predicate) {
+                                        bool equal_args = true;
+
+                                        int index = 0;
+                                        for(string arg : func_state.first.args) {
+                                            if(arg != e.first.args.at(index)) {
+                                                equal_args = false;
+                                                break;
+                                            }
+
+                                            index++;
+                                        }
+
+                                        if(equal_args) {
+                                            if(e.first.isAssignCostChange) {
+                                                func_state.second = e.second;
+                                            } else {
+                                                func_state.second += e.second;
+                                            }
+
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        new_valid_mission = make_pair(new_decomposition,make_pair(updated_state,updated_func_state));
                     }
 
                     valid_mission_decompositions.push_back(new_valid_mission);
@@ -938,7 +1064,7 @@ void ValidMissionGenerator::resolve_conflicts(vector<pair<int,ATNode>> possible_
                     /*
                         Delete every mission decomposition that contain these conflicting task instances
                     */
-                    vector<pair<vector<pair<int,ATNode>>,vector<ground_literal>>>::iterator mission_it;
+                    vector<pair<vector<pair<int,ATNode>>,pair<vector<ground_literal>,vector<pair<ground_literal,int>>>>>::iterator mission_it;
                     for(mission_it = valid_mission_decompositions.begin(); mission_it != valid_mission_decompositions.end(); ) {
                         pair<bool,bool> found_instances = make_pair(false,false);
                         bool remove_decomposition = false;

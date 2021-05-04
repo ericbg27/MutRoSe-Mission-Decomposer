@@ -389,81 +389,91 @@ void FileKnowledgeManager::initialize_world_state(vector<ground_literal>& init, 
                             end = current_tree.end();
                         }
                     }
+                } else if(sm.get_mapped_type() == "function") {
+                    predicate_definition pred = std::get<predicate_definition>(sm.get_prop("map"));
+                        
+                    pt::ptree used_db;
+                    if(db == "robots_db") {
+                        used_db = robotsdb_root;
+                    } else {
+                        used_db = worlddb_root;
+                    }
+
+                    pt::ptree current_tree = used_db;
+                    
+                    stack<pt::ptree> ptree_stack;
+                    
+                    pt::ptree::const_iterator end = current_tree.end();
+                    pt::ptree::const_iterator it = current_tree.begin();
+
+                    while(it != end) {
+                        bool changed_tree = false;
+
+                        pt::ptree::value_type child = *it;
+
+                        if(child.first == relation_type) {
+                            //Only insert the predicate if the object exists (was initialized) in the sorts map
+                            string hddl_type = type_mapping[relation_type];
+                            if(sorts[hddl_type].find(child.second.get<string>("name")) != sorts[hddl_type].end()) {
+                                int val;
+                                try {
+                                    istringstream(boost::to_lower_copy(child.second.get<string>(attr_name))) >> val;
+                                } catch(...) {
+                                    string wrong_function_initialization_error = "Function initialization with attribute [" + attr_name + "] is not an integer value";
+
+                                    throw std::runtime_error(wrong_function_initialization_error);
+                                }
+
+                                ground_literal l;
+
+                                l.predicate = pred.name;
+                                l.positive = true;
+                                /*
+                                    For now, semantic mappings only involve one argument, which is of the hddl_type. With this in mind,
+                                    we get the name attribute in the xml
+                                */
+                                for(string sort_type : pred.argument_sorts) {
+                                    if(sort_type == hddl_type) {
+                                        l.args.push_back(child.second.get<string>("name"));
+                                    }
+                                }
+
+                                init_functions.push_back(make_pair(l,val));
+                            }
+                        } else {
+                            string child_data = child.second.data();
+                            boost::trim(child_data);
+                            if(!child.second.empty() && child_data == "") {
+                                current_tree.pop_front();
+                                if(current_tree.size() > 0) {
+                                    ptree_stack.push(current_tree);
+                                }
+                                current_tree = child.second;
+
+                                end = current_tree.end();
+                                it = current_tree.begin();
+
+                                changed_tree = true;
+                            }
+                        }
+
+                        if(!changed_tree && it != end) {
+                            it++;
+                            current_tree.pop_front();
+                        }
+
+                        if(it == end && ptree_stack.size() > 0) {
+                            current_tree = ptree_stack.top();
+                            ptree_stack.pop();
+
+                            it = current_tree.begin();
+                            end = current_tree.end();
+                        }
+                    }
                 }
             }
         }
     }
-
-    /*
-        Now, it's time for function initialization. For now, we will have manual initialization of these since for automatic
-        initialization we will need the configuration file
-
-        -> IMPORTANT: THIS IS A MANUAL INITIALIZATION THAT ONLY WORKS FOR OUR ROOM PREPARATION CASE STUDY!
-    */
-    ground_literal l;
-
-    l.predicate = "cleaning-time";
-    l.positive = true;
-    l.args.push_back("r1");
-    l.args.push_back("RoomA");
-
-    init_functions.push_back(make_pair(l,30));
-
-    ground_literal l1;
-
-    l1.predicate = "cleaning-time";
-    l1.positive = true;
-    l1.args.push_back("r1");
-    l1.args.push_back("RoomB");
-
-    init_functions.push_back(make_pair(l1,20));
-
-    ground_literal l2;
-
-    l2.predicate = "cleaning-time";
-    l2.positive = true;
-    l2.args.push_back("r2");
-    l2.args.push_back("RoomA");
-
-    init_functions.push_back(make_pair(l2,40));
-
-    ground_literal l3;
-
-    l3.predicate = "cleaning-time";
-    l3.positive = true;
-    l3.args.push_back("r2");
-    l3.args.push_back("RoomB");
-
-    init_functions.push_back(make_pair(l3,15));
-
-    ground_literal l4;
-
-    l4.predicate = "moveobject-time";
-    l4.positive = true;
-    l4.args.push_back("r3");
-    l4.args.push_back("r4");
-    l4.args.push_back("RoomA");
-
-    init_functions.push_back(make_pair(l4,50));
-
-    ground_literal l5;
-
-    l5.predicate = "moveobject-time";
-    l5.positive = true;
-    l5.args.push_back("r3");
-    l5.args.push_back("r4");
-    l5.args.push_back("RoomB");
-
-    init_functions.push_back(make_pair(l5,35));
-
-    /*
-        Now, it's time for reliability initialization
-        
-        -> These predicates will populate init_rel, where we have to each robot and each task one value for the reliability of that task
-        -> For this to be done, we need to add information to the Robots_db.xml, in order to express probability of success for each robot for each task
-            - Check Gricel's XML file
-        -> For now, we don't deal with reliabilities
-    */
 }
 
 shared_ptr<FileKnowledgeBase> FileKnowledgeManager::get_world_knowledge() {
@@ -481,7 +491,7 @@ shared_ptr<FileKnowledgeBase> FileKnowledgeManager::get_robots_knowledge() {
     @ Input: The world state vector 
     @ Output: Void. The world state is printed in the terminal
 */ 
-void print_world_state(vector<ground_literal> world_state) {
+void print_world_state(vector<ground_literal> world_state, vector<pair<ground_literal,int>> world_functions) {
     cout << "World state: " << endl;
 	for(ground_literal l : world_state) {
 		string state;
@@ -502,6 +512,27 @@ void print_world_state(vector<ground_literal> world_state) {
 
 		cout << state << endl;
 	}
+
+    cout << "World functions: " << endl;
+    for(pair<ground_literal,int> f : world_functions) {
+        string func;
+        func += "(" + f.first.predicate + " ";
+
+        unsigned int arg_num = 0;
+		for(string arg : f.first.args) {
+			func += arg;
+
+			arg_num++;
+			if(arg_num != f.first.args.size()) {
+				func += " ";
+			}
+		}
+
+        func += ") ";
+        func += to_string(f.second);
+
+        cout << func << endl;
+    }
 
 	cout << endl;
 }
