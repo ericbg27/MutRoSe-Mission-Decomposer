@@ -371,10 +371,13 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
             AchieveCondition achieve_condition = get<AchieveCondition>(gm[gm_node_id].custom_props[achieve_condition_prop]);
 
             vector<ground_literal> achieve_condition_predicates;
+            vector<pair<ground_literal,int>> achieve_condition_func_predicates;
 
-            variant<pair<pair<predicate_definition,vector<string>>,bool>,bool> evaluation = achieve_condition.evaluate_condition(semantic_mapping, gm_var_map);
-            
+
+            variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<int,bool>>,bool> evaluation = achieve_condition.evaluate_condition(semantic_mapping, gm_var_map);
+
             bool need_predicate_checking = false;
+            bool need_function_predicate_checking = false;
             if(holds_alternative<pair<pair<predicate_definition,vector<string>>,bool>>(evaluation)) {
                 pair<pair<predicate_definition,vector<string>>,bool> eval = std::get<pair<pair<predicate_definition,vector<string>>,bool>>(evaluation);
 
@@ -389,14 +392,26 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                 } 
 
                 need_predicate_checking = true;
+            } else if(holds_alternative<pair<pair<predicate_definition,vector<string>>,pair<int,bool>>>(evaluation)) {
+                pair<pair<predicate_definition,vector<string>>,pair<int,bool>> eval = std::get<pair<pair<predicate_definition,vector<string>>,pair<int,bool>>>(evaluation);
+
+                for(string value : eval.first.second) {
+                    ground_literal aux;
+
+                    aux.predicate = eval.first.first.name;
+                    aux.args.push_back(value);
+
+                    achieve_condition_func_predicates.push_back(make_pair(aux,eval.second.first));
+                }
+
+                need_function_predicate_checking = true;
             }
 
+            vector<int> decompositions_to_erase;
             if(need_predicate_checking) {
-                vector<int> decompositions_to_erase;
                 int decomposition_index = 0;
                 for(auto decomposition : valid_mission_decompositions) {
                     vector<ground_literal> world_state = decomposition.second.first;
-                    vector<pair<ground_literal,int>> world_state_func = decomposition.second.second;
 
                     bool valid_achieve_condition = true;
                     for(ground_literal forAll_pred : achieve_condition_predicates) {
@@ -436,17 +451,60 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
 
                     decomposition_index++;
                 }
+            } else if(need_function_predicate_checking) {
+                int decomposition_index = 0;
+                for(auto decomposition : valid_mission_decompositions) {
+                    vector<pair<ground_literal,int>> world_state_func = decomposition.second.second;
 
-                std::sort(decompositions_to_erase.begin(), decompositions_to_erase.end());
-                for(auto i = decompositions_to_erase.rbegin(); i != decompositions_to_erase.rend(); ++i) {
-                    valid_mission_decompositions.erase(valid_mission_decompositions.begin() + *i);
+                    bool valid_achieve_condition = true;
+                    for(pair<ground_literal,int> forAll_pred : achieve_condition_func_predicates) {
+                        for(pair<ground_literal,int> state : world_state_func) {
+                            if(state.first.predicate == forAll_pred.first.predicate) {
+                                bool equal_args = true;
+
+                                int arg_index = 0;
+                                for(string arg : state.first.args) {
+                                    if(arg != forAll_pred.first.args.at(arg_index)) {
+                                        equal_args = false;
+                                        break;
+                                    }
+                                                
+                                    arg_index++;
+                                }
+                                            
+                                if(!equal_args) {
+                                    break;
+                                }
+
+                                if(state.second != forAll_pred.second) {
+                                    valid_achieve_condition = false;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if(!valid_achieve_condition) {
+                            break;
+                        }
+                    }
+
+                    if(!valid_achieve_condition) {
+                        decompositions_to_erase.push_back(decomposition_index);
+                    }
+
+                    decomposition_index++;
                 }
+            }
 
-                if(valid_mission_decompositions.size() == 0) {
-                    string forAll_condition_not_achieved = "No decomposition satisfied achieve condition of goal " + achievel_goal_id;
+            std::sort(decompositions_to_erase.begin(), decompositions_to_erase.end());
+            for(auto i = decompositions_to_erase.rbegin(); i != decompositions_to_erase.rend(); ++i) {
+                valid_mission_decompositions.erase(valid_mission_decompositions.begin() + *i);
+            }
 
-                    throw std::runtime_error(forAll_condition_not_achieved);
-                }
+            if(valid_mission_decompositions.size() == 0) {
+                string forAll_condition_not_achieved = "No decomposition satisfied achieve condition of goal " + achievel_goal_id;
+
+                throw std::runtime_error(forAll_condition_not_achieved);
             }
         }
     } else {
@@ -852,25 +910,49 @@ queue<pair<int,ATNode>> ValidMissionGenerator::generate_mission_queue() {
     queue<pair<int,ATNode>> mission_queue;
 
     //Populate the mission queue
-    for(int i = 0;i < graph_size;i++) {
-        if(mission_decomposition[i].node_type == ATASK) {
-            mission_queue.push(make_pair(i,mission_decomposition[i]));
-        } else if(mission_decomposition[i].node_type == OP) {
-            int out_edge_num = 0;
-            ATGraph::out_edge_iterator ei, ei_end;
+    if(!is_unique_branch(mission_decomposition)) {
+        for(int i = 0; i < graph_size; i++) {
+            if(mission_decomposition[i].node_type == ATASK) {
+                mission_queue.push(make_pair(i,mission_decomposition[i]));
+            } else if(mission_decomposition[i].node_type == OP) {
+                int out_edge_num = 0;
+                ATGraph::out_edge_iterator ei, ei_end;
 
-            //Only insert OP nodes that have more than one outer edge of normal type (more than one child)
-            for(boost::tie(ei,ei_end) = out_edges(i,mission_decomposition);ei != ei_end;++ei) {
-                auto source = boost::source(*ei,mission_decomposition);
-                auto target = boost::target(*ei,mission_decomposition);
-                auto edge = boost::edge(source,target,mission_decomposition);
+                //Only insert OP nodes that have more than one outer edge of normal type (more than one child)
+                for(boost::tie(ei,ei_end) = out_edges(i,mission_decomposition);ei != ei_end;++ei) {
+                    auto source = boost::source(*ei,mission_decomposition);
+                    auto target = boost::target(*ei,mission_decomposition);
+                    auto edge = boost::edge(source,target,mission_decomposition);
 
-                if(mission_decomposition[edge.first].edge_type == NORMAL) {
-                    out_edge_num++;
+                    if(mission_decomposition[edge.first].edge_type == NORMAL) {
+                        out_edge_num++;
+                    }
+                }
+
+                if(out_edge_num > 1) {
+                    mission_queue.push(make_pair(i,mission_decomposition[i]));
                 }
             }
+        }
+    } else {
+        auto indexmap = boost::get(boost::vertex_index, mission_decomposition);
+		auto colormap = boost::make_vector_property_map<boost::default_color_type>(indexmap);
 
-            if(out_edge_num > 1) {
+		DFSATVisitor vis;
+		boost::depth_first_search(mission_decomposition, vis, colormap, 0);
+
+		vector<int> vctr = vis.GetVector();
+
+        for(int i : vctr) {
+            if(mission_decomposition[i].is_achieve_type && mission_decomposition[i].node_type != GOALNODE) {
+                mission_queue.push(make_pair(i,mission_decomposition[i]));
+            }
+
+            if(mission_decomposition[i].node_type == ATASK) {
+                if(mission_queue.size() == 0) {
+                    mission_queue.push(make_pair(0,mission_decomposition[0]));
+                }
+
                 mission_queue.push(make_pair(i,mission_decomposition[i]));
             }
         }

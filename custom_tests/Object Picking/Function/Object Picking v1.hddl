@@ -1,0 +1,28 @@
+(define (domain storage)
+    (:types room - object)
+    (:predicates 
+    
+    )
+    (:functions
+        (objects ?rm - room)
+    )
+    (:capabilities pickobject)
+
+    (:task PickObject :parameters (?r - robot ?rm - room))
+    (:method object-pick
+        :parameters (?r -robot ?rm - room)
+        :task (PickObject ?r ?rm)
+        :precondition ()
+        :ordered-subtasks (and
+            (pick-object ?r ?rm)
+        )
+    )
+    (:action pick-object
+        :parameters (?r -robot ?rm - room)
+        :required-capabilities (pickobject)
+        :precondition ()
+        :effect (and
+            (decrease (objects ?rm) 1)
+        )
+    )
+)

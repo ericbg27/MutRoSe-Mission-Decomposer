@@ -9,10 +9,11 @@ shared_ptr<FileOutputGenerator> FileOutputGeneratorFactory::create_file_output_g
         file_output_gen = std::make_shared<XMLOutputGenerator>();
         file_output_gen->set_file_output_generator_type(XMLFILEOUTGEN);
     }
-
+    
     file_output_gen->set_gm(gm);
     file_output_gen->set_mission_decomposition(mission_decomposition);
     file_output_gen->set_world_state(world_state);
+    file_output_gen->set_world_state_functions(world_state_functions);  
     file_output_gen->set_output(output);
 
     return file_output_gen;

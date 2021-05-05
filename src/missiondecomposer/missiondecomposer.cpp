@@ -407,6 +407,79 @@ ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string, variant<pair<
 
 	final_context_dependency_links_generation();
 
+	if(is_unique_branch(mission_decomposition)) {
+		vector<size_t> achieve_goals;
+		
+		ATGraph::vertex_iterator i, end;
+
+		for(boost::tie(i,end) = vertices(mission_decomposition); i != end; ++i) {
+			if(mission_decomposition[*i].is_achieve_type && mission_decomposition[*i].node_type == GOALNODE) {
+				achieve_goals.push_back(*i);
+			}
+		}
+
+		for(size_t goal : achieve_goals) {
+			int parent = mission_decomposition[goal].parent;
+
+			if(parent != -1) {
+				ATNode aux;
+				aux = mission_decomposition[goal];
+
+				aux.node_type = OP;
+				aux.content = "#";
+
+				int aux_id = boost::add_vertex(aux, mission_decomposition);
+				
+				ATGraph::out_edge_iterator ei, ei_end;
+
+				for(boost::tie(ei,ei_end) = out_edges(parent,mission_decomposition);ei != ei_end;++ei) {
+					ATEdge e = mission_decomposition[*ei];
+
+					if(e.target == goal && e.edge_type == NORMAL) {
+						auto edge = boost::edge(parent,goal,mission_decomposition).first;
+
+						boost::remove_edge(edge, mission_decomposition);
+					}	
+				}
+
+				ATEdge e;
+				e.edge_type = NORMAL;
+				e.source = parent;
+				e.target = aux_id;
+
+				boost::add_edge(boost::vertex(parent, mission_decomposition), boost::vertex(aux_id, mission_decomposition), e, mission_decomposition);
+
+				ATEdge e2;
+				e2.edge_type = NORMAL;
+				e2.source = aux_id;
+				e2.target = goal;
+
+				boost::add_edge(boost::vertex(aux_id, mission_decomposition), boost::vertex(goal, mission_decomposition), e2, mission_decomposition);
+
+				ATNode* v = &mission_decomposition[goal];
+				v->parent = aux_id;
+			} else {
+				ATNode aux;
+				aux = mission_decomposition[goal];
+
+				aux.node_type = OP;
+				aux.content = "#";
+
+				int aux_id = boost::add_vertex(aux, mission_decomposition);
+
+				ATEdge e;
+				e.edge_type = NORMAL;
+				e.source = aux_id;
+				e.target = goal;
+
+				boost::add_edge(boost::vertex(aux_id, mission_decomposition), boost::vertex(goal, mission_decomposition), e, mission_decomposition);
+
+				ATNode* v = &mission_decomposition[goal];
+				v->parent = aux_id;
+			}
+		}
+	}
+
 	return mission_decomposition;
 }
 

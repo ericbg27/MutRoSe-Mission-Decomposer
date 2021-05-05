@@ -30,61 +30,32 @@
             "Description": "",
             "GoalType": "Query",
             "Controls": "rooms : Sequence(Room)",
-            "QueriedProperty": "location_db->select(r:Room|!r.is_organized)"
+            "QueriedProperty": "location_db->select(r:Room|r.needs_picking)"
           }
         },
         {
           "id": "06631305-b4d6-456c-bb13-880f644f8fd9",
-          "text": "G3: Pick objects in rooms [G4;G5]",
+          "text": "G3: Pick objects in rooms",
           "type": "istar.Goal",
           "x": 571,
           "y": 280,
           "customProperties": {
             "Description": "",
             "GoalType": "Achieve",
-            "AchieveCondition": "rooms->forAll(current_room | current_room.objects_picked)",
+            "AchieveCondition": "rooms->forAll(current_room | current_room.num_objects == 0)",
             "Monitors": "rooms",
             "Controls": "current_room : Room"
-          }
-        },
-        {
-          "id": "51099262-fd4c-4d23-a56b-ef22c2274ce6",
-          "text": "G4: Fetch objects to be picked in current room",
-          "type": "istar.Goal",
-          "x": 470,
-          "y": 409,
-          "customProperties": {
-            "Description": "",
-            "GoalType": "Query",
-            "Controls": "objects : Sequence(Object)",
-            "QueriedProperty": "current_room.objects->select(o:Object | )",
-            "Monitors": "current_room"
-          }
-        },
-        {
-          "id": "ecc9478d-d342-44ff-9f88-3a92bff96f64",
-          "text": "G5: Pick all objects in current room",
-          "type": "istar.Goal",
-          "x": 706,
-          "y": 407,
-          "customProperties": {
-            "Description": "",
-            "GoalType": "Achieve",
-            "AchieveCondition": "objects->forAll(obj | obj.picked)",
-            "Monitors": "objects, current_room",
-            "Controls": "obj : Object"
           }
         },
         {
           "id": "997d0bc7-c6a6-4b44-91b4-62b4a1206a07",
           "text": "AT1: PickObject",
           "type": "istar.Task",
-          "x": 712,
-          "y": 538,
+          "x": 574,
+          "y": 402,
           "customProperties": {
             "Description": "",
-            "Location": "current_room",
-            "Params": "obj"
+            "Location": "current_room"
           }
         }
       ]
@@ -94,34 +65,22 @@
   "dependencies": [],
   "links": [
     {
-      "id": "86a0d2d4-e657-402f-aaec-3e18f4b032b7",
+      "id": "3fd4aa41-0abd-4e1b-92a5-709bd63d2ed5",
       "type": "istar.AndRefinementLink",
       "source": "ce69cf82-bf83-4ad6-b04b-92e50bc9c62d",
       "target": "e55ae68a-d27e-4fb2-8090-e3be66d56c07"
     },
     {
-      "id": "5f86a91a-05f0-44fd-b814-e62051ad3b51",
+      "id": "796a2497-2027-45c4-9eca-5cb8904bf08e",
       "type": "istar.AndRefinementLink",
       "source": "06631305-b4d6-456c-bb13-880f644f8fd9",
       "target": "e55ae68a-d27e-4fb2-8090-e3be66d56c07"
     },
     {
-      "id": "e0c6c355-1181-4e83-b728-a67453c6228a",
-      "type": "istar.AndRefinementLink",
-      "source": "51099262-fd4c-4d23-a56b-ef22c2274ce6",
-      "target": "06631305-b4d6-456c-bb13-880f644f8fd9"
-    },
-    {
-      "id": "3c3fdf1f-8e67-43d3-a1eb-2dd1b1d595e8",
-      "type": "istar.AndRefinementLink",
-      "source": "ecc9478d-d342-44ff-9f88-3a92bff96f64",
-      "target": "06631305-b4d6-456c-bb13-880f644f8fd9"
-    },
-    {
-      "id": "77134880-1a01-4b0d-ae89-40468ffe24c4",
+      "id": "f817f11b-1bcf-4e60-bf22-e1a3bd8b0d65",
       "type": "istar.AndRefinementLink",
       "source": "997d0bc7-c6a6-4b44-91b4-62b4a1206a07",
-      "target": "ecc9478d-d342-44ff-9f88-3a92bff96f64"
+      "target": "06631305-b4d6-456c-bb13-880f644f8fd9"
     }
   ],
   "display": {
@@ -137,14 +96,6 @@
       "width": 104,
       "height": 49.80000305175781
     },
-    "51099262-fd4c-4d23-a56b-ef22c2274ce6": {
-      "width": 111,
-      "height": 53.80000305175781
-    },
-    "ecc9478d-d342-44ff-9f88-3a92bff96f64": {
-      "width": 107,
-      "height": 49.80000305175781
-    },
     "997d0bc7-c6a6-4b44-91b4-62b4a1206a07": {
       "width": 103,
       "height": 44.80000305175781
@@ -152,7 +103,7 @@
   },
   "tool": "pistar.2.0.0",
   "istar": "2.0",
-  "saveDate": "Mon, 12 Apr 2021 12:43:52 GMT",
+  "saveDate": "Tue, 04 May 2021 12:41:20 GMT",
   "diagram": {
     "width": 2000,
     "height": 1300,

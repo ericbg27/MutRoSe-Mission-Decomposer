@@ -2,6 +2,7 @@
 
 #include <sstream>
 #include <regex>
+#include <iostream>
 
 using namespace std;
 
@@ -29,7 +30,7 @@ void AchieveCondition::set_iteration_var(std::string itvar) {
     iteration_var = itvar;
 }
 
-variant<pair<pair<predicate_definition,vector<string>>,bool>,bool> AchieveCondition::evaluate_condition(vector<SemanticMapping> semantic_mapping, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
+variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<int,bool>>,bool> AchieveCondition::evaluate_condition(vector<SemanticMapping> semantic_mapping, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
     if(has_forAll_expr) {
         string iteration_var_type;
         if(holds_alternative<pair<string,string>>(gm_var_map[iteration_var])) { // For now, the only valid condition
@@ -38,7 +39,7 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,bool> AchieveCondit
 
         vector<string> iterated_var_values = std::get<pair<vector<string>,string>>(gm_var_map[iterated_var]).first;
 
-        variant<pair<pair<predicate_definition,vector<string>>,bool>,bool> evaluation = Condition::evaluate_condition(make_pair(iterated_var_values,iteration_var_type), semantic_mapping);
+        variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<int,bool>>,bool> evaluation = Condition::evaluate_condition(make_pair(iterated_var_values,iteration_var_type), semantic_mapping);
 
         return evaluation;
     } else {
@@ -63,7 +64,7 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,bool> AchieveCondit
 
         variant<pair<string,string>,pair<vector<string>,string>> var_value_and_type = get_var_value_and_type(gm_var_map, variable);
 
-        variant<pair<pair<predicate_definition,vector<string>>,bool>,bool> evaluation = Condition::evaluate_condition(var_value_and_type,semantic_mapping);
+        variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<int,bool>>,bool> evaluation = Condition::evaluate_condition(var_value_and_type,semantic_mapping);
 
         return evaluation;
     }
@@ -312,9 +313,10 @@ vector<string> parse_forAll_expr(string expr) {
 
     vector<string> res;
 
-    std::regex forall_reg("[a-zA-Z]+[a-zA-z_.0-9]*(->forAll)[(][a-zA-Z]+[a-zA-z_.0-9]*[ ]?[|][ ]?([a-zA-Z]+[a-zA-z_.0-9]*)?[)]");
+    std::regex forall_reg1("[a-zA-Z]+[a-zA-z_.0-9]*(->forAll)[(][a-zA-Z]+[a-zA-z_.0-9]*[ ]?[|][ ]?([a-zA-Z]+[a-zA-z_.0-9]*)?[)]");
+    std::regex forall_reg2("[a-zA-Z]+[a-zA-z_.0-9]*(->forAll)[(][a-zA-Z]+[a-zA-z_.0-9]*[ ]?[|][ ]?([A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((==)|(!=)){1}[ ]+[0-9]+))[)]");
 
-    if(!std::regex_match(expr, forall_reg)) {
+    if(!std::regex_match(expr, forall_reg1) && !std::regex_match(expr, forall_reg2)) {
         error = true;
     }
 
@@ -323,7 +325,7 @@ vector<string> parse_forAll_expr(string expr) {
             stringstream ss(expr);
             string aux;
 
-            regex e1("[a-zA-Z]+[a-zA-z_.0-9]*");
+            regex e1("[a-zA-Z]+[a-zA-z_.0-9]*([ ]+((==)|(!=)){1}[ ]+[0-9]+)?");
             smatch m;
 
             getline(ss, aux, '>');
@@ -343,8 +345,15 @@ vector<string> parse_forAll_expr(string expr) {
         }
     }
 
-    if(res.at(0) == "" || res.at(1) == "" || error) {
+    if(error) {
         string forAll_err = "Invalid forAll statement " + expr + " in GM.";
+
+        throw std::runtime_error(forAll_err);
+    }
+
+    if(res.at(0) == "" || res.at(1) == "") {
+        string forAll_err = "Invalid forAll statement " + expr + " in GM.";
+
         throw std::runtime_error(forAll_err);
     }
 

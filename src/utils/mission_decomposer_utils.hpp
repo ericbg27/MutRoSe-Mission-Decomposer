@@ -28,10 +28,10 @@ enum at_node_type {ATASK,OP,DECOMPOSITION,GOALNODE};
 struct ATNode {
     at_node_type node_type;
     std::variant<AbstractTask,std::string,Decomposition> content;
-    bool non_coop;
-    bool group;
-    bool divisible;
-    bool is_achieve_type;
+    bool non_coop = false;
+    bool group = true;
+    bool divisible = true;
+    bool is_achieve_type = false;
     int parent;
 };
 
@@ -76,5 +76,7 @@ void find_non_coop_task_ids(ATGraph mission_decomposition, int node_id, set<int>
 bool can_unite_decompositions(Decomposition d1, Decomposition d2, bool non_coop_nodes);
 
 void print_mission_decomposition(ATGraph mission_decomposition);
+
+bool is_unique_branch(ATGraph mission_decomposition);
 
 #endif

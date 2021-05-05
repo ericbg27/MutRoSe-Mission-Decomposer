@@ -241,7 +241,10 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
             v.custom_props[failure_condition_prop] = f;
         }
     } else if(std::get<string>(v.custom_props[goal_type_prop]) == loop_goal_type) {
-        v.custom_props["IterationRule"] = parse_iterate_expr(custom_props["IterationRule"]);
+        string not_implemented_loop_goal_error = "Current version of the tool does not support Loop goals yet.";
+
+        throw std::runtime_error(not_implemented_loop_goal_error);
+        //v.custom_props["IterationRule"] = parse_iterate_expr(custom_props["IterationRule"]);
     }
 }
 
@@ -373,14 +376,12 @@ GMGraph graph_from_property_tree(pt::ptree root) {
 	}
 
     vector<pair<int,VertexData>> vertices;
-
     vertices = parse_gm_nodes(nodes);
 
     //Retrieve edges from Goal Model
     links = root.get_child("links");
 
     vector<pair<pair<int,int>, EdgeData>> edges;
-
     edges = parse_gm_edges(links, gm, vertices);
 
     vector<pair<pair<int,int>, EdgeData>>::iterator edges_it;

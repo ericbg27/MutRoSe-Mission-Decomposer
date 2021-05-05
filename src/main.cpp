@@ -292,7 +292,6 @@ int main(int argc, char** argv) {
 	*/
 
 	GMGraph gm;
-
 	gm = graph_from_property_tree(json_root);
 
 	check_config(variable_mapping, type_mapping, gm, abstract_tasks, semantic_mapping, high_level_loc_types, predicate_definitions);

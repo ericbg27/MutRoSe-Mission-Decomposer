@@ -16,6 +16,10 @@ void OutputGenerator::set_world_state(vector<ground_literal> ws) {
     world_state = ws;
 }
 
+void OutputGenerator::set_world_state_functions(vector<pair<ground_literal,int>> wsf) {
+    world_state_functions = wsf;
+}
+
 void FileOutputGenerator::set_file_output_generator_type(file_output_generator_type fogt) {
     fog_type = fogt;
 }
