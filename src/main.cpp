@@ -287,6 +287,21 @@ int main(int argc, char** argv) {
 		}
 	}
 
+	std::cout << "Actions function predicates: " << std::endl;
+	for(task t : primitive_tasks) {
+		std::cout << "Task: " << t.name << std::endl;
+		for(literal ce : t.prec) {
+			if(ce.isComparisonExpression) {
+				std::cout << "Prec: " << "(" << ce.comparison_op_and_value.first << " ( " << ce.predicate << " ";
+				for(string arg : ce.arguments) {
+					std::cout << arg << " ";
+				}
+				std::cout << " ) ";
+				std::cout << ce.comparison_op_and_value.second << ")" << std::endl;
+			}
+		}
+	}
+
 	/*
 		Goal Model parsing and generation of Abstract tasks instances
 	*/

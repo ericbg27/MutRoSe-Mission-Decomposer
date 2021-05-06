@@ -553,7 +553,7 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                     vector<pair<int,ATNode>> m_decomposition = valid_mission_decomposition.first;
 
                     bool preconditions_hold = true;
-                    for(auto prec : d.prec) {
+                    for(auto prec : d.prec) { //HERE WE NEED TO CHECK FOR FUNCTION PRECONDITIONS
                         if(holds_alternative<ground_literal>(prec)) {                   
                             ground_literal p = get<ground_literal>(prec);
                             

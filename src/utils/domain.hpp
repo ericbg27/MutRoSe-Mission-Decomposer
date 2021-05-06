@@ -10,19 +10,25 @@
 using namespace std;
 
 const string dummy_equal_literal = "__equal";
+const string dummy_comparison_literal = "__comparison";
 const string dummy_ofsort_literal = "__ofsort";
 const string dummy_function_type = "__none";
 const string numeric_function_type = "number";
 const string method_precondition_action_name = "__method_precondition_";
+
+const string equal_comparison_op = "=";
+const string greater_comparison_op = ">";
 
 struct literal{
 	bool positive;
 	bool isConstantCostExpression;
 	bool isCostChangeExpression;
 	bool isAssignCostChangeExpression;
+	bool isComparisonExpression;
 	string predicate;
 	vector<string> arguments;
 	int costValue;
+	pair<string,int> comparison_op_and_value;
 };
 
 struct conditional_effect {
