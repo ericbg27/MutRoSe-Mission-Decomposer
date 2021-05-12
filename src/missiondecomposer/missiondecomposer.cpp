@@ -18,7 +18,7 @@ void MissionDecomposer::set_world_state_functions(std::vector<std::pair<ground_l
 	world_state_functions = wsf;
 }
 
-void MissionDecomposer::set_at_decomposition_paths(map<string,vector<vector<task>>> atpaths) {
+void MissionDecomposer::set_at_decomposition_paths(map<string,vector<DecompositionPath>> atpaths) {
 	at_decomposition_paths = atpaths;
 }
 
@@ -151,9 +151,9 @@ bool MissionDecomposer::check_context_dependency(int parent_node, int current_no
 			
 			for(int d_id : decompositions) {
 				bool context_satisfied = false;
-				vector<task> path = std::get<Decomposition>(mission_decomposition[d_id].content).path;
+				DecompositionPath path = std::get<Decomposition>(mission_decomposition[d_id].content).path;
 				vector<ground_literal> world_state_copy = world_state;
-				for(task t : path) {
+				for(task t : path.decomposition) {
 					for(literal eff : t.eff) {
 						bool instantiated_eff = true;
 						vector<variant<pair<string,string>,pair<string,vector<string>>>> arg_map;
@@ -678,7 +678,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 		AbstractTask at = std::get<AbstractTask>(node.content);
 
 		int path_id = 1;
-		for(vector<task> path : at_decomposition_paths[at.name]) {
+		for(DecompositionPath path : at_decomposition_paths[at.name]) {
 			ATNode path_node;
 			path_node.node_type = DECOMPOSITION;
 			path_node.non_coop = true;
@@ -708,7 +708,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 	}
 }
 
-shared_ptr<MissionDecomposer> MissionDecomposerFactory::create_mission_decomposer(shared_ptr<KnowledgeManager> k_manager, vector<ground_literal> ws, vector<pair<ground_literal,int>> wsf, map<string,vector<vector<task>>> atpaths, 
+shared_ptr<MissionDecomposer> MissionDecomposerFactory::create_mission_decomposer(shared_ptr<KnowledgeManager> k_manager, vector<ground_literal> ws, vector<pair<ground_literal,int>> wsf, map<string,vector<DecompositionPath>> atpaths, 
 																							map<string,vector<AbstractTask>> atinst, general_annot* gma, GMGraph g) {
 	shared_ptr<MissionDecomposer> mission_decomposer;
 	

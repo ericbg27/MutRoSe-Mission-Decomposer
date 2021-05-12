@@ -73,7 +73,7 @@ void XMLOutputGenerator::generate_instances_output(vector<SemanticMapping> seman
         if(mission_decomposition[index].node_type == DECOMPOSITION) {
             Decomposition d = std::get<Decomposition>(mission_decomposition[index].content);
 
-            for(task a : d.path) {
+            for(task a : d.path.decomposition) {
                 if(actions.find(a.name) == actions.end() && a.name.find(method_precondition_action_name) == string::npos) {
                     actions[a.name] = a;
                 }
@@ -446,7 +446,7 @@ map<string,string> XMLOutputGenerator::output_tasks(pt::ptree& output_file, vect
         */
         task_attr = task_name + ".decomposition";
         int action_counter = 0;
-        for(task a : instance.path) {
+        for(task a : instance.path.decomposition) {
             if(a.name.find(method_precondition_action_name) == string::npos) {
                 string action_id = task_attr + ".action" + to_string(action_counter);
                 output_file.put(action_id,a.name);

@@ -52,10 +52,10 @@ TDG::TDG(task root_abstract_task, vector<task> a_tasks, vector<task> p_tasks, ve
             if we find some predicate in action preconditions, we assume them to be true if they were not set by previous actions effects, since
             this means no harm because we are not generating a plan (just decomposing the task)
 */ 
-vector<vector<task>> TDG::retrieve_possible_decompositions() {
+vector<DecompositionPath> TDG::retrieve_possible_decompositions() {
     vector<int> depth_first_nodes = DFS_visit();
 
-    vector<vector<task>> paths;
+    vector<DecompositionPath> paths;
 
     vector<pair<string,string>> initial_vars = tdg[root].t.vars;
     vector<literal> world_state; //Empty since root is an AT and doesn't introduce preconditions and effects
@@ -84,13 +84,30 @@ vector<vector<task>> TDG::retrieve_possible_decompositions() {
             - Inside every method we know which method variable refers to which original variable
             - Inside every action we also know which variable refers to which original variable
 */ 
-vector<vector<task>> TDG::decomposition_recursion(vector<int> dfs_nodes, int current_pos, vector<pair<string,string>> original_vars, 
+vector<DecompositionPath> TDG::decomposition_recursion(vector<int> dfs_nodes, int current_pos, vector<pair<string,string>> original_vars, 
                                                     vector<literal>& world_state, vector<pair<string,string>> variable_mapping) {
     int node = dfs_nodes.at(current_pos);
 
     NodeData n = tdg[node];
 
-    vector<vector<task>> generated_paths;
+    /*std::cout << "World State: " << std::endl;
+    for(literal state : world_state) {
+        if(state.isCostChangeExpression) {
+            std::cout << "(= ( " << state.predicate << " ";
+            for(string arg : state.arguments) {
+                std::cout << arg << " ";
+            }
+            std::cout << ") " << state.costValue << ")" << std::endl;
+        } else {
+            std::cout << "( " << state.predicate << " ";
+            for(string arg : state.arguments) {
+                std::cout << arg << " ";
+            }
+            std::cout << ")" << std::endl;
+        }
+    }*/
+
+    vector<DecompositionPath> generated_paths;
     if(n.type == M) {
         /*
             If any task in the methods subtasks cannot be executed, the method can't be used.
@@ -102,12 +119,16 @@ vector<vector<task>> TDG::decomposition_recursion(vector<int> dfs_nodes, int cur
 
         print_method_possible_orderings(possible_orderings, n);
 
-        //bool method_exec = true;
-        vector<vector<vector<task>>> child_paths;
+        bool expansion_needed = false;
+        literal expansion_pred;
+        int children_num = -1;
+
+        vector<vector<DecompositionPath>> child_paths;
         for(vector<int> ordering : possible_orderings) {
             bool ordering_exec = true;
+            vector<literal> world_state_copy = world_state;
             for(int c : ordering) {
-                vector<literal> world_state_copy = world_state;
+                //vector<literal> world_state_copy = world_state;
                 vector<int>::iterator it = std::find(dfs_nodes.begin(),dfs_nodes.end(),c);
                 int c_pos = std::distance(dfs_nodes.begin(),it);
 
@@ -137,11 +158,27 @@ vector<vector<task>> TDG::decomposition_recursion(vector<int> dfs_nodes, int cur
                     If we have an action, check for preconditions based on the current world state and only call decomposition if they are met
                 */
                         
-                bool executable;
-                executable = check_predicates(child_task,child_var_mapping,c,world_state_copy);
+                pair<bool,pair<literal,bool>> checking_result;
+                checking_result = check_predicates(child_task,child_var_mapping,c,world_state_copy);
+
+                bool executable = checking_result.first;
+                
+                if(!expansion_needed) {
+                    expansion_needed = checking_result.second.second;
+                    
+                    if(expansion_needed) {
+                        if(child_task.name.find(method_precondition_action_name) != string::npos) {
+                            children_num = n.m.ps.size();
+
+                            expansion_pred = checking_result.second.first;
+                        } else {
+                            expansion_needed = false;
+                        }
+                    }
+                }
 
                 if(executable) {
-                    vector<vector<task>> aux = decomposition_recursion(dfs_nodes,c_pos,original_vars,world_state_copy,child_var_mapping);
+                    vector<DecompositionPath> aux = decomposition_recursion(dfs_nodes,c_pos,original_vars,world_state_copy,child_var_mapping);
                     child_paths.push_back(aux);
                 } else {
                     ordering_exec = false;
@@ -149,22 +186,42 @@ vector<vector<task>> TDG::decomposition_recursion(vector<int> dfs_nodes, int cur
                 }
             }
 
-            vector<vector<task>> ordering_paths;
+            // Here is one place where we need to check for expansion_needed flags
+            vector<DecompositionPath> ordering_paths;
             if(ordering_exec) {
                 for(auto aux : child_paths) {
-                    vector<vector<task>> g_paths_temp = ordering_paths;
+                    vector<DecompositionPath> g_paths_temp = ordering_paths;
                     ordering_paths.clear();
+
                     for(auto p : aux) {
                         if(g_paths_temp.size() > 0) {
                             for(auto g_pt : g_paths_temp) {
-                                vector<task> p_temp = p;
-                                p_temp.insert(p_temp.begin(),g_pt.begin(),g_pt.end());
+                                DecompositionPath p_temp = p;
+                                p_temp.decomposition.insert(p_temp.decomposition.begin(),g_pt.decomposition.begin(),g_pt.decomposition.end());
+
+                                // Adjust indexes of task fragments that will need expansion
+                                if(p_temp.needs_expansion) {
+                                    int index_diff = g_pt.decomposition.size()-1;
+
+                                    for(auto& fragment : p_temp.fragments_to_expand) {
+                                        fragment.first.first += index_diff;
+                                        fragment.first.second += index_diff;
+                                    }
+                                }
+
                                 ordering_paths.push_back(p_temp);
                             }
                         } else {
                             ordering_paths.push_back(p);
                         }
                     }
+                }
+            }
+
+            if(expansion_needed) {
+                for(DecompositionPath& path : ordering_paths) {
+                    path.needs_expansion = expansion_needed;
+                    path.fragments_to_expand.insert(path.fragments_to_expand.begin(), make_pair(make_pair(0,children_num-2),expansion_pred));
                 }
             }
 
@@ -198,17 +255,20 @@ vector<vector<task>> TDG::decomposition_recursion(vector<int> dfs_nodes, int cur
                 checking methods children
             */
 
-            vector<vector<task>> aux = decomposition_recursion(dfs_nodes,c_pos,original_vars,world_state,child_var_mapping);
+            vector<DecompositionPath> aux = decomposition_recursion(dfs_nodes,c_pos,original_vars,world_state,child_var_mapping);
             generated_paths.insert(generated_paths.end(),aux.begin(),aux.end());
 
             world_state = initial_world_state;
         }
     } else if(n.type == PT) {
         change_world_state(n.t,world_state,variable_mapping);
-        vector<task> t;
+        
+        DecompositionPath t;
+        
         task nt = n.t;
         variable_renaming(nt,variable_mapping);
-        t.push_back(nt);
+        t.decomposition.push_back(nt);
+
         generated_paths.push_back(t);
     }
 
@@ -307,7 +367,7 @@ void TDG::add_task_path(NodeData t) {
     Function: add_edge
     Objective: Add an edge between TDG nodes
 
-    @ Input 1: The soruce node ID
+    @ Input 1: The source node ID
     @ Input 2: The target node ID
     @ Output: void. The edge will be added in the TDG
 */ 
@@ -443,7 +503,7 @@ pair<bool,int> TDG::check_cycle(int m_id, NodeData t) {
     @ Input 4: The world state
     @ Output: A boolean flag indicating if predicates hold
 */ 
-bool TDG::check_predicates(task t, vector<pair<string,string>> var_mapping, int t_id, vector<literal>& world_state) {
+pair<bool,pair<literal,bool>> TDG::check_predicates(task t, vector<pair<string,string>> var_mapping, int t_id, vector<literal>& world_state) {
     vector<literal> t_precs, precs_to_add;
 
     t_precs = t.prec;
@@ -461,6 +521,8 @@ bool TDG::check_predicates(task t, vector<pair<string,string>> var_mapping, int 
     }
 
     bool executable = true;
+    bool expansion_needed = false;
+    literal expansion_pred;
     if(tdg[t_id].type == PT) {
         for(literal& prec : t_precs) {
             bool found_prec = false;
@@ -484,8 +546,23 @@ bool TDG::check_predicates(task t, vector<pair<string,string>> var_mapping, int 
 
                 if(args_equal) { //Dealing with same predicate with same arguments
                     found_prec = true;
-                    if(!((prec.positive && state.positive) || (!prec.positive && !state.positive))) {
-                        executable = false;
+                    if(prec.isComparisonExpression) {
+                        string comparison_op = prec.comparison_op_and_value.first;
+                        int comparison_value = prec.comparison_op_and_value.second;
+
+                        if(comparison_op == equal_comparison_op) {
+                            if(state.costValue != comparison_value) {
+                                executable = false;
+                            }
+                        } else if(comparison_op == greater_comparison_op) {
+                            if(state.costValue < comparison_value) {
+                                executable = false;
+                            }
+                        }
+                    } else {
+                        if(!((prec.positive && state.positive) || (!prec.positive && !state.positive))) {
+                            executable = false;
+                        }
                     }
 
                     break;
@@ -493,7 +570,28 @@ bool TDG::check_predicates(task t, vector<pair<string,string>> var_mapping, int 
             }
 
             if(!found_prec) {
-                precs_to_add.push_back(prec);
+                if(prec.isComparisonExpression) {
+                    literal l = prec;
+                    
+                    string comparison_op = l.comparison_op_and_value.first;
+                    int comparison_value = l.comparison_op_and_value.second;
+                    if(l.isComparisonExpression) {
+                        if(comparison_op == equal_comparison_op) {
+                            l.costValue = comparison_value;
+                        } else if(comparison_op == greater_comparison_op) {
+                            expansion_needed = true;
+                            expansion_pred = l;
+
+                            l.costValue = comparison_value + 1; //This is done since we need to satisfy a greater than value
+                        }
+                    }
+
+                    l.isCostChangeExpression = true;
+
+                    precs_to_add.push_back(l);
+                } else {
+                    precs_to_add.push_back(prec);
+                }
             }
         }
 
@@ -504,7 +602,9 @@ bool TDG::check_predicates(task t, vector<pair<string,string>> var_mapping, int 
         }
     }
 
-    return executable;
+    std::cout << "Expansion needed? " << expansion_needed << std::endl;
+
+    return make_pair(executable,make_pair(expansion_pred,expansion_needed));
 }
 
 /*
@@ -519,10 +619,21 @@ bool TDG::check_predicates(task t, vector<pair<string,string>> var_mapping, int 
 */ 
 void TDG::change_world_state(task t,vector<literal>& world_state, vector<pair<string,string>> variable_mapping) {
     vector<literal> t_effs = t.eff;
+    vector<literal> t_costexp = t.costExpression;
 
     //Rename predicates variables
-    for(literal& prec : t_effs) {
-        for(string& arg : prec.arguments) {
+    for(literal& eff : t_effs) {
+        for(string& arg : eff.arguments) {
+            for(pair<string,string>& arg_mapping : variable_mapping) {
+                if(arg_mapping.first == arg) {
+                    arg = arg_mapping.second;
+                    break;
+                }
+            }
+        }
+    }
+    for(literal& cexp : t_costexp) {
+        for(string& arg : cexp.arguments) {
             for(pair<string,string>& arg_mapping : variable_mapping) {
                 if(arg_mapping.first == arg) {
                     arg = arg_mapping.second;
@@ -555,6 +666,7 @@ void TDG::change_world_state(task t,vector<literal>& world_state, vector<pair<st
 
             if(args_equal) { //Dealing with same predicate with same arguments
                 found_pred = true;
+
                 if(((eff.positive && !state->positive) || (!eff.positive && state->positive))) {
                     state->positive = eff.positive;
                 }
@@ -563,8 +675,49 @@ void TDG::change_world_state(task t,vector<literal>& world_state, vector<pair<st
             }
         }
 
-        if(!found_pred) {
+        if(!found_pred) { // We don't need to change cost change expressions, we only care about their cost values
             world_state.push_back(eff);
+        }
+    }
+
+    for(literal& cexp : t_costexp) {
+        bool found_pred = false;
+        vector<literal>::iterator state;
+        for(state = world_state.begin();state != world_state.end();++state) {
+            bool args_equal = false;
+            if(state->predicate == cexp.predicate) {
+                int i = 0;
+                bool diff = false;
+                for(string& arg : state->arguments) {
+                    if(arg != cexp.arguments.at(i)) {
+                        diff = true;
+                        break;
+                    }
+
+                    i++;
+                }
+                if(!diff) {
+                    args_equal = true;
+                }
+            }
+
+            if(args_equal) { //Dealing with same predicate with same arguments
+                found_pred = true;
+
+                if(cexp.isAssignCostChangeExpression) {
+                    state->costValue = cexp.costValue;
+                } else {
+                    state->costValue += cexp.costValue;
+                }
+
+                state->isCostChangeExpression = true;
+
+                break;
+            } 
+        }
+
+        if(!found_pred) { // We don't need to change cost change expressions, we only care about their cost values
+            world_state.push_back(cexp);
         }
     }
 }

@@ -62,6 +62,7 @@
 %token KEY_REWARDS KEY_REWARD_CHANGE
 %token KEY_CAPABILITIES KEY_REQUIRED_CAPABILITIES
 %token KEY_RELIABILITY KEY_PROBABILISTIC
+%token KEY_GREATER
 %token <sval> NAME REQUIRE_NAME VAR_NAME 
 %token <fval> FLOAT
 %token <ival> INT
@@ -533,13 +534,13 @@ gd_implication : '(' KEY_IMPLY gd gd ')' {$$ = new general_formula(); $$->type=O
 gd_existential : '(' KEY_EXISTS '(' typed_var_list ')' gd ')' {$$ = new general_formula(); $$->type = EXISTS; $$->subformulae.push_back($6); $$->qvariables = *($4);} 
 gd_universal : '(' KEY_FORALL '(' typed_var_list ')' gd ')' {$$ = new general_formula(); $$->type = FORALL; $$->subformulae.push_back($6); $$->qvariables = *($4);} 
 gd_equality_constraint : '(' '=' var_or_const var_or_const ')' {$$ = new general_formula(); $$->type = EQUAL; $$->arg1 = $3; $$->arg2 = $4;}
-gd_greater_than_constraint : '(' '>' var_or_const var_or_const ')' {$$ = new general_formula(); $$->type = GREATER; $$->arg1 = $3; $$->arg2 = $4;}
+gd_greater_than_constraint : '(' KEY_GREATER var_or_const var_or_const ')' {$$ = new general_formula(); $$->type = GREATER; $$->arg1 = $3; $$->arg2 = $4;}
 
 gd_pred_constraints : gd_pred_equality
 					| gd_pred_greater
 
 gd_pred_equality : '(' '=' atomic_formula INT ')' {$$ = new general_formula(); $$->type = EQUALPRED; $$->subformulae.push_back($3); $$->value = $4;}
-gd_pred_greater : '(' '>' atomic_formula INT ')' {$$ = new general_formula(); $$->type = GREATERPRED; $$->subformulae.push_back($3); $$->value = $4;}
+gd_pred_greater : '(' KEY_GREATER atomic_formula INT ')' {$$ = new general_formula(); $$->type = GREATERPRED; $$->subformulae.push_back($3); $$->value = $4;}
 
 var_or_const-list :   var_or_const-list NAME {
 						$$ = $1;

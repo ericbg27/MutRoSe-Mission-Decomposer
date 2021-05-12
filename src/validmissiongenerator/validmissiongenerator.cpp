@@ -1137,9 +1137,11 @@ void ValidMissionGenerator::resolve_conflicts(vector<pair<int,ATNode>> possible_
                     // If all the decompositions of a task are in conflict, throw an error
                     if(found_task_decompositions[t1.first].size() == task_decompositions_number[t1.first]) {
                         string conflict_error = "Cannot solve conflicts with task " + get<AbstractTask>(mission_decomposition[t1.first].content).id + ": " + get<AbstractTask>(mission_decomposition[t1.first].content).name; 
+                        
                         throw std::runtime_error(conflict_error);
                     } else if(found_task_decompositions[t2.first].size() == task_decompositions_number[t2.first]) {
                         string conflict_error = "Cannot solve conflicts with task " + get<AbstractTask>(mission_decomposition[t2.first].content).id + ": " + get<AbstractTask>(mission_decomposition[t2.first].content).name; 
+                        
                         throw std::runtime_error(conflict_error);
                     }
 

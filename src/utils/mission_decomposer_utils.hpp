@@ -10,14 +10,15 @@
 
 #include "domain.hpp"
 #include "parsetree.hpp"
-#include "../utils/at.hpp"
+#include "at.hpp"
+#include "tdg_utils.hpp"
 #include "../contextmanager/contextmanager.hpp"
 #include "../annotmanager/annotmanager.hpp"
 
 struct Decomposition {
     std::string id;
     AbstractTask at;
-    std::vector<task> path;
+    DecompositionPath path;
     std::vector<std::variant<ground_literal,literal>> prec;
     std::vector<std::variant<ground_literal,literal>> eff;
     std::vector<std::variant<std::pair<ground_literal,int>,literal>> func_eff;

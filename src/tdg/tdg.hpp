@@ -4,6 +4,8 @@
 #include <vector>
 
 #include "../utils/domain.hpp"
+#include "../utils/parsetree.hpp"
+#include "../utils/tdg_utils.hpp"
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/properties.hpp>
 #include <boost/graph/depth_first_search.hpp>
@@ -34,13 +36,28 @@ typedef boost::adjacency_list<boost::vecS,boost::vecS,
 
 typedef boost::graph_traits<TDGraph>::vertex_descriptor vertex_t;
 
+class TDGDFSVisitor : public boost::default_dfs_visitor {
+  public:
+    TDGDFSVisitor() : vv(new std::vector<int>()) {}
+
+    void discover_vertex(int v, const TDGraph &gm) const {
+        vv->push_back(v);
+        return;
+    }
+
+    std::vector<int> &GetVector() const { return *vv; }
+
+  private:
+    boost::shared_ptr<std::vector<int> > vv;
+};
+
 class TDG {
     public:
         TDG(task root_abstract_task, std::vector<task> a_tasks, std::vector<task> p_tasks, std::vector<method> ms);
 
-        std::vector<std::vector<task>> retrieve_possible_decompositions();
-        std::vector<std::vector<task>> decomposition_recursion(std::vector<int> dfs_nodes, int current_pos, std::vector<std::pair<std::string,std::string>> parent_vars, 
-                                                        std::vector<literal>& world_state, std::vector<std::pair<std::string,std::string>> variable_mapping); 
+        std::vector<DecompositionPath> retrieve_possible_decompositions();
+        std::vector<DecompositionPath> decomposition_recursion(std::vector<int> dfs_nodes, int current_pos, std::vector<std::pair<std::string,std::string>> parent_vars, 
+                                                        std::vector<literal>& world_state, std::vector<std::pair<std::string,std::string>> variable_mapping);
 
         void add_method_path(NodeData m);
         void add_task_path(NodeData t);
@@ -57,7 +74,7 @@ class TDG {
         std::vector<std::vector<int>> find_method_possible_orderings(method m, std::vector<int> children);
         std::vector<std::vector<int>> recursive_method_possible_ordering(map<int,std::set<int>> precedence_map, std::vector<std::vector<int>> current_orderings, std::set<int> values_to_insert);
 
-        bool check_predicates(task t, std::vector<std::pair<std::string,std::string>> var_mapping, int t_id, std::vector<literal>& world_state);
+        std::pair<bool,std::pair<literal,bool>> check_predicates(task t, std::vector<std::pair<std::string,std::string>> var_mapping, int t_id, std::vector<literal>& world_state);
     
     private:
         int root;
@@ -65,21 +82,8 @@ class TDG {
         std::vector<task> abstract_tasks;
         std::vector<task> primitive_tasks;
         std::vector<method> methods;
-};
-
-class TDGDFSVisitor : public boost::default_dfs_visitor {
-  public:
-    TDGDFSVisitor() : vv(new std::vector<int>()) {}
-
-    void discover_vertex(int v, const TDGraph &gm) const {
-        vv->push_back(v);
-        return;
-    }
-
-    std::vector<int> &GetVector() const { return *vv; }
-
-  private:
-    boost::shared_ptr<std::vector<int> > vv;
+        std::vector<ground_literal> init;
+        std::vector<std::pair<ground_literal,int>> init_functions;
 };
 
 #endif

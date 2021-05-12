@@ -1,8 +1,5 @@
 (define (domain storage)
     (:types room - object)
-    (:predicates 
-    
-    )
     (:functions
         (objects ?rm - room)
     )

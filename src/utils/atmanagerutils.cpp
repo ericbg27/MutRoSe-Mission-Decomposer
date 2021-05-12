@@ -69,8 +69,8 @@ void print_at_instances_info(map<string,vector<AbstractTask>> at_instances) {
     @ Input: The abstract tasks decomposition paths in a map format
     @ Output: Void. We just print to the terminal
 */ 
-void print_at_paths_info(map<string,vector<vector<task>>> at_decomposition_paths) {
-	map<string,vector<vector<task>>>::iterator at_paths_it;
+void print_at_paths_info(map<string,vector<DecompositionPath>> at_decomposition_paths) {
+	map<string,vector<DecompositionPath>>::iterator at_paths_it;
 
 	for(at_paths_it = at_decomposition_paths.begin();at_paths_it != at_decomposition_paths.end();++at_paths_it) {
 		cout << "Abstract task " << at_paths_it->first << " decomposition paths:" << endl;
@@ -78,12 +78,24 @@ void print_at_paths_info(map<string,vector<vector<task>>> at_decomposition_paths
 		for(auto path : at_paths_it->second) {
 			cout << "#####################################" << endl;
 			cout << "Path: ";
-			for(auto t : path) {
+			for(auto t : path.decomposition) {
 				cout << t.name;
-				if(t.name != path.back().name) {
+				if(t.name != path.decomposition.back().name) {
 					cout << " -> ";
 				} else {
 					cout << endl;
+				}
+			}
+			cout << endl;
+			cout << "Needs expansion? " << path.needs_expansion << endl;
+			if(path.needs_expansion) {
+				for(auto fragment : path.fragments_to_expand) {
+					cout << "Expansion of tasks " << fragment.first.first << " to " << fragment.first.second << endl;
+					cout << "Number of expansions: ( " << fragment.second.predicate << " ";
+					for(string arg : fragment.second.arguments) {
+						std::cout << arg << " ";
+					}
+					cout << ") - " << fragment.second.comparison_op_and_value.second << endl;
 				}
 			}
 			cout << "#####################################" << endl;

@@ -207,12 +207,12 @@ pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decompositi
 void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_vars_map) {
 	int task_counter = 1, task_number;
 
-	task_number = d.path.size();
+	task_number = d.path.decomposition.size();
 
 	vector<variant<ground_literal,literal>> combined_effects;
 	vector<variant<pair<ground_literal,int>,literal>> combined_func_effects; //DEAL WITH LITERALS FOR FUNC EFFECTS
 
-	for(task t : d.path) {
+	for(task t : d.path.decomposition) {
 		if(task_counter == 1) { //First task defines preconditions
 			for(literal prec : t.prec) {
 				bool can_ground = true;
