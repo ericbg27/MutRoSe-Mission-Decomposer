@@ -96,23 +96,6 @@ vector<DecompositionPath> TDG::decomposition_recursion(vector<int> dfs_nodes, in
 
     NodeData n = tdg[node];
 
-    /*std::cout << "World State: " << std::endl;
-    for(literal state : world_state) {
-        if(state.isCostChangeExpression) {
-            std::cout << "(= ( " << state.predicate << " ";
-            for(string arg : state.arguments) {
-                std::cout << arg << " ";
-            }
-            std::cout << ") " << state.costValue << ")" << std::endl;
-        } else {
-            std::cout << "( " << state.predicate << " ";
-            for(string arg : state.arguments) {
-                std::cout << arg << " ";
-            }
-            std::cout << ")" << std::endl;
-        }
-    }*/
-
     vector<DecompositionPath> generated_paths;
     if(n.type == M) {
         /*
@@ -134,7 +117,6 @@ vector<DecompositionPath> TDG::decomposition_recursion(vector<int> dfs_nodes, in
             bool ordering_exec = true;
             vector<literal> world_state_copy = world_state;
             for(int c : ordering) {
-                //vector<literal> world_state_copy = world_state;
                 vector<int>::iterator it = std::find(dfs_nodes.begin(),dfs_nodes.end(),c);
                 int c_pos = std::distance(dfs_nodes.begin(),it);
 
@@ -260,7 +242,6 @@ vector<DecompositionPath> TDG::decomposition_recursion(vector<int> dfs_nodes, in
                 Methods preconditions are transformed into actions, so we only check for preconditions when
                 checking methods children
             */
-
             vector<DecompositionPath> aux = decomposition_recursion(dfs_nodes,c_pos,original_vars,world_state,child_var_mapping);
             generated_paths.insert(generated_paths.end(),aux.begin(),aux.end());
 
@@ -533,24 +514,9 @@ pair<bool,pair<literal,bool>> TDG::check_predicates(task t, vector<pair<string,s
         for(literal& prec : t_precs) {
             bool found_prec = false;
             for(literal& state : world_state) {
-                bool args_equal = false;
-                if(state.predicate == prec.predicate) {
-                    int i = 0;
-                    bool diff = false;
-                    for(auto arg : state.arguments) {
-                        if(arg != prec.arguments.at(i)) {
-                            diff = true;
-                            break;
-                        }
+                bool same_predicate = is_same_predicate(prec, state);
 
-                        i++;
-                    }
-                    if(!diff) {
-                        args_equal = true;
-                    }
-                }
-
-                if(args_equal) { //Dealing with same predicate with same arguments
+                if(same_predicate) { //Dealing with same predicate with same arguments
                     found_prec = true;
                     if(prec.isComparisonExpression) {
                         string comparison_op = prec.comparison_op_and_value.first;
@@ -651,24 +617,9 @@ void TDG::change_world_state(task t,vector<literal>& world_state, vector<pair<st
         bool found_pred = false;
         vector<literal>::iterator state;
         for(state = world_state.begin();state != world_state.end();++state) {
-            bool args_equal = false;
-            if(state->predicate == eff.predicate) {
-                int i = 0;
-                bool diff = false;
-                for(string& arg : state->arguments) {
-                    if(arg != eff.arguments.at(i)) {
-                        diff = true;
-                        break;
-                    }
+            bool same_predicate = is_same_predicate(*state, eff);
 
-                    i++;
-                }
-                if(!diff) {
-                    args_equal = true;
-                }
-            }
-
-            if(args_equal) { //Dealing with same predicate with same arguments
+            if(same_predicate) { //Dealing with same predicate with same arguments
                 found_pred = true;
 
                 if(((eff.positive && !state->positive) || (!eff.positive && state->positive))) {
@@ -688,24 +639,9 @@ void TDG::change_world_state(task t,vector<literal>& world_state, vector<pair<st
         bool found_pred = false;
         vector<literal>::iterator state;
         for(state = world_state.begin();state != world_state.end();++state) {
-            bool args_equal = false;
-            if(state->predicate == cexp.predicate) {
-                int i = 0;
-                bool diff = false;
-                for(string& arg : state->arguments) {
-                    if(arg != cexp.arguments.at(i)) {
-                        diff = true;
-                        break;
-                    }
+            bool same_predicate = is_same_predicate(*state, cexp);
 
-                    i++;
-                }
-                if(!diff) {
-                    args_equal = true;
-                }
-            }
-
-            if(args_equal) { //Dealing with same predicate with same arguments
+            if(same_predicate) { //Dealing with same predicate with same arguments
                 found_pred = true;
 
                 if(cexp.isAssignCostChangeExpression) {
@@ -768,36 +704,6 @@ void TDG::variable_renaming(task& t, vector<pair<string,string>> var_mapping) {
             }
         }
     }
-
-    /*cout << "Renamed Task: " << t.name << endl;
-    cout << "Vars: ";
-    for(auto var : t.vars) {
-        cout << var.first << " - " << var.second << " ";
-    }
-    cout << endl;
-    cout << "Preconditions: " << endl;
-    for(auto prec : t.prec) {
-        if(!prec.positive) {
-            cout << "not ";
-        }
-        cout << prec.predicate << " ";
-        for(auto arg : prec.arguments) {
-            cout << arg << " ";
-        }
-        cout << endl;
-    }
-    cout << "Effects: " << endl;
-    for(auto eff : t.eff) {
-        if(!eff.positive) {
-            cout << "not ";
-        }
-        cout << eff.predicate << " ";
-        for(auto arg : eff.arguments) {
-            cout << arg << " ";
-        }
-        cout << endl;
-    }
-    cout << endl;*/
 }
 
 /*

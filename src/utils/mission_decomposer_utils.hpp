@@ -12,6 +12,7 @@
 #include "parsetree.hpp"
 #include "at.hpp"
 #include "tdg_utils.hpp"
+#include "predicate_utils.hpp"
 #include "../contextmanager/contextmanager.hpp"
 #include "../annotmanager/annotmanager.hpp"
 
