@@ -327,24 +327,14 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d) {
 					if(holds_alternative<ground_literal>(combined_effects.at(i))) {
 						ground_literal ceff = std::get<ground_literal>(combined_effects.at(i));
 						for(ground_literal e : inst_eff) {
-							if(e.predicate == ceff.predicate) {
-								bool equal_args = true;
-								int index = 0;
-								for(auto arg : e.args) {
-									if(arg != ceff.args.at(index)) {
-										equal_args = false;
-										break;
-									}
-									index++;
+							bool same_predicate = is_same_predicate(e, ceff);
+							
+							if(same_predicate) {
+								if(e.positive != ceff.positive) {
+									combined_effects.at(i) = e;
 								}
-
-								if(equal_args) {
-									if(e.positive != ceff.positive) {
-										combined_effects.at(i) = e;
-									}
-									applied_effect = true;
-									break;
-								}
+								applied_effect = true;
+								break;
 							}
 						}
 					}
@@ -360,24 +350,14 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d) {
 				for(unsigned int i = 0;i < combined_effects.size();i++) {
 					if(holds_alternative<literal>(combined_effects.at(i))) {
 						literal ceff = std::get<literal>(combined_effects.at(i));
-						if(eff.predicate == ceff.predicate) {
-							bool equal_args = true;
-							int index = 0;
-							for(auto arg : eff.arguments) {
-								if(arg != ceff.arguments.at(index)) {
-									equal_args = false;
-									break;
-								}
-								index++;
+						bool same_predicate = is_same_predicate(eff, ceff);
+						
+						if(same_predicate) {
+							if(eff.positive != ceff.positive) {
+								combined_effects.at(i) = eff;
 							}
-
-							if(equal_args) {
-								if(eff.positive != ceff.positive) {
-									combined_effects.at(i) = eff;
-								}
-								applied_effect = true;
-								break;
-							}
+							applied_effect = true;
+							break;
 						}
 					}
 				}
@@ -442,30 +422,19 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d) {
 					if(holds_alternative<pair<ground_literal,int>>(combined_func_effects.at(i))) {
 						pair<ground_literal,int> ceff = std::get<pair<ground_literal,int>>(combined_func_effects.at(i));
 						for(pair<ground_literal,int> e : inst_func_eff) {
-							if(e.first.predicate == ceff.first.predicate) {
-								bool equal_args = true;
-								int index = 0;
-								for(auto arg : e.first.args) {
-									if(arg != ceff.first.args.at(index)) {
-										equal_args = false;
-										break;
-									}
+							bool same_predicate = is_same_predicate(e.first, ceff.first);
 
-									index++;
+							if(same_predicate) {
+								if(e.first.isAssignCostChange) {
+									ceff.second = e.second;
+								} else {	
+									ceff.second += e.second;
 								}
 
-								if(equal_args) {
-									if(e.first.isAssignCostChange) {
-										ceff.second = e.second;
-									} else {	
-										ceff.second += e.second;
-									}
+								combined_func_effects.at(i) = ceff; 
 
-									combined_func_effects.at(i) = ceff; 
-
-									applied_effect = true;
-									break;
-								}
+								applied_effect = true;
+								break;
 							}
 						}
 					}
@@ -480,30 +449,19 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d) {
 				bool applied_effect = false;
 				for(unsigned int i = 0;i < combined_func_effects.size();i++) {
 					if(holds_alternative<literal>(combined_func_effects.at(i))) {
-					literal ceff = std::get<literal>(combined_func_effects.at(i));
-					if(func_eff.predicate == ceff.predicate) {
-							bool equal_args = true;
-							int index = 0;
-							for(auto arg : func_eff.arguments) {
-								if(arg != ceff.arguments.at(index)) {
-									equal_args = false;
-									break;
-								}
+						literal ceff = std::get<literal>(combined_func_effects.at(i));
+						bool same_predicate = is_same_predicate(func_eff, ceff);
 
-								index++;
+						if(same_predicate) {
+							if(func_eff.isAssignCostChangeExpression) {
+								combined_func_effects.at(i) = func_eff;
+							} else {
+								ceff.costValue += func_eff.costValue;
+								combined_func_effects.at(i) = ceff;
 							}
-
-							if(equal_args) {
-								if(func_eff.isAssignCostChangeExpression) {
-									combined_func_effects.at(i) = func_eff;
-								} else {
-									ceff.costValue += func_eff.costValue;
-									combined_func_effects.at(i) = ceff;
-								}
 								
-								applied_effect = true;
-								break;
-							}
+							applied_effect = true;
+							break;
 						}
 					}
 				}
@@ -623,28 +581,17 @@ bool can_unite_decompositions(Decomposition d1, Decomposition d2, bool non_coop_
 				for(unsigned int i = 0;i < d1_eff.size();i++) {
 					if(holds_alternative<literal>(d1_eff.at(i))) {
 						literal eff = std::get<literal>(d1_eff.at(i));
-						if(eff.predicate == s.predicate) {
-							bool equal_args = true;
-
-							int arg_index = 0;
-							for(string arg : s.arguments) {
-								if(arg != eff.arguments.at(arg_index)) {
-									equal_args = false;
-									break;
-								}
-								arg_index++;
-							}
-
-							if(equal_args) {
-								if(s.positive == eff.positive) {
-									found_eff = i;
-									break;
-								} else {
-									s.positive = eff.positive;
-									found_eff = i;
-									state = s;
-									break;
-								}
+						bool same_predicate = is_same_predicate(eff, s);
+						
+						if(same_predicate) {
+							if(s.positive == eff.positive) {
+								found_eff = i;
+								break;
+							} else {
+								s.positive = eff.positive;
+								found_eff = i;
+								state = s;
+								break;
 							}
 						}
 					}
@@ -659,28 +606,17 @@ bool can_unite_decompositions(Decomposition d1, Decomposition d2, bool non_coop_
 				for(unsigned int i = 0;i < d1_eff.size();i++) {
 					if(holds_alternative<ground_literal>(d1_eff.at(i))) {
 						ground_literal eff = std::get<ground_literal>(d1_eff.at(i));
-						if(eff.predicate == s.predicate) {
-							bool equal_args = true;
+						bool same_predicate = is_same_predicate(eff, s);
 
-							int arg_index = 0;
-							for(string arg : s.args) {
-								if(arg != eff.args.at(arg_index)) {
-									equal_args = false;
-									break;
-								}
-								arg_index++;
-							}
-
-							if(equal_args) {
-								if(s.positive == eff.positive) {
-									found_eff = i;
-									break;
-								} else {
-									found_eff = i;
-									s.positive = eff.positive;
-									state = s;
-									break;
-								}
+						if(same_predicate) {
+							if(s.positive == eff.positive) {
+								found_eff = i;
+								break;
+							} else {
+								found_eff = i;
+								s.positive = eff.positive;
+								state = s;
+								break;
 							}
 						}
 					}
@@ -727,26 +663,15 @@ bool can_unite_decompositions(Decomposition d1, Decomposition d2, bool non_coop_
 			for(unsigned int i = 0;i < d1_eff.size();i++) {
 				if(holds_alternative<ground_literal>(d1_eff.at(i))) {
 					ground_literal eff = std::get<ground_literal>(d1_eff.at(i));
-					if(eff.predicate == state.predicate) {
-						bool equal_args = true;
-
-						int arg_index = 0;
-						for(string arg : state.args) {
-							if(arg != eff.args.at(arg_index)) {
-								equal_args = false;
-								break;
-							}
-							arg_index++;
-						}
-
-						if(equal_args) {
-							if(state.positive == eff.positive) {
-								found_eff = i;
-								break;
-							} else {
-								state.positive = eff.positive;
-								found_eff = i;
-							}
+					bool same_predicate = is_same_predicate(eff, state);
+			
+					if(same_predicate) {
+						if(state.positive == eff.positive) {
+							found_eff = i;
+							break;
+						} else {
+							state.positive = eff.positive;
+							found_eff = i;
 						}
 					}
 				}

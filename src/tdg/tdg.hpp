@@ -6,6 +6,7 @@
 #include "../utils/domain.hpp"
 #include "../utils/parsetree.hpp"
 #include "../utils/tdg_utils.hpp"
+#include "../utils/predicate_utils.hpp"
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/properties.hpp>
 #include <boost/graph/depth_first_search.hpp>

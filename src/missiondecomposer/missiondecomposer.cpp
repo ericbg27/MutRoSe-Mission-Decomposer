@@ -222,20 +222,12 @@ bool MissionDecomposer::check_context_dependency(int parent_node, int current_no
 							for(ground_literal e : inst_eff) {
 								bool effect_applied = false;
 								for(ground_literal& state : world_state_copy) {
-									if(state.predicate == e.predicate) {
-										bool equal_args = true;
-										for(unsigned int arg_index = 0;arg_index < state.args.size();arg_index++) {
-											if(state.args.at(arg_index) != e.args.at(arg_index)) {
-												equal_args = false;
-												break;
-											}
-										}
+									bool same_predicate = is_same_predicate(state, e);
 
-										if(equal_args && (eff.positive != state.positive)) {
-											state.positive = eff.positive;
-											effect_applied = true;
-											break;
-										}
+									if(same_predicate && (eff.positive != state.positive)) {
+										state.positive = eff.positive;
+										effect_applied = true;
+										break;
 									}
 								}
 
@@ -257,19 +249,11 @@ bool MissionDecomposer::check_context_dependency(int parent_node, int current_no
 				context_pred.positive = var_and_pred.first;
 
 				for(ground_literal state : world_state_copy) {
-					if(state.predicate == context_pred.predicate) {
-						bool equal_args = true;
-						for(unsigned int arg_index = 0;arg_index < state.args.size();arg_index++) {
-							if(state.args.at(arg_index) != context_pred.args.at(arg_index)) {
-								equal_args = false;
-								break;
-							}
-						}
+					bool same_predicate = is_same_predicate(state, context_pred);
 
-						if(equal_args && (context_pred.positive == state.positive)) {
-							context_satisfied = true;
-							break;
-						}
+					if(same_predicate && (context_pred.positive == state.positive)) {
+						context_satisfied = true;
+						break;
 					}
 				}
 

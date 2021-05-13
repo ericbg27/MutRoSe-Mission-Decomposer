@@ -32,25 +32,13 @@ void expand_decomposition(Decomposition& d, vector<pair<ground_literal,int>> wor
             int pred_value;
             bool found_pred = false;
             for(pair<ground_literal,int> state : world_state_func) {
-                if(state.first.predicate == pred.predicate) {
-                    bool equal_args = true;
-                    
-                    int arg_index = 0;
-                    for(string arg : state.first.args) {
-                        if(arg != pred.args.at(arg_index)) {
-                            equal_args = false;
-                            break;
-                        }
+                bool same_predicate = is_same_predicate(state.first, pred);
+                
+                if(same_predicate) {
+                    pred_value = state.second;
+                    found_pred = true;
 
-                        arg_index++;
-                    }
-
-                    if(equal_args) {
-                        pred_value = state.second;
-                        found_pred = true;
-
-                        break;
-                    }
+                    break;
                 }
             }
 

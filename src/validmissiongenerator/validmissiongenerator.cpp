@@ -266,29 +266,17 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
 
                         if(holds_alternative<ground_literal>(eff)) { 
                             ground_literal e = std::get<ground_literal>(eff);
-                            for(auto& state : vmd.second.first) {                           
-                                if(state.predicate == e.predicate) {
-                                    bool equal_args = true;
+                            for(auto& state : vmd.second.first) {  
+                                bool same_predicate = is_same_predicate(state, e);                         
+                                
+                                if(same_predicate) {
+                                    found_pred = true;
 
-                                    int arg_index = 0;
-                                    for(string arg : state.args) {
-                                        if(arg != e.args.at(arg_index)) {
-                                            equal_args = false;
-                                            break;
-                                        }
-
-                                        arg_index++;
+                                    if(state.positive != e.positive) {
+                                        state.positive = e.positive;
                                     }
 
-                                    if(equal_args) {
-                                        found_pred = true;
-
-                                        if(state.positive != e.positive) {
-                                            state.positive = e.positive;
-                                        }
-
-                                        break;
-                                    }
+                                    break;
                                 }
                             }
 
@@ -298,30 +286,18 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                         } else {
                             pair<ground_literal,int> e = std::get<pair<ground_literal,int>>(eff);
                             for(auto& func_state : vmd.second.second) {
-                                if(func_state.first.predicate == e.first.predicate) {
-                                    bool equal_args = true;
+                                bool same_predicate = is_same_predicate(func_state.first, e.first);              
 
-                                    int arg_index = 0;
-                                    for(string arg : func_state.first.args) {
-                                        if(arg != e.first.args.at(arg_index)) {
-                                            equal_args = false;
-                                            break;
-                                        }
+                                if(same_predicate) {
+                                    found_pred = true;
 
-                                        arg_index++;
+                                    if(e.first.isAssignCostChange) {
+                                        func_state.second = e.second;
+                                    } else {
+                                        func_state.second += e.second;
                                     }
 
-                                    if(equal_args) {
-                                        found_pred = true;
-
-                                        if(e.first.isAssignCostChange) {
-                                            func_state.second = e.second;
-                                        } else {
-                                            func_state.second += e.second;
-                                        }
-
-                                        break;
-                                    }
+                                    break;
                                 }
                             }
                             
@@ -415,27 +391,15 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                     bool valid_achieve_condition = true;
                     for(ground_literal forAll_pred : achieve_condition_predicates) {
                         for(ground_literal state : world_state) {
-                            if(state.predicate == forAll_pred.predicate) {
-                                bool equal_args = true;
+                            bool same_predicate = is_same_predicate(state, forAll_pred);
+                                  
+                            if(!same_predicate) {
+                                break;
+                            }
 
-                                int arg_index = 0;
-                                for(string arg : state.args) {
-                                    if(arg != forAll_pred.args.at(arg_index)) {
-                                        equal_args = false;
-                                        break;
-                                    }
-                                                
-                                    arg_index++;
-                                }
-                                            
-                                if(!equal_args) {
-                                    break;
-                                }
-
-                                if(state.positive != forAll_pred.positive) {
-                                    valid_achieve_condition = false;
-                                    break;
-                                }
+                            if(state.positive != forAll_pred.positive) {
+                                valid_achieve_condition = false;
+                                break;
                             }
                         }
 
@@ -458,27 +422,15 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                     bool valid_achieve_condition = true;
                     for(pair<ground_literal,int> forAll_pred : achieve_condition_func_predicates) {
                         for(pair<ground_literal,int> state : world_state_func) {
-                            if(state.first.predicate == forAll_pred.first.predicate) {
-                                bool equal_args = true;
-
-                                int arg_index = 0;
-                                for(string arg : state.first.args) {
-                                    if(arg != forAll_pred.first.args.at(arg_index)) {
-                                        equal_args = false;
-                                        break;
-                                    }
-                                                
-                                    arg_index++;
-                                }
+                            bool same_predicate = is_same_predicate(state.first, forAll_pred.first);
                                             
-                                if(!equal_args) {
-                                    break;
-                                }
+                            if(!same_predicate) {
+                                break;
+                            }
 
-                                if(state.second != forAll_pred.second) {
-                                    valid_achieve_condition = false;
-                                    break;
-                                }
+                            if(state.second != forAll_pred.second) {
+                                valid_achieve_condition = false;
+                                break;
                             }
                         }
 
@@ -565,56 +517,32 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                             
                             if(!p.isComparison) {
                                 for(ground_literal state : world_state) {
-                                    if(state.predicate == p.predicate) {
-                                        bool equal_args = true;
+                                    bool same_predicate = is_same_predicate(state, p);
 
-                                        int index = 0;
-                                        for(string arg : state.args) {
-                                            if(arg != p.args.at(index)) {
-                                                equal_args = false;
-                                                break;
-                                            }
-
-                                            index++;
-                                        }
-
-                                        if(equal_args) {
-                                            if(state.positive != p.positive) {
-                                                preconditions_hold = false;
-                                                break;
-                                            }
+                                    if(same_predicate) {
+                                        if(state.positive != p.positive) {
+                                            preconditions_hold = false;
+                                            break;
                                         }
                                     }
                                 }
                             } else {
                                 for(pair<ground_literal,int> func_state : world_state_func) {
-                                    if(func_state.first.predicate == p.predicate) {
-                                        bool equal_args = true;
-
-                                        int arg_index = 0;
-                                        for(string arg : func_state.first.args) {
-                                            if(arg != p.args.at(arg_index)) {
-                                                equal_args = false;
+                                    bool same_predicate = is_same_predicate(func_state.first, p);
+                                    
+                                    if(same_predicate) {
+                                        string comparison_op = p.comparison_op_and_value.first;
+                                        int comparison_value = p.comparison_op_and_value.second;
+                                            
+                                        if(comparison_op == equal_comparison_op) {
+                                            if(comparison_value != func_state.second) {
+                                                preconditions_hold = false;
                                                 break;
                                             }
-
-                                            arg_index++;
-                                        }
-
-                                        if(equal_args) {
-                                            string comparison_op = p.comparison_op_and_value.first;
-                                            int comparison_value = p.comparison_op_and_value.second;
-                                            
-                                            if(comparison_op == equal_comparison_op) {
-                                                if(comparison_value != func_state.second) {
-                                                    preconditions_hold = false;
-                                                    break;
-                                                }
-                                            } else if(comparison_op == greater_comparison_op) {
-                                                if(comparison_value >= func_state.second) {
-                                                    preconditions_hold = false;
-                                                    break;
-                                                }
+                                        } else if(comparison_op == greater_comparison_op) {
+                                            if(comparison_value >= func_state.second) {
+                                                preconditions_hold = false;
+                                                break;
                                             }
                                         }
                                     }
@@ -695,24 +623,12 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                                     ground_literal e = std::get<ground_literal>(eff);
 
                                     for(ground_literal& state : updated_state) {
-                                        if(state.predicate == e.predicate) {
-                                            bool equal_args = true;
-
-                                            int index = 0;
-                                            for(string arg : state.args) {
-                                                if(arg != e.args.at(index)) {
-                                                    equal_args = false;
-                                                    break;
-                                                }
-
-                                                index++;
-                                            }
-
-                                            if(equal_args) {
-                                                if(state.positive != e.positive) {
-                                                    state.positive = e.positive;
-                                                    break;
-                                                }
+                                        bool same_predicate = is_same_predicate(state, e);
+                                       
+                                        if(same_predicate) {
+                                            if(state.positive != e.positive) {
+                                                state.positive = e.positive;
+                                                break;
                                             }
                                         }
                                     }
@@ -724,28 +640,16 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                                     pair<ground_literal,int> e = std::get<pair<ground_literal,int>>(func_eff);
 
                                     for(pair<ground_literal,int>& func_state : updated_func_state) {
-                                        if(func_state.first.predicate == e.first.predicate) {
-                                            bool equal_args = true;
-
-                                            int index = 0;
-                                            for(string arg : func_state.first.args) {
-                                                if(arg != e.first.args.at(index)) {
-                                                    equal_args = false;
-                                                    break;
-                                                }
-
-                                                index++;
+                                        bool same_predicate = is_same_predicate(func_state.first, e.first);
+                                        
+                                        if(same_predicate) {
+                                            if(e.first.isAssignCostChange) {
+                                                func_state.second = e.second;
+                                            } else {
+                                                func_state.second += e.second;
                                             }
 
-                                            if(equal_args) {
-                                                if(e.first.isAssignCostChange) {
-                                                    func_state.second = e.second;
-                                                } else {
-                                                    func_state.second += e.second;
-                                                }
-
-                                                break;
-                                            }
+                                            break;
                                         }
                                     }
                                 }
@@ -795,56 +699,32 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                         
                         if(!p.isComparison) {
                             for(ground_literal state : world_state) {
-                                if(state.predicate == p.predicate) {
-                                    bool equal_args = true;
-
-                                    int index = 0;
-                                    for(string arg : state.args) {
-                                        if(arg != p.args.at(index)) {
-                                            equal_args = false;
-                                            break;
-                                        }
-
-                                        index++;
-                                    }
-
-                                    if(equal_args) {
-                                        if(state.positive != p.positive) {
-                                            preconditions_hold = false;
-                                            break;
-                                        }
+                                bool same_predicate = is_same_predicate(state, p);
+                            
+                                if(same_predicate) {
+                                    if(state.positive != p.positive) {
+                                        preconditions_hold = false;
+                                        break;
                                     }
                                 }
                             }
                         } else {
                             for(pair<ground_literal,int> func_state : world_state_functions) {
-                                if(func_state.first.predicate == p.predicate) {
-                                    bool equal_args = true;
+                                bool same_predicate = is_same_predicate(func_state.first, p);
 
-                                    int arg_index = 0;
-                                    for(string arg : func_state.first.args) {
-                                        if(arg != p.args.at(arg_index)) {
-                                            equal_args = false;
+                                if(same_predicate) {
+                                    string comparison_op = p.comparison_op_and_value.first;
+                                    int comparison_value = p.comparison_op_and_value.second;
+                                            
+                                    if(comparison_op == equal_comparison_op) {
+                                        if(comparison_value != func_state.second) {
+                                            preconditions_hold = false;
                                             break;
                                         }
-
-                                        arg_index++;
-                                    }
-
-                                    if(equal_args) {
-                                        string comparison_op = p.comparison_op_and_value.first;
-                                        int comparison_value = p.comparison_op_and_value.second;
-                                            
-                                        if(comparison_op == equal_comparison_op) {
-                                            if(comparison_value != func_state.second) {
-                                                preconditions_hold = false;
-                                                break;
-                                            }
-                                        } else if(comparison_op == greater_comparison_op) {
-                                            if(comparison_value >= func_state.second) {
-                                                preconditions_hold = false;
-                                                break;
-                                            }
+                                    } else if(comparison_op == greater_comparison_op) {
+                                        if(comparison_value >= func_state.second) {
+                                            preconditions_hold = false;
+                                            break;
                                         }
                                     }
                                 }
@@ -894,24 +774,12 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                                 ground_literal e = get<ground_literal>(eff);
 
                                 for(ground_literal& state : updated_state) {
-                                    if(state.predicate == e.predicate) {
-                                        bool equal_args = true;
+                                    bool same_predicate = is_same_predicate(state, e);
 
-                                        int index = 0;
-                                        for(string arg : state.args) {
-                                            if(arg != e.args.at(index)) {
-                                                equal_args = false;
-                                                break;
-                                            }
-
-                                            index++;
-                                        }
-
-                                        if(equal_args) {
-                                            if(state.positive != e.positive) {
-                                                state.positive = e.positive;
-                                                break;
-                                            }
+                                    if(same_predicate) {
+                                        if(state.positive != e.positive) {
+                                            state.positive = e.positive;
+                                            break;
                                         }
                                     }
                                 }
@@ -922,28 +790,16 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                                 pair<ground_literal,int> e = std::get<pair<ground_literal,int>>(func_eff);
 
                                 for(pair<ground_literal,int>& func_state : updated_func_state) {
-                                    if(func_state.first.predicate == e.first.predicate) {
-                                        bool equal_args = true;
-
-                                        int index = 0;
-                                        for(string arg : func_state.first.args) {
-                                            if(arg != e.first.args.at(index)) {
-                                                equal_args = false;
-                                                break;
-                                            }
-
-                                            index++;
+                                    bool same_predicate = is_same_predicate(func_state.first, e.first);
+                        
+                                    if(same_predicate) {
+                                        if(e.first.isAssignCostChange) {
+                                            func_state.second = e.second;
+                                        } else {
+                                            func_state.second += e.second;
                                         }
 
-                                        if(equal_args) {
-                                            if(e.first.isAssignCostChange) {
-                                                func_state.second = e.second;
-                                            } else {
-                                                func_state.second += e.second;
-                                            }
-
-                                            break;
-                                        }
+                                        break;
                                     }
                                 }
                             }
@@ -1136,20 +992,12 @@ void ValidMissionGenerator::resolve_conflicts(vector<pair<int,ATNode>> possible_
                                 if(holds_alternative<ground_literal>(eff2)) {
                                     ground_literal e1 = std::get<ground_literal>(eff1);
                                     ground_literal e2 = std::get<ground_literal>(eff2);
-
-                                    if(e1.predicate == e2.predicate) {
-                                        bool equal_args = true;
-                                        for(unsigned int arg_index = 0; arg_index < e1.args.size(); arg_index++) {
-                                            if(e1.args.at(arg_index) != e2.args.at(arg_index)) {
-                                                equal_args = false;
-                                                break;
-                                            }
-                                        }
-                                        if(equal_args) {
-                                            if(e1.positive != e2.positive) {
-                                                has_conflict = true;
-                                                break;
-                                            }
+                                    bool same_predicate = is_same_predicate(e1, e2);
+                                
+                                    if(same_predicate) {
+                                        if(e1.positive != e2.positive) {
+                                            has_conflict = true;
+                                            break;
                                         }
                                     }
                                 }
