@@ -206,6 +206,29 @@ vector<DecompositionPath> TDG::decomposition_recursion(vector<int> dfs_nodes, in
                 }
             }
 
+            /*
+                In order for an expansion to be necessary, the method needs to be in a cycle
+
+                -> Right now this cycle needs to be with its parent, how do we generalize this?
+                    - Also, do we need to generalize this?
+            */
+            NodeData parent = tdg[n.parent];
+            if(parent.belongs_to_cycles) {
+                bool has_cycle_with_parent = false;
+                for(int link : parent.cycle_links) {
+                    if(link == n.id) {
+                        has_cycle_with_parent = true;
+                        break;
+                    }
+                }
+
+                if(!has_cycle_with_parent) {
+                    expansion_needed = false;
+                }        
+            } else {
+                expansion_needed = false;
+            }
+
             if(expansion_needed) {
                 for(DecompositionPath& path : ordering_paths) {
                     path.needs_expansion = expansion_needed;
@@ -455,24 +478,24 @@ pair<bool,int> TDG::check_cycle(int m_id, NodeData t) {
     pair<bool,int> cycle = make_pair(false,-1);
     NodeData m = tdg[m_id];
 
-    NodeData current_node = m;
+    NodeData* current_node = &tdg[m_id];
     bool at_root = false;
     while(at_root == false) {
-        if(current_node.parent == -1) at_root = true;
+        if(current_node->parent == -1) at_root = true;
 
-        if(current_node.type == AT) {
-            if(current_node.t.name == t.t.name) {
-                current_node.belongs_to_cycles = true;
-                current_node.cycle_links.push_back(m.id);
+        if(current_node->type == AT) {
+            if(current_node->t.name == t.t.name) {
+                current_node->belongs_to_cycles = true;
+                current_node->cycle_links.push_back(m.id);
                 cycle.first = true;
-                cycle.second = current_node.id;
+                cycle.second = current_node->id;
 
                 break;
             }
         }
 
-        if(current_node.parent != -1) {
-            current_node = tdg[current_node.parent];
+        if(current_node->parent != -1) {
+            current_node = &tdg[current_node->parent];
         }
     }
 
