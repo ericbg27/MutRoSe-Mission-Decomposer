@@ -350,7 +350,9 @@ map<string,vector<AbstractTask>> FileKnowledgeATManager::generate_at_instances(m
 												if(holds_alternative<string>(at_vm.first.first)) {
 													q_value = std::get<string>(at_vm.first.first);
 												} else{
-													//Error! iteration variables should not be of collection type
+													string collection_iteration_var_error = "Iteration variables should not be of a collection type";
+
+													throw std::runtime_error(collection_iteration_var_error);
 												}
 												break;
 											}
@@ -440,7 +442,9 @@ map<string,vector<AbstractTask>> FileKnowledgeATManager::generate_at_instances(m
 													if(holds_alternative<string>(at_vm.first.first)) {
 														q_value = std::get<string>(at_vm.first.first);
 													} else{
-														//Error! iteration variables should not be of collection type
+														string collection_iteration_var_error = "Iteration variables should not be of a collection type";
+
+														throw std::runtime_error(collection_iteration_var_error);
 													}
 													break;
 												}

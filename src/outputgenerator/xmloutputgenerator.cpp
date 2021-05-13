@@ -21,21 +21,27 @@ using namespace std;
 */
 void XMLOutputGenerator::generate_instances_output(vector<SemanticMapping> semantic_mapping, map<string,set<string>> sorts, vector<sort_definition> sort_definitions, 
                                                     vector<predicate_definition> predicate_definitions, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
-    pair<ATGraph,map<int,int>> trimmed_mission_decomposition = generate_trimmed_at_graph(mission_decomposition);  
+    vector<Constraint> mission_constraints;
+    
+    bool is_unique = is_unique_branch(mission_decomposition);
+    
+    if(!is_unique) {
+        pair<ATGraph,map<int,int>> trimmed_mission_decomposition = generate_trimmed_at_graph(mission_decomposition);  
+        
+        mission_constraints = generate_at_constraints(trimmed_mission_decomposition.first);
+        
+        for(Constraint& c : mission_constraints) {
+            pair<int,ATNode> n1 = c.nodes_involved.first;
+            pair<int,ATNode> n2 = c.nodes_involved.second;
 
-    vector<Constraint> mission_constraints = generate_at_constraints(trimmed_mission_decomposition.first);
+            n1.second.parent = trimmed_mission_decomposition.second[n1.second.parent];
+            n1.first = trimmed_mission_decomposition.second[n1.first];
+            n2.second.parent = trimmed_mission_decomposition.second[n2.second.parent];
+            n2.first = trimmed_mission_decomposition.second[n2.first];
 
-    for(Constraint& c : mission_constraints) {
-        pair<int,ATNode> n1 = c.nodes_involved.first;
-        pair<int,ATNode> n2 = c.nodes_involved.second;
-
-        n1.second.parent = trimmed_mission_decomposition.second[n1.second.parent];
-        n1.first = trimmed_mission_decomposition.second[n1.first];
-        n2.second.parent = trimmed_mission_decomposition.second[n2.second.parent];
-        n2.first = trimmed_mission_decomposition.second[n2.first];
-
-        c.nodes_involved.first = n1;
-        c.nodes_involved.second = n2;
+            c.nodes_involved.first = n1;
+            c.nodes_involved.second = n2;
+        }
     }
 
     /*
@@ -48,7 +54,7 @@ void XMLOutputGenerator::generate_instances_output(vector<SemanticMapping> seman
     vector<Constraint> final_mission_constraints = transform_at_constraints(mission_decomposition,mission_constraints,gm);
 
     generate_noncoop_constraints(final_mission_constraints,mission_decomposition);
-
+    
     // With the final constraints and the mission decomposition graph we generate our output
 
     pt::ptree output_file;
@@ -67,7 +73,7 @@ void XMLOutputGenerator::generate_instances_output(vector<SemanticMapping> seman
         if(mission_decomposition[index].node_type == DECOMPOSITION) {
             Decomposition d = std::get<Decomposition>(mission_decomposition[index].content);
 
-            for(task a : d.path) {
+            for(task a : d.path.decomposition) {
                 if(actions.find(a.name) == actions.end() && a.name.find(method_precondition_action_name) == string::npos) {
                     actions[a.name] = a;
                 }
@@ -440,7 +446,7 @@ map<string,string> XMLOutputGenerator::output_tasks(pt::ptree& output_file, vect
         */
         task_attr = task_name + ".decomposition";
         int action_counter = 0;
-        for(task a : instance.path) {
+        for(task a : instance.path.decomposition) {
             if(a.name.find(method_precondition_action_name) == string::npos) {
                 string action_id = task_attr + ".action" + to_string(action_counter);
                 output_file.put(action_id,a.name);

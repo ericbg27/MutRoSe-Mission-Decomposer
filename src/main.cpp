@@ -260,7 +260,7 @@ int main(int argc, char** argv) {
 
 	parsed_method_to_data_structures(false, false, false);
 
-	std::cout << "HDDL Functions: " << std::endl;
+	/*std::cout << "HDDL Functions: " << std::endl;
 	for(auto f : parsed_functions) {
 		std::cout << "Predicate definition: ";
 		std::cout << f.first.name << " ";
@@ -287,12 +287,26 @@ int main(int argc, char** argv) {
 		}
 	}
 
+	std::cout << "Actions function predicates: " << std::endl;
+	for(task t : primitive_tasks) {
+		std::cout << "Task: " << t.name << std::endl;
+		for(literal ce : t.prec) {
+			if(ce.isComparisonExpression) {
+				std::cout << "Prec: " << "(" << ce.comparison_op_and_value.first << " ( " << ce.predicate << " ";
+				for(string arg : ce.arguments) {
+					std::cout << arg << " ";
+				}
+				std::cout << " ) ";
+				std::cout << ce.comparison_op_and_value.second << ")" << std::endl;
+			}
+		}
+	}*/
+
 	/*
 		Goal Model parsing and generation of Abstract tasks instances
 	*/
 
 	GMGraph gm;
-
 	gm = graph_from_property_tree(json_root);
 
 	check_config(variable_mapping, type_mapping, gm, abstract_tasks, semantic_mapping, high_level_loc_types, predicate_definitions);
@@ -355,7 +369,7 @@ int main(int argc, char** argv) {
 		)
 	*/
 
-	map<string,vector<vector<task>>> at_decomposition_paths;
+	map<string,vector<DecompositionPath>> at_decomposition_paths;
 
 	for(task at : abstract_tasks) {
 		TDG t(at, abstract_tasks, primitive_tasks, methods);

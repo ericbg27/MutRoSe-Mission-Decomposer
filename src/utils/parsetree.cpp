@@ -83,7 +83,7 @@ set<string> general_formula::occuringUnQuantifiedVariables(){
 
 	if (this->type == EMPTY) return ret;
 
-	if (this->type == AND || this->type == OR || this->type == WHEN){
+	if (this->type == AND || this->type == OR || this->type == WHEN || this->type == EQUALPRED || this->type == GREATERPRED){
 		for (general_formula* sub : this->subformulae){
 			set<string> subres = sub->occuringUnQuantifiedVariables();
 			ret.insert(subres.begin(), subres.end());
@@ -389,6 +389,18 @@ literal general_formula::equalsLiteral(){
 	return l;
 }
 
+literal general_formula::comparisonLiteral() {
+	assert(this->type == GREATER);
+
+	literal l;
+	l.positive = this->type == GREATER;
+	l.predicate = dummy_comparison_literal;
+	l.arguments.push_back(this->arg1);
+	l.arguments.push_back(this->arg2);
+
+	return l;
+}
+
 
 literal general_formula::atomLiteral(){
 	assert(this->type == ATOM || this->type == NOTATOM || this->type == COST || this->type == REWARD);
@@ -673,6 +685,34 @@ vector<pair<pair<vector<variant<literal,conditional_effect,reward_change,conditi
 		ret.push_back(subresults[1][0]);
 	}
 
+	if(this->type == EQUALPRED) {
+		assert(subresults.size() == 1);
+		assert(subresults[0].size() == 1);
+		assert(subresults[0][0].first.first.size() == 1);
+		assert(holds_alternative<literal>(subresults[0][0].first.first[0]));
+
+		literal l = std::get<literal>(subresults[0][0].first.first[0]);
+
+		l.isComparisonExpression = true;
+		l.comparison_op_and_value = make_pair(equal_comparison_op,this->value);
+
+		subresults[0][0].first.first[0] = l;
+		ret.push_back(subresults[0][0]);
+	} else if(this->type == GREATERPRED) {
+		assert(subresults.size() == 1);
+		assert(subresults[0].size() == 1);
+		assert(subresults[0][0].first.first.size() == 1);
+		assert(holds_alternative<literal>(subresults[0][0].first.first[0]));
+
+		literal l = std::get<literal>(subresults[0][0].first.first[0]);
+
+		l.isComparisonExpression = true;
+		l.comparison_op_and_value = make_pair(greater_comparison_op,this->value);
+
+		subresults[0][0].first.first[0] = l;
+		ret.push_back(subresults[0][0]);
+	}
+
 	if (this->type == REWARD) {
 		vector<variant<literal,conditional_effect,reward_change,conditional_reward_change>> ls;
 		literal l = this->atomLiteral();
@@ -755,8 +795,17 @@ vector<pair<pair<vector<variant<literal,conditional_effect,reward_change,conditi
 
 		additional_variables vars; // no new vars. Never
 		vector<literal> empty;
-		ret.push_back(make_pair(make_pair(ls,empty),vars));	
-		
+		ret.push_back(make_pair(make_pair(ls,empty),vars));
+	}
+
+	if(this->type == GREATER) {
+		vector<variant<literal,conditional_effect,reward_change,conditional_reward_change>> ls;
+		literal l = this->comparisonLiteral();
+		ls.push_back(l);
+
+		additional_variables vars; // no new vars. Never
+		vector<literal> empty;
+		ret.push_back(make_pair(make_pair(ls,empty),vars));
 	}
 
 	if (this->type == WHEN) {

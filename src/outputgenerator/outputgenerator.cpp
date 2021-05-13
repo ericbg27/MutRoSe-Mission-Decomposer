@@ -16,6 +16,10 @@ void OutputGenerator::set_world_state(vector<ground_literal> ws) {
     world_state = ws;
 }
 
+void OutputGenerator::set_world_state_functions(vector<pair<ground_literal,int>> wsf) {
+    world_state_functions = wsf;
+}
+
 void FileOutputGenerator::set_file_output_generator_type(file_output_generator_type fogt) {
     fog_type = fogt;
 }
@@ -51,8 +55,8 @@ pair<SemanticMapping, bool> find_predicate_mapping(variant<ground_literal,litera
         ground_literal p = get<ground_literal>(predicate);
 
         for(SemanticMapping sm : semantic_mappings) {
-            if(sm.get_mapped_type() == "predicate") {
-                predicate_definition map = get<predicate_definition>(sm.get_prop("map"));
+            if(sm.get_mapped_type() == "predicate" || sm.get_mapped_type() == "function") {
+                predicate_definition map = std::get<predicate_definition>(sm.get_prop("map"));
 
                 if(map.name == p.predicate) {
                     bool found_args = true;
@@ -84,7 +88,7 @@ pair<SemanticMapping, bool> find_predicate_mapping(variant<ground_literal,litera
         literal p = get<literal>(predicate);
 
         for(SemanticMapping sm : semantic_mappings) {
-            if(sm.get_mapped_type() == "predicate") {
+            if(sm.get_mapped_type() == "predicate" || sm.get_mapped_type() == "function") {
                 predicate_definition map = get<predicate_definition>(sm.get_prop("map"));
 
                 if(map.name == p.predicate) {

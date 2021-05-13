@@ -215,7 +215,6 @@ pair<task,bool> flatten_primitive_task(parsed_task & a,
 							bool linearConditionalEffectExpansion,
 							bool encodeDisjunctivePreconditionsInMethods
 							){
-	
 	// first check whether this primitive as a disjunctive precondition
 	bool disjunctivePreconditionForHTN = encodeDisjunctivePreconditionsInMethods && a.prec->isDisjunctive();
 	
@@ -683,7 +682,7 @@ pair<task,bool> flatten_primitive_task(parsed_task & a,
 			t.required_capabilities = *(a.required_capabilities);
 			t.check_integrity();
 			addPrimitiveTask(t);	
-			
+
 			m.check_integrity();
 			methods.push_back(m);
 		} else {
@@ -848,7 +847,6 @@ void parsed_method_to_data_structures(bool compileConditionalEffects,
 
 		mPrec_task.eff = fullEff;
 
-
 		set<string> mPrecVars = pm.prec->occuringUnQuantifiedVariables();
 		set<string> mEffVars = pm.eff->occuringUnQuantifiedVariables();
 
@@ -861,7 +859,7 @@ void parsed_method_to_data_structures(bool compileConditionalEffects,
 			cout << "Name: " << arg.first << " / " << "Type: " << arg.second << endl;
 		}*/
 		
-		auto [mPrec,isPrimitive] = flatten_primitive_task(mPrec_task, compileConditionalEffects, linearConditionalEffectExpansion, encodeDisjunctivePreconditionsInMethods);
+		auto [mPrec,isPrimitive] = flatten_primitive_mdp_task(mPrec_task);
 		for (size_t newVar = mPrec_task.arguments->vars.size(); newVar < mPrec.vars.size(); newVar++)
 			m.vars.push_back(mPrec.vars[newVar]);
 
@@ -902,7 +900,6 @@ void parsed_method_to_data_structures(bool compileConditionalEffects,
 				m.constraints.push_back(get<literal>(l));
 			else
 				assert(false); // constraints cannot contain conditional effects
-
 
 		m.check_integrity();
 		methods.push_back(m);
@@ -1193,6 +1190,7 @@ void task::check_integrity(){
 	for(literal l : this->prec) {
 		bool hasPred = false;
 		for(auto p : predicate_definitions) if (p.name == l.predicate) hasPred = true;
+		for(auto f : parsed_functions) if (f.first.name == l.predicate) hasPred = true;
 		if(l.predicate == "at" || l.predicate == "hascapability") hasPred = true;
 		if (! hasPred){
 			cerr << "Task " << this->name << " has the predicate \"" << l.predicate << "\" in its precondition, which is not declared." << endl;

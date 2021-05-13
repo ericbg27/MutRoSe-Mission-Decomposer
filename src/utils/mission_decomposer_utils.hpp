@@ -10,14 +10,15 @@
 
 #include "domain.hpp"
 #include "parsetree.hpp"
-#include "../utils/at.hpp"
+#include "at.hpp"
+#include "tdg_utils.hpp"
 #include "../contextmanager/contextmanager.hpp"
 #include "../annotmanager/annotmanager.hpp"
 
 struct Decomposition {
     std::string id;
     AbstractTask at;
-    std::vector<task> path;
+    DecompositionPath path;
     std::vector<std::variant<ground_literal,literal>> prec;
     std::vector<std::variant<ground_literal,literal>> eff;
     std::vector<std::variant<std::pair<ground_literal,int>,literal>> func_eff;
@@ -28,10 +29,10 @@ enum at_node_type {ATASK,OP,DECOMPOSITION,GOALNODE};
 struct ATNode {
     at_node_type node_type;
     std::variant<AbstractTask,std::string,Decomposition> content;
-    bool non_coop;
-    bool group;
-    bool divisible;
-    bool is_achieve_type;
+    bool non_coop = false;
+    bool group = true;
+    bool divisible = true;
+    bool is_achieve_type = false;
     int parent;
 };
 
@@ -67,7 +68,7 @@ class DFSATVisitor : public boost::default_dfs_visitor {
 
 std::pair<ATGraph,std::map<int,int>> generate_trimmed_at_graph(ATGraph mission_decomposition);
 
-void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_vars_map);
+void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d);
 
 std::vector<std::pair<int,ATNode>> find_decompositions(ATGraph mission_decomposition, int node_id);
 
@@ -76,5 +77,7 @@ void find_non_coop_task_ids(ATGraph mission_decomposition, int node_id, set<int>
 bool can_unite_decompositions(Decomposition d1, Decomposition d2, bool non_coop_nodes);
 
 void print_mission_decomposition(ATGraph mission_decomposition);
+
+bool is_unique_branch(ATGraph mission_decomposition);
 
 #endif

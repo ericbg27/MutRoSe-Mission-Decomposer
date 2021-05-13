@@ -16,6 +16,7 @@
 -				{return '-'; }
 =				{return '='; }
 \<				{return '<'; }
+>				{return KEY_GREATER;}
 define			{return KEY_DEFINE;}
 domain			{return KEY_DOMAIN;}
 :domain			{return KEY_DOMAIN;}

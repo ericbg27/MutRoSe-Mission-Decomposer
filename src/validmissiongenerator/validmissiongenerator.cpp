@@ -371,10 +371,12 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
             AchieveCondition achieve_condition = get<AchieveCondition>(gm[gm_node_id].custom_props[achieve_condition_prop]);
 
             vector<ground_literal> achieve_condition_predicates;
+            vector<pair<ground_literal,int>> achieve_condition_func_predicates;
 
-            variant<pair<pair<predicate_definition,vector<string>>,bool>,bool> evaluation = achieve_condition.evaluate_condition(semantic_mapping, gm_var_map);
-            
+            variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<int,bool>>,bool> evaluation = achieve_condition.evaluate_condition(semantic_mapping, gm_var_map);
+
             bool need_predicate_checking = false;
+            bool need_function_predicate_checking = false;
             if(holds_alternative<pair<pair<predicate_definition,vector<string>>,bool>>(evaluation)) {
                 pair<pair<predicate_definition,vector<string>>,bool> eval = std::get<pair<pair<predicate_definition,vector<string>>,bool>>(evaluation);
 
@@ -389,14 +391,26 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                 } 
 
                 need_predicate_checking = true;
+            } else if(holds_alternative<pair<pair<predicate_definition,vector<string>>,pair<int,bool>>>(evaluation)) {
+                pair<pair<predicate_definition,vector<string>>,pair<int,bool>> eval = std::get<pair<pair<predicate_definition,vector<string>>,pair<int,bool>>>(evaluation);
+
+                for(string value : eval.first.second) {
+                    ground_literal aux;
+
+                    aux.predicate = eval.first.first.name;
+                    aux.args.push_back(value);
+
+                    achieve_condition_func_predicates.push_back(make_pair(aux,eval.second.first));
+                }
+
+                need_function_predicate_checking = true;
             }
 
+            vector<int> decompositions_to_erase;
             if(need_predicate_checking) {
-                vector<int> decompositions_to_erase;
                 int decomposition_index = 0;
                 for(auto decomposition : valid_mission_decompositions) {
                     vector<ground_literal> world_state = decomposition.second.first;
-                    vector<pair<ground_literal,int>> world_state_func = decomposition.second.second;
 
                     bool valid_achieve_condition = true;
                     for(ground_literal forAll_pred : achieve_condition_predicates) {
@@ -436,17 +450,60 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
 
                     decomposition_index++;
                 }
+            } else if(need_function_predicate_checking) {
+                int decomposition_index = 0;
+                for(auto decomposition : valid_mission_decompositions) {
+                    vector<pair<ground_literal,int>> world_state_func = decomposition.second.second;
 
-                std::sort(decompositions_to_erase.begin(), decompositions_to_erase.end());
-                for(auto i = decompositions_to_erase.rbegin(); i != decompositions_to_erase.rend(); ++i) {
-                    valid_mission_decompositions.erase(valid_mission_decompositions.begin() + *i);
+                    bool valid_achieve_condition = true;
+                    for(pair<ground_literal,int> forAll_pred : achieve_condition_func_predicates) {
+                        for(pair<ground_literal,int> state : world_state_func) {
+                            if(state.first.predicate == forAll_pred.first.predicate) {
+                                bool equal_args = true;
+
+                                int arg_index = 0;
+                                for(string arg : state.first.args) {
+                                    if(arg != forAll_pred.first.args.at(arg_index)) {
+                                        equal_args = false;
+                                        break;
+                                    }
+                                                
+                                    arg_index++;
+                                }
+                                            
+                                if(!equal_args) {
+                                    break;
+                                }
+
+                                if(state.second != forAll_pred.second) {
+                                    valid_achieve_condition = false;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if(!valid_achieve_condition) {
+                            break;
+                        }
+                    }
+
+                    if(!valid_achieve_condition) {
+                        decompositions_to_erase.push_back(decomposition_index);
+                    }
+
+                    decomposition_index++;
                 }
+            }
 
-                if(valid_mission_decompositions.size() == 0) {
-                    string forAll_condition_not_achieved = "No decomposition satisfied achieve condition of goal " + achievel_goal_id;
+            std::sort(decompositions_to_erase.begin(), decompositions_to_erase.end());
+            for(auto i = decompositions_to_erase.rbegin(); i != decompositions_to_erase.rend(); ++i) {
+                valid_mission_decompositions.erase(valid_mission_decompositions.begin() + *i);
+            }
 
-                    throw std::runtime_error(forAll_condition_not_achieved);
-                }
+            if(valid_mission_decompositions.size() == 0) {
+                string forAll_condition_not_achieved = "No decomposition satisfied achieve condition of goal " + achievel_goal_id;
+
+                throw std::runtime_error(forAll_condition_not_achieved);
             }
         }
     } else {
@@ -475,6 +532,13 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
             }
         }
 
+        /*
+            Expand necessary decompositions using world knowledge 
+
+            -> Will we have a different decompositoion for each valid mission decomposition?
+        */
+
+
         bool add_to_possible_conflicts = false;
         if(valid_mission_decompositions.size() > 0) {
             /*
@@ -495,28 +559,63 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                     vector<pair<int,ATNode>> m_decomposition = valid_mission_decomposition.first;
 
                     bool preconditions_hold = true;
-                    for(auto prec : d.prec) {
+                    for(auto prec : d.prec) { 
                         if(holds_alternative<ground_literal>(prec)) {                   
                             ground_literal p = get<ground_literal>(prec);
                             
-                            for(ground_literal state : world_state) {
-                                if(state.predicate == p.predicate) {
-                                    bool equal_args = true;
+                            if(!p.isComparison) {
+                                for(ground_literal state : world_state) {
+                                    if(state.predicate == p.predicate) {
+                                        bool equal_args = true;
 
-                                    int index = 0;
-                                    for(string arg : state.args) {
-                                        if(arg != p.args.at(index)) {
-                                            equal_args = false;
-                                            break;
+                                        int index = 0;
+                                        for(string arg : state.args) {
+                                            if(arg != p.args.at(index)) {
+                                                equal_args = false;
+                                                break;
+                                            }
+
+                                            index++;
                                         }
 
-                                        index++;
+                                        if(equal_args) {
+                                            if(state.positive != p.positive) {
+                                                preconditions_hold = false;
+                                                break;
+                                            }
+                                        }
                                     }
+                                }
+                            } else {
+                                for(pair<ground_literal,int> func_state : world_state_func) {
+                                    if(func_state.first.predicate == p.predicate) {
+                                        bool equal_args = true;
 
-                                    if(equal_args) {
-                                        if(state.positive != p.positive) {
-                                            preconditions_hold = false;
-                                            break;
+                                        int arg_index = 0;
+                                        for(string arg : func_state.first.args) {
+                                            if(arg != p.args.at(arg_index)) {
+                                                equal_args = false;
+                                                break;
+                                            }
+
+                                            arg_index++;
+                                        }
+
+                                        if(equal_args) {
+                                            string comparison_op = p.comparison_op_and_value.first;
+                                            int comparison_value = p.comparison_op_and_value.second;
+                                            
+                                            if(comparison_op == equal_comparison_op) {
+                                                if(comparison_value != func_state.second) {
+                                                    preconditions_hold = false;
+                                                    break;
+                                                }
+                                            } else if(comparison_op == greater_comparison_op) {
+                                                if(comparison_value >= func_state.second) {
+                                                    preconditions_hold = false;
+                                                    break;
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -533,6 +632,8 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                         involved in this kind of dependency, preconditions do not hold.
                     */
                     if(preconditions_hold) {
+                        expand_decomposition(d, world_state_func);
+
                         ATGraph::in_edge_iterator iei, ied;
 
                         for(boost::tie(iei,ied) = boost::in_edges(task_decomposition.first,mission_decomposition); iei != ied; ++iei) {
@@ -617,6 +718,7 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                                     }
                                 }
                             }
+
                             for(auto func_eff : d.func_eff) {
                                 if(holds_alternative<pair<ground_literal,int>>(func_eff)) {
                                     pair<ground_literal,int> e = std::get<pair<ground_literal,int>>(func_eff);
@@ -691,24 +793,59 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                     if(holds_alternative<ground_literal>(prec)) {
                         ground_literal p = get<ground_literal>(prec);
                         
-                        for(ground_literal state : world_state) {
-                            if(state.predicate == p.predicate) {
-                                bool equal_args = true;
+                        if(!p.isComparison) {
+                            for(ground_literal state : world_state) {
+                                if(state.predicate == p.predicate) {
+                                    bool equal_args = true;
 
-                                int index = 0;
-                                for(string arg : state.args) {
-                                    if(arg != p.args.at(index)) {
-                                        equal_args = false;
-                                        break;
+                                    int index = 0;
+                                    for(string arg : state.args) {
+                                        if(arg != p.args.at(index)) {
+                                            equal_args = false;
+                                            break;
+                                        }
+
+                                        index++;
                                     }
 
-                                    index++;
+                                    if(equal_args) {
+                                        if(state.positive != p.positive) {
+                                            preconditions_hold = false;
+                                            break;
+                                        }
+                                    }
                                 }
+                            }
+                        } else {
+                            for(pair<ground_literal,int> func_state : world_state_functions) {
+                                if(func_state.first.predicate == p.predicate) {
+                                    bool equal_args = true;
 
-                                if(equal_args) {
-                                    if(state.positive != p.positive) {
-                                        preconditions_hold = false;
-                                        break;
+                                    int arg_index = 0;
+                                    for(string arg : func_state.first.args) {
+                                        if(arg != p.args.at(arg_index)) {
+                                            equal_args = false;
+                                            break;
+                                        }
+
+                                        arg_index++;
+                                    }
+
+                                    if(equal_args) {
+                                        string comparison_op = p.comparison_op_and_value.first;
+                                        int comparison_value = p.comparison_op_and_value.second;
+                                            
+                                        if(comparison_op == equal_comparison_op) {
+                                            if(comparison_value != func_state.second) {
+                                                preconditions_hold = false;
+                                                break;
+                                            }
+                                        } else if(comparison_op == greater_comparison_op) {
+                                            if(comparison_value >= func_state.second) {
+                                                preconditions_hold = false;
+                                                break;
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -727,6 +864,8 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                         -> If we have a parallel operator we do not update the world state and add the AT to the possible conflicts
                         -> If we have a sequential operator we update the world state and put it into the valid mission decomposition
                     */
+                    expand_decomposition(d, world_state_functions);
+
                     AbstractTask at1 = get<AbstractTask>(current_node.second.content);
                     pair<vector<pair<int,ATNode>>,pair<vector<ground_literal>,vector<pair<ground_literal,int>>>> new_valid_mission;
 
@@ -852,25 +991,49 @@ queue<pair<int,ATNode>> ValidMissionGenerator::generate_mission_queue() {
     queue<pair<int,ATNode>> mission_queue;
 
     //Populate the mission queue
-    for(int i = 0;i < graph_size;i++) {
-        if(mission_decomposition[i].node_type == ATASK) {
-            mission_queue.push(make_pair(i,mission_decomposition[i]));
-        } else if(mission_decomposition[i].node_type == OP) {
-            int out_edge_num = 0;
-            ATGraph::out_edge_iterator ei, ei_end;
+    if(!is_unique_branch(mission_decomposition)) {
+        for(int i = 0; i < graph_size; i++) {
+            if(mission_decomposition[i].node_type == ATASK) {
+                mission_queue.push(make_pair(i,mission_decomposition[i]));
+            } else if(mission_decomposition[i].node_type == OP) {
+                int out_edge_num = 0;
+                ATGraph::out_edge_iterator ei, ei_end;
 
-            //Only insert OP nodes that have more than one outer edge of normal type (more than one child)
-            for(boost::tie(ei,ei_end) = out_edges(i,mission_decomposition);ei != ei_end;++ei) {
-                auto source = boost::source(*ei,mission_decomposition);
-                auto target = boost::target(*ei,mission_decomposition);
-                auto edge = boost::edge(source,target,mission_decomposition);
+                //Only insert OP nodes that have more than one outer edge of normal type (more than one child)
+                for(boost::tie(ei,ei_end) = out_edges(i,mission_decomposition);ei != ei_end;++ei) {
+                    auto source = boost::source(*ei,mission_decomposition);
+                    auto target = boost::target(*ei,mission_decomposition);
+                    auto edge = boost::edge(source,target,mission_decomposition);
 
-                if(mission_decomposition[edge.first].edge_type == NORMAL) {
-                    out_edge_num++;
+                    if(mission_decomposition[edge.first].edge_type == NORMAL) {
+                        out_edge_num++;
+                    }
+                }
+
+                if(out_edge_num > 1) {
+                    mission_queue.push(make_pair(i,mission_decomposition[i]));
                 }
             }
+        }
+    } else {
+        auto indexmap = boost::get(boost::vertex_index, mission_decomposition);
+		auto colormap = boost::make_vector_property_map<boost::default_color_type>(indexmap);
 
-            if(out_edge_num > 1) {
+		DFSATVisitor vis;
+		boost::depth_first_search(mission_decomposition, vis, colormap, 0);
+
+		vector<int> vctr = vis.GetVector();
+
+        for(int i : vctr) {
+            if(mission_decomposition[i].is_achieve_type && mission_decomposition[i].node_type != GOALNODE) {
+                mission_queue.push(make_pair(i,mission_decomposition[i]));
+            }
+
+            if(mission_decomposition[i].node_type == ATASK) {
+                if(mission_queue.size() == 0) {
+                    mission_queue.push(make_pair(0,mission_decomposition[0]));
+                }
+
                 mission_queue.push(make_pair(i,mission_decomposition[i]));
             }
         }
@@ -1055,9 +1218,11 @@ void ValidMissionGenerator::resolve_conflicts(vector<pair<int,ATNode>> possible_
                     // If all the decompositions of a task are in conflict, throw an error
                     if(found_task_decompositions[t1.first].size() == task_decompositions_number[t1.first]) {
                         string conflict_error = "Cannot solve conflicts with task " + get<AbstractTask>(mission_decomposition[t1.first].content).id + ": " + get<AbstractTask>(mission_decomposition[t1.first].content).name; 
+                        
                         throw std::runtime_error(conflict_error);
                     } else if(found_task_decompositions[t2.first].size() == task_decompositions_number[t2.first]) {
                         string conflict_error = "Cannot solve conflicts with task " + get<AbstractTask>(mission_decomposition[t2.first].content).id + ": " + get<AbstractTask>(mission_decomposition[t2.first].content).name; 
+                        
                         throw std::runtime_error(conflict_error);
                     }
 

@@ -18,7 +18,7 @@ void MissionDecomposer::set_world_state_functions(std::vector<std::pair<ground_l
 	world_state_functions = wsf;
 }
 
-void MissionDecomposer::set_at_decomposition_paths(map<string,vector<vector<task>>> atpaths) {
+void MissionDecomposer::set_at_decomposition_paths(map<string,vector<DecompositionPath>> atpaths) {
 	at_decomposition_paths = atpaths;
 }
 
@@ -151,9 +151,9 @@ bool MissionDecomposer::check_context_dependency(int parent_node, int current_no
 			
 			for(int d_id : decompositions) {
 				bool context_satisfied = false;
-				vector<task> path = std::get<Decomposition>(mission_decomposition[d_id].content).path;
+				DecompositionPath path = std::get<Decomposition>(mission_decomposition[d_id].content).path;
 				vector<ground_literal> world_state_copy = world_state;
-				for(task t : path) {
+				for(task t : path.decomposition) {
 					for(literal eff : t.eff) {
 						bool instantiated_eff = true;
 						vector<variant<pair<string,string>,pair<string,vector<string>>>> arg_map;
@@ -407,6 +407,79 @@ ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string, variant<pair<
 
 	final_context_dependency_links_generation();
 
+	if(is_unique_branch(mission_decomposition)) {
+		vector<size_t> achieve_goals;
+		
+		ATGraph::vertex_iterator i, end;
+
+		for(boost::tie(i,end) = vertices(mission_decomposition); i != end; ++i) {
+			if(mission_decomposition[*i].is_achieve_type && mission_decomposition[*i].node_type == GOALNODE) {
+				achieve_goals.push_back(*i);
+			}
+		}
+
+		for(size_t goal : achieve_goals) {
+			int parent = mission_decomposition[goal].parent;
+
+			if(parent != -1) {
+				ATNode aux;
+				aux = mission_decomposition[goal];
+
+				aux.node_type = OP;
+				aux.content = "#";
+
+				int aux_id = boost::add_vertex(aux, mission_decomposition);
+				
+				ATGraph::out_edge_iterator ei, ei_end;
+
+				for(boost::tie(ei,ei_end) = out_edges(parent,mission_decomposition);ei != ei_end;++ei) {
+					ATEdge e = mission_decomposition[*ei];
+
+					if(e.target == goal && e.edge_type == NORMAL) {
+						auto edge = boost::edge(parent,goal,mission_decomposition).first;
+
+						boost::remove_edge(edge, mission_decomposition);
+					}	
+				}
+
+				ATEdge e;
+				e.edge_type = NORMAL;
+				e.source = parent;
+				e.target = aux_id;
+
+				boost::add_edge(boost::vertex(parent, mission_decomposition), boost::vertex(aux_id, mission_decomposition), e, mission_decomposition);
+
+				ATEdge e2;
+				e2.edge_type = NORMAL;
+				e2.source = aux_id;
+				e2.target = goal;
+
+				boost::add_edge(boost::vertex(aux_id, mission_decomposition), boost::vertex(goal, mission_decomposition), e2, mission_decomposition);
+
+				ATNode* v = &mission_decomposition[goal];
+				v->parent = aux_id;
+			} else {
+				ATNode aux;
+				aux = mission_decomposition[goal];
+
+				aux.node_type = OP;
+				aux.content = "#";
+
+				int aux_id = boost::add_vertex(aux, mission_decomposition);
+
+				ATEdge e;
+				e.edge_type = NORMAL;
+				e.source = aux_id;
+				e.target = goal;
+
+				boost::add_edge(boost::vertex(aux_id, mission_decomposition), boost::vertex(goal, mission_decomposition), e, mission_decomposition);
+
+				ATNode* v = &mission_decomposition[goal];
+				v->parent = aux_id;
+			}
+		}
+	}
+
 	return mission_decomposition;
 }
 
@@ -605,7 +678,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 		AbstractTask at = std::get<AbstractTask>(node.content);
 
 		int path_id = 1;
-		for(vector<task> path : at_decomposition_paths[at.name]) {
+		for(DecompositionPath path : at_decomposition_paths[at.name]) {
 			ATNode path_node;
 			path_node.node_type = DECOMPOSITION;
 			path_node.non_coop = true;
@@ -615,7 +688,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 			d.id = at.id + "|" + to_string(path_id);
 			d.path = path;
 			d.at = at;
-			instantiate_decomposition_predicates(at,d,gm_vars_map);
+			instantiate_decomposition_predicates(at,d);
 
 			path_id++;
 
@@ -635,7 +708,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 	}
 }
 
-shared_ptr<MissionDecomposer> MissionDecomposerFactory::create_mission_decomposer(shared_ptr<KnowledgeManager> k_manager, vector<ground_literal> ws, vector<pair<ground_literal,int>> wsf, map<string,vector<vector<task>>> atpaths, 
+shared_ptr<MissionDecomposer> MissionDecomposerFactory::create_mission_decomposer(shared_ptr<KnowledgeManager> k_manager, vector<ground_literal> ws, vector<pair<ground_literal,int>> wsf, map<string,vector<DecompositionPath>> atpaths, 
 																							map<string,vector<AbstractTask>> atinst, general_annot* gma, GMGraph g) {
 	shared_ptr<MissionDecomposer> mission_decomposer;
 	

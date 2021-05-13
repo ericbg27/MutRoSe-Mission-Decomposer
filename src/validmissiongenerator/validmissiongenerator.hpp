@@ -9,6 +9,7 @@
 
 #include "../missiondecomposer/missiondecomposer.hpp"
 #include "../utils/constraint.hpp"
+#include "../utils/validmissiongeneratorutils.hpp"
 
 class ValidMissionGenerator {
     public:

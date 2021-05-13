@@ -22,7 +22,9 @@ struct ground_literal{
 	string predicate;
 	bool positive;
 	vector<string> args;
-	bool isAssignCostChange;
+	bool isAssignCostChange = false;
+	bool isComparison = false;
+	pair<string,int> comparison_op_and_value;
 };
 
 struct sort_definition{
@@ -54,7 +56,7 @@ struct function_expression {
 };
 
 enum formula_type {EMPTY, AND, OR, FORALL, EXISTS, ATOM, NOTATOM,  // formulae
-				   EQUAL, NOTEQUAL, OFSORT, NOTOFSORT,
+				   EQUAL, NOTEQUAL, OFSORT, NOTOFSORT, GREATER, EQUALPRED, GREATERPRED,
 				   WHEN,   // conditional effect
 				   VALUE, COST, COST_CHANGE, COST_CHANGE_INCREASE, COST_CHANGE_DECREASE, COST_CHANGE_ASSIGN, // cost statement
 				   REWARD, REWARD_CHANGE, FVALUE, PREDVALUE, INTVALUE, // reward statement
@@ -90,6 +92,7 @@ class general_formula{
 		additional_variables variables_for_constants();
 		
 		literal equalsLiteral();
+		literal comparisonLiteral();
 		literal atomLiteral();
 		reward_change rewardLiteral();
 		pair<vector<map<string,string> >, additional_variables> forallVariableReplacement();
