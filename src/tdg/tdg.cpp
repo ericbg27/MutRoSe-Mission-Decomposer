@@ -63,6 +63,12 @@ vector<DecompositionPath> TDG::retrieve_possible_decompositions() {
 
     paths = decomposition_recursion(depth_first_nodes,0, initial_vars, world_state, variable_mapping);
 
+    for(DecompositionPath& path : paths) {
+        std::sort(path.fragments_to_expand.begin(), path.fragments_to_expand.end(), [](auto &left, auto &right) {
+            return left.first.first < right.first.first;
+        });
+    }
+
     return paths;
 }
 
@@ -601,8 +607,6 @@ pair<bool,pair<literal,bool>> TDG::check_predicates(task t, vector<pair<string,s
             }
         }
     }
-
-    std::cout << "Expansion needed? " << expansion_needed << std::endl;
 
     return make_pair(executable,make_pair(expansion_pred,expansion_needed));
 }

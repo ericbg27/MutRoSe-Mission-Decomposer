@@ -204,7 +204,7 @@ pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decompositi
 	@ Input 3: The map between OCL goal model variables and HDDL variables
     @ Output: Void. The decomposition predicates are instantiated
 */
-void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_vars_map) {
+void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d) {
 	int task_counter = 1, task_number;
 
 	task_number = d.path.decomposition.size();
@@ -244,8 +244,13 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map
 									p.predicate = prec.predicate; 
 									p.args.push_back(std::get<string>(var_map.first.first));
 
+									if(prec.isComparisonExpression) {
+										p.isComparison = true;
+										p.comparison_op_and_value = prec.comparison_op_and_value;
+									}
+
 									inst_prec.push_back(p);
-								} else {
+								} else { // We cannot have function predicates when collection-related variables are used
 									vector<string> prec_vars = std::get<vector<string>>(var_map.first.first);
 									for(string var : prec_vars) {
 										ground_literal p;
@@ -296,9 +301,10 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, map
 						if(arg == var_map.second) {
 							if(holds_alternative<string>(var_map.first.first)) {
 								ground_literal e;
+	
 								e.positive = eff.positive;
 								e.predicate = eff.predicate;
-								e.args.push_back(std::get<string>(var_map.first.first));
+								e.args.push_back(std::get<string>(var_map.first.first));		
 
 								inst_eff.push_back(e);
 							} else {
@@ -807,38 +813,6 @@ void print_mission_decomposition(ATGraph mission_decomposition) {
 				std::cout << std::get<string>(a_node.content) << "(" << *ai << ")" << "(" << a_node.parent << ")" << "[OP]" << " ";
 			} else {
 				std::cout << std::get<Decomposition>(a_node.content).id << "(" << *ai << ")" << "(" << a_node.parent << ")" << "[D]" << " ";
-				/*std::cout << "\nCombined func effects for decomposition " << std::get<Decomposition>(a_node.content).id << ":" << std::endl;
-				for(auto f_eff : std::get<Decomposition>(a_node.content).func_eff) {
-					if(holds_alternative<literal>(f_eff)) {
-						literal fe = std::get<literal>(f_eff);
-						std::cout << "(= (" << fe.predicate << " ";
-						unsigned int index = 1;
-						for(string arg : fe.arguments) {
-							if(index == fe.arguments.size()) {
-								std::cout << arg << ") ";
-							} else {
-								std::cout << arg << " ";
-							}
-
-							index++;
-						}
-						std::cout << fe.costValue << ")" << std::endl;
-					} else {
-						pair<ground_literal,int> fe = std::get<pair<ground_literal,int>>(f_eff);
-						std::cout << "(= (" << fe.first.predicate << " ";
-						unsigned int index = 1;
-						for(string arg : fe.first.args) {
-							if(index == fe.first.args.size()) {
-								std::cout << arg << ") ";
-							} else {
-								std::cout << arg << " ";
-							}
-
-							index++;
-						}
-						std::cout << fe.second << ")" << std::endl;
-					}
-				}*/
 			}
 		}	
 		std::cout << std::endl;
@@ -852,22 +826,24 @@ bool is_unique_branch(ATGraph mission_decomposition) {
 
     int changed_root = false;
 	for(boost::tie(i,end) = vertices(mission_decomposition); i != end; ++i) {
-		int out_edge_num = 0;
-		ATGraph::out_edge_iterator ei, ei_end;
+		if(mission_decomposition[*i].node_type != ATASK) {
+			int out_edge_num = 0;
+			ATGraph::out_edge_iterator ei, ei_end;
 
-		for(boost::tie(ei,ei_end) = out_edges(*i,mission_decomposition);ei != ei_end;++ei) {
-			auto source = boost::source(*ei,mission_decomposition);
-			auto target = boost::target(*ei,mission_decomposition);
-			auto edge = boost::edge(source,target,mission_decomposition);
+			for(boost::tie(ei,ei_end) = out_edges(*i,mission_decomposition);ei != ei_end;++ei) {
+				auto source = boost::source(*ei,mission_decomposition);
+				auto target = boost::target(*ei,mission_decomposition);
+				auto edge = boost::edge(source,target,mission_decomposition);
 
-			if(mission_decomposition[edge.first].edge_type == NORMAL) {
-				out_edge_num++;
+				if(mission_decomposition[edge.first].edge_type == NORMAL) {
+					out_edge_num++;
+				}
 			}
-		}
 
-		if(out_edge_num > 1) {
-			changed_root = true;
-			break;
+			if(out_edge_num > 1) {
+				changed_root = true;
+				break;
+			}
 		}
 	}
 

@@ -27,9 +27,9 @@ void XMLOutputGenerator::generate_instances_output(vector<SemanticMapping> seman
     
     if(!is_unique) {
         pair<ATGraph,map<int,int>> trimmed_mission_decomposition = generate_trimmed_at_graph(mission_decomposition);  
-
+        
         mission_constraints = generate_at_constraints(trimmed_mission_decomposition.first);
-
+        
         for(Constraint& c : mission_constraints) {
             pair<int,ATNode> n1 = c.nodes_involved.first;
             pair<int,ATNode> n2 = c.nodes_involved.second;
@@ -52,9 +52,9 @@ void XMLOutputGenerator::generate_instances_output(vector<SemanticMapping> seman
             - It would be only if we had simultaneity constraints or non-overlapping constraints
     */
     vector<Constraint> final_mission_constraints = transform_at_constraints(mission_decomposition,mission_constraints,gm);
-    
-    generate_noncoop_constraints(final_mission_constraints,mission_decomposition);
 
+    generate_noncoop_constraints(final_mission_constraints,mission_decomposition);
+    
     // With the final constraints and the mission decomposition graph we generate our output
 
     pt::ptree output_file;

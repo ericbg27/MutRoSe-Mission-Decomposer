@@ -688,7 +688,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 			d.id = at.id + "|" + to_string(path_id);
 			d.path = path;
 			d.at = at;
-			instantiate_decomposition_predicates(at,d,gm_vars_map);
+			instantiate_decomposition_predicates(at,d);
 
 			path_id++;
 

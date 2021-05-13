@@ -22,8 +22,8 @@ struct ground_literal{
 	string predicate;
 	bool positive;
 	vector<string> args;
-	bool isAssignCostChange;
-	bool isComparison;
+	bool isAssignCostChange = false;
+	bool isComparison = false;
 	pair<string,int> comparison_op_and_value;
 };
 
