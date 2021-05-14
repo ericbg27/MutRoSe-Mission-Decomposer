@@ -4,12 +4,26 @@
 
 using namespace std;
 
-ValidMissionGenerator::ValidMissionGenerator(ATGraph md, GMGraph g, vector<Constraint> mc, vector<ground_literal> ws, vector<pair<ground_literal,int>> wsf) {
+/*
+    Function: ValidMissionGenerator
+    Objective: Class constructor
+
+    @ Input 1: The Task Graph as an ATGraph object
+    @ Input 2: The Goal Model as a GMGraph object
+    @ Input 3: The vector of mission constraints
+    @ Input 4: The initial state of the world (predicates)
+    @ Input 5: The initial state of the world (functions)
+    @ Input 6: The vector of semantic mappings defined in the configuration file
+    @ Input 7: The Goal Model variable mappings (between them and their values)
+*/
+ValidMissionGenerator::ValidMissionGenerator(ATGraph md, GMGraph g, vector<Constraint> mc, vector<ground_literal> ws, vector<pair<ground_literal,int>> wsf, vector<SemanticMapping> sm, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gmvmap) {
     mission_decomposition = md;
     gm = g;
     mission_constraints = mc;
     world_state = ws;
     world_state_functions = wsf;
+    semantic_mapping = sm;
+    gm_var_map = gmvmap;
 }
 
 /*
@@ -17,12 +31,10 @@ ValidMissionGenerator::ValidMissionGenerator(ATGraph md, GMGraph g, vector<Const
     Objective: Generate the valid mission decompositions based on constraints and on the world knowledge. This
     function iniatilizes variables based on the root node and calls a recursive function that performs the generation
 
-    @ Input 1: The Goal Model variable mappings
-    @ Input 2: The Semantic Mappings defined in the configuration
     @ Output: The valid mission decompositions vector. A mission decomposition is a vector of pairs of the 
     form ([task_id],[task_node])
 */
-vector<vector<pair<int,ATNode>>> ValidMissionGenerator::generate_valid_mission_decompositions(map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map, vector<SemanticMapping> semantic_mapping) {
+vector<vector<pair<int,ATNode>>> ValidMissionGenerator::generate_valid_mission_decompositions() {
     queue<pair<int,ATNode>> mission_queue = generate_mission_queue();
 
     /*
@@ -37,7 +49,7 @@ vector<vector<pair<int,ATNode>>> ValidMissionGenerator::generate_valid_mission_d
     */
     vector<pair<int,ATNode>> possible_conflicts;
     map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> effects_to_apply;
-    recursive_valid_mission_decomposition("", mission_queue, possible_conflicts, gm_var_map, effects_to_apply, -1, semantic_mapping);
+    recursive_valid_mission_decomposition("", mission_queue, possible_conflicts, effects_to_apply, -1);
 
     vector<vector<pair<int,ATNode>>> final_valid_mission_decompositions;
     for(auto mission_decomposition : valid_mission_decompositions) {
@@ -70,16 +82,12 @@ vector<vector<pair<int,ATNode>>> ValidMissionGenerator::generate_valid_mission_d
     @ Input 1: The last operation found in the recursive calls
     @ Input 2: A reference to the mission queue
     @ Input 3: The possible conflicts that need to be analyzed
-    @ Input 4: The Goal Model variable mappings
-    @ Input 5: The Semantic Mappings defined in the configuration file
-    @ Input 6: The map of effects to be applied
-    @ Input 7: The current node depth
+    @ Input 4: The map of effects to be applied
+    @ Input 5: The current node depth
     @ Output: Void. The valid mission decompositions will be generated
 */
 void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op, queue<pair<int,ATNode>>& mission_queue, vector<pair<int,ATNode>>& possible_conflicts, 
-                                                                        map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map,
-                                                                            map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>& effects_to_apply, 
-                                                                                int depth, vector<SemanticMapping> semantic_mapping) {
+                                                                    map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>& effects_to_apply, int depth) {
     /*
         Here we will get the current node and check whether it is an operator or an Abstract Task
     */
@@ -103,6 +111,7 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                     - This is done checking the out edges of the parallel operator node and verifying if the
                     node in the queue is present
                 -> For each child we recursively perform decomposition
+                    - Effects are kept in an effects to apply map, where they are applied after finishing all of the executions
             */
             bool checking_children = true;
 
@@ -170,7 +179,7 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                 }
 
                 if(is_child) {
-                    recursive_valid_mission_decomposition("#",mission_queue,possible_conflicts, gm_var_map, effects_to_apply, depth, semantic_mapping);
+                    recursive_valid_mission_decomposition("#",mission_queue,possible_conflicts, effects_to_apply, depth);
                 } else {
                     checking_children = false;
                 }
@@ -248,216 +257,14 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                 }
 
                 if(is_child) {
-                    recursive_valid_mission_decomposition(";", mission_queue, possible_conflicts, gm_var_map, effects_to_apply, depth, semantic_mapping);
+                    recursive_valid_mission_decomposition(";", mission_queue, possible_conflicts, effects_to_apply, depth);
                 } else {
                     checking_children = false;
                 }
             }
         }
 
-        vector<int> keys_to_erase;
-
-        map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>::iterator eff_it;
-        for(eff_it = effects_to_apply.begin(); eff_it != effects_to_apply.end(); ++eff_it) {
-            if(eff_it->first >= depth) {
-                for(auto& vmd : valid_mission_decompositions) {
-                    for(auto eff : eff_it->second) {
-                        bool found_pred = false;
-
-                        if(holds_alternative<ground_literal>(eff)) { 
-                            ground_literal e = std::get<ground_literal>(eff);
-                            for(auto& state : vmd.second.first) {  
-                                bool same_predicate = is_same_predicate(state, e);                         
-                                
-                                if(same_predicate) {
-                                    found_pred = true;
-
-                                    if(state.positive != e.positive) {
-                                        state.positive = e.positive;
-                                    }
-
-                                    break;
-                                }
-                            }
-
-                            if(!found_pred) {
-                                vmd.second.first.push_back(e);
-                            }
-                        } else {
-                            pair<ground_literal,int> e = std::get<pair<ground_literal,int>>(eff);
-                            for(auto& func_state : vmd.second.second) {
-                                bool same_predicate = is_same_predicate(func_state.first, e.first);              
-
-                                if(same_predicate) {
-                                    found_pred = true;
-
-                                    if(e.first.isAssignCostChange) {
-                                        func_state.second = e.second;
-                                    } else {
-                                        func_state.second += e.second;
-                                    }
-
-                                    break;
-                                }
-                            }
-                            
-                            if(!found_pred) {
-                                if(e.first.isAssignCostChange) {
-                                    e.first.isAssignCostChange = false;
-                                }
-
-                                vmd.second.second.push_back(e);
-                            } 
-                        }
-                    }
-                }   
-
-                keys_to_erase.push_back(eff_it->first);
-            }
-        }
-        
-        for(int key : keys_to_erase) {
-            effects_to_apply.erase(key);
-        }
-
-        if(current_node.second.is_achieve_type) {
-            string achievel_goal_id;
-
-            if(current_node.second.node_type != GOALNODE) {
-                ATGraph::out_edge_iterator ei, ei_end;
-
-                for(boost::tie(ei,ei_end) = out_edges(current_node.first,mission_decomposition);ei != ei_end;++ei) {
-                    auto source = boost::source(*ei,mission_decomposition);
-                    auto target = boost::target(*ei,mission_decomposition);
-                    auto edge = boost::edge(source,target,mission_decomposition);
-
-                    if(mission_decomposition[edge.first].edge_type == NORMAL) {
-                        if(mission_decomposition[target].node_type == GOALNODE) {
-                            achievel_goal_id = std::get<string>(mission_decomposition[target].content);
-                            break;
-                        }
-                    }
-                }
-            } else {
-                achievel_goal_id = std::get<string>(current_node.second.content);
-            }
-
-            int gm_node_id = find_gm_node_by_id(achievel_goal_id, gm);
-
-            AchieveCondition achieve_condition = get<AchieveCondition>(gm[gm_node_id].custom_props[achieve_condition_prop]);
-
-            vector<ground_literal> achieve_condition_predicates;
-            vector<pair<ground_literal,int>> achieve_condition_func_predicates;
-
-            variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<int,bool>>,bool> evaluation = achieve_condition.evaluate_condition(semantic_mapping, gm_var_map);
-
-            bool need_predicate_checking = false;
-            bool need_function_predicate_checking = false;
-            if(holds_alternative<pair<pair<predicate_definition,vector<string>>,bool>>(evaluation)) {
-                pair<pair<predicate_definition,vector<string>>,bool> eval = std::get<pair<pair<predicate_definition,vector<string>>,bool>>(evaluation);
-
-                for(string value : eval.first.second) {
-                    ground_literal aux;
-
-                    aux.predicate = eval.first.first.name;
-                    aux.positive = !eval.second;
-                    aux.args.push_back(value);
-
-                    achieve_condition_predicates.push_back(aux);
-                } 
-
-                need_predicate_checking = true;
-            } else if(holds_alternative<pair<pair<predicate_definition,vector<string>>,pair<int,bool>>>(evaluation)) {
-                pair<pair<predicate_definition,vector<string>>,pair<int,bool>> eval = std::get<pair<pair<predicate_definition,vector<string>>,pair<int,bool>>>(evaluation);
-
-                for(string value : eval.first.second) {
-                    ground_literal aux;
-
-                    aux.predicate = eval.first.first.name;
-                    aux.args.push_back(value);
-
-                    achieve_condition_func_predicates.push_back(make_pair(aux,eval.second.first));
-                }
-
-                need_function_predicate_checking = true;
-            }
-
-            vector<int> decompositions_to_erase;
-            if(need_predicate_checking) {
-                int decomposition_index = 0;
-                for(auto decomposition : valid_mission_decompositions) {
-                    vector<ground_literal> world_state = decomposition.second.first;
-
-                    bool valid_achieve_condition = true;
-                    for(ground_literal forAll_pred : achieve_condition_predicates) {
-                        for(ground_literal state : world_state) {
-                            bool same_predicate = is_same_predicate(state, forAll_pred);
-                                  
-                            if(!same_predicate) {
-                                break;
-                            }
-
-                            if(state.positive != forAll_pred.positive) {
-                                valid_achieve_condition = false;
-                                break;
-                            }
-                        }
-
-                        if(!valid_achieve_condition) {
-                            break;
-                        }
-                    }
-
-                    if(!valid_achieve_condition) {
-                        decompositions_to_erase.push_back(decomposition_index);
-                    }
-
-                    decomposition_index++;
-                }
-            } else if(need_function_predicate_checking) {
-                int decomposition_index = 0;
-                for(auto decomposition : valid_mission_decompositions) {
-                    vector<pair<ground_literal,int>> world_state_func = decomposition.second.second;
-
-                    bool valid_achieve_condition = true;
-                    for(pair<ground_literal,int> forAll_pred : achieve_condition_func_predicates) {
-                        for(pair<ground_literal,int> state : world_state_func) {
-                            bool same_predicate = is_same_predicate(state.first, forAll_pred.first);
-                                            
-                            if(!same_predicate) {
-                                break;
-                            }
-
-                            if(state.second != forAll_pred.second) {
-                                valid_achieve_condition = false;
-                                break;
-                            }
-                        }
-
-                        if(!valid_achieve_condition) {
-                            break;
-                        }
-                    }
-
-                    if(!valid_achieve_condition) {
-                        decompositions_to_erase.push_back(decomposition_index);
-                    }
-
-                    decomposition_index++;
-                }
-            }
-
-            std::sort(decompositions_to_erase.begin(), decompositions_to_erase.end());
-            for(auto i = decompositions_to_erase.rbegin(); i != decompositions_to_erase.rend(); ++i) {
-                valid_mission_decompositions.erase(valid_mission_decompositions.begin() + *i);
-            }
-
-            if(valid_mission_decompositions.size() == 0) {
-                string forAll_condition_not_achieved = "No decomposition satisfied achieve condition of goal " + achievel_goal_id;
-
-                throw std::runtime_error(forAll_condition_not_achieved);
-            }
-        }
+        apply_effects_and_check_conditions(effects_to_apply, depth, current_node);
     } else {
        /*
             If we have an AT we have to do the following for each decomposition
@@ -483,13 +290,6 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                 task_decompositions.push_back(make_pair(target,d));
             }
         }
-
-        /*
-            Expand necessary decompositions using world knowledge 
-
-            -> Will we have a different decompositoion for each valid mission decomposition?
-        */
-
 
         bool add_to_possible_conflicts = false;
         if(valid_mission_decompositions.size() > 0) {
@@ -690,8 +490,9 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
             bool at_least_one_decomposition_valid = false;
 
             for(pair<int,ATNode> task_decomposition : task_decompositions) {
-                //Check preconditions using the initial world state
                 Decomposition d = get<Decomposition>(task_decomposition.second.content);
+
+                //Check preconditions using the initial world state
                 bool preconditions_hold = true;
                 for(auto prec : d.prec) {
                     if(holds_alternative<ground_literal>(prec)) {
@@ -1102,6 +903,221 @@ void ValidMissionGenerator::resolve_conflicts(vector<pair<int,ATNode>> possible_
                     }
                 }
             }
+        }
+    }
+}
+
+/*
+    Function: apply_effects_and_check_conditions
+    Objective: Apply the effects that were left to apply and remove decompositions that do not satisfy achieve conditions
+
+    @ Input 1: A reference to the map of effects to be applied
+    @ Input 2: The current node depth
+    @ Input 3: The current node to be evaluated
+    @ Output: Void. The effects to apply method will be changed and the valid mission decompositionsn will be trimmed (if needed)
+*/
+void ValidMissionGenerator::apply_effects_and_check_conditions(map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>& effects_to_apply, int depth, pair<int,ATNode> current_node) {
+    vector<int> keys_to_erase;
+
+    map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>::iterator eff_it;
+    for(eff_it = effects_to_apply.begin(); eff_it != effects_to_apply.end(); ++eff_it) {
+        if(eff_it->first >= depth) {
+            for(auto& vmd : valid_mission_decompositions) {
+                for(auto eff : eff_it->second) {
+                    bool found_pred = false;
+
+                    if(holds_alternative<ground_literal>(eff)) { 
+                        ground_literal e = std::get<ground_literal>(eff);
+                        for(auto& state : vmd.second.first) {  
+                            bool same_predicate = is_same_predicate(state, e);                         
+                            
+                            if(same_predicate) {
+                                found_pred = true;
+
+                                if(state.positive != e.positive) {
+                                    state.positive = e.positive;
+                                }
+
+                                break;
+                            }
+                        }
+
+                        if(!found_pred) {
+                            vmd.second.first.push_back(e);
+                        }
+                    } else {
+                        pair<ground_literal,int> e = std::get<pair<ground_literal,int>>(eff);
+                        for(auto& func_state : vmd.second.second) {
+                            bool same_predicate = is_same_predicate(func_state.first, e.first);              
+
+                            if(same_predicate) {
+                                found_pred = true;
+
+                                if(e.first.isAssignCostChange) {
+                                    func_state.second = e.second;
+                                } else {
+                                    func_state.second += e.second;
+                                }
+
+                                break;
+                            }
+                        }
+                        
+                        if(!found_pred) {
+                            if(e.first.isAssignCostChange) {
+                                e.first.isAssignCostChange = false;
+                            }
+
+                            vmd.second.second.push_back(e);
+                        } 
+                    }
+                }
+            }   
+
+            keys_to_erase.push_back(eff_it->first);
+        }
+    }
+    
+    for(int key : keys_to_erase) {
+        effects_to_apply.erase(key);
+    }
+
+    if(current_node.second.is_achieve_type) {
+        string achievel_goal_id;
+
+        if(current_node.second.node_type != GOALNODE) {
+            ATGraph::out_edge_iterator ei, ei_end;
+
+            for(boost::tie(ei,ei_end) = out_edges(current_node.first,mission_decomposition);ei != ei_end;++ei) {
+                auto source = boost::source(*ei,mission_decomposition);
+                auto target = boost::target(*ei,mission_decomposition);
+                auto edge = boost::edge(source,target,mission_decomposition);
+
+                if(mission_decomposition[edge.first].edge_type == NORMAL) {
+                    if(mission_decomposition[target].node_type == GOALNODE) {
+                        achievel_goal_id = std::get<string>(mission_decomposition[target].content);
+                        break;
+                    }
+                }
+            }
+        } else {
+            achievel_goal_id = std::get<string>(current_node.second.content);
+        }
+
+        int gm_node_id = find_gm_node_by_id(achievel_goal_id, gm);
+
+        AchieveCondition achieve_condition = get<AchieveCondition>(gm[gm_node_id].custom_props[achieve_condition_prop]);
+
+        vector<ground_literal> achieve_condition_predicates;
+        vector<pair<ground_literal,int>> achieve_condition_func_predicates;
+
+        variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<int,bool>>,bool> evaluation = achieve_condition.evaluate_condition(semantic_mapping, gm_var_map);
+
+        bool need_predicate_checking = false;
+        bool need_function_predicate_checking = false;
+        if(holds_alternative<pair<pair<predicate_definition,vector<string>>,bool>>(evaluation)) {
+            pair<pair<predicate_definition,vector<string>>,bool> eval = std::get<pair<pair<predicate_definition,vector<string>>,bool>>(evaluation);
+
+            for(string value : eval.first.second) {
+                ground_literal aux;
+
+                aux.predicate = eval.first.first.name;
+                aux.positive = !eval.second;
+                aux.args.push_back(value);
+
+                achieve_condition_predicates.push_back(aux);
+            } 
+
+            need_predicate_checking = true;
+        } else if(holds_alternative<pair<pair<predicate_definition,vector<string>>,pair<int,bool>>>(evaluation)) {
+            pair<pair<predicate_definition,vector<string>>,pair<int,bool>> eval = std::get<pair<pair<predicate_definition,vector<string>>,pair<int,bool>>>(evaluation);
+
+            for(string value : eval.first.second) {
+                ground_literal aux;
+
+                aux.predicate = eval.first.first.name;
+                aux.args.push_back(value);
+
+                achieve_condition_func_predicates.push_back(make_pair(aux,eval.second.first));
+            }
+
+            need_function_predicate_checking = true;
+        }
+
+        vector<int> decompositions_to_erase;
+        if(need_predicate_checking) {
+            int decomposition_index = 0;
+            for(auto decomposition : valid_mission_decompositions) {
+                vector<ground_literal> world_state = decomposition.second.first;
+
+                bool valid_achieve_condition = true;
+                for(ground_literal forAll_pred : achieve_condition_predicates) {
+                    for(ground_literal state : world_state) {
+                        bool same_predicate = is_same_predicate(state, forAll_pred);
+                              
+                        if(!same_predicate) {
+                            break;
+                        }
+
+                        if(state.positive != forAll_pred.positive) {
+                            valid_achieve_condition = false;
+                            break;
+                        }
+                    }
+
+                    if(!valid_achieve_condition) {
+                        break;
+                    }
+                }
+
+                if(!valid_achieve_condition) {
+                    decompositions_to_erase.push_back(decomposition_index);
+                }
+
+                decomposition_index++;
+            }
+        } else if(need_function_predicate_checking) {
+            int decomposition_index = 0;
+            for(auto decomposition : valid_mission_decompositions) {
+                vector<pair<ground_literal,int>> world_state_func = decomposition.second.second;
+
+                bool valid_achieve_condition = true;
+                for(pair<ground_literal,int> forAll_pred : achieve_condition_func_predicates) {
+                    for(pair<ground_literal,int> state : world_state_func) {
+                        bool same_predicate = is_same_predicate(state.first, forAll_pred.first);
+                                        
+                        if(!same_predicate) {
+                            break;
+                        }
+
+                        if(state.second != forAll_pred.second) {
+                            valid_achieve_condition = false;
+                            break;
+                        }
+                    }
+
+                    if(!valid_achieve_condition) {
+                        break;
+                    }
+                }
+
+                if(!valid_achieve_condition) {
+                    decompositions_to_erase.push_back(decomposition_index);
+                }
+
+                decomposition_index++;
+            }
+        }
+
+        std::sort(decompositions_to_erase.begin(), decompositions_to_erase.end());
+        for(auto i = decompositions_to_erase.rbegin(); i != decompositions_to_erase.rend(); ++i) {
+            valid_mission_decompositions.erase(valid_mission_decompositions.begin() + *i);
+        }
+
+        if(valid_mission_decompositions.size() == 0) {
+            string forAll_condition_not_achieved = "No decomposition satisfied achieve condition of goal " + achievel_goal_id;
+
+            throw std::runtime_error(forAll_condition_not_achieved);
         }
     }
 }
