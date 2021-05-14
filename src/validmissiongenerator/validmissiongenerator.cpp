@@ -4,12 +4,26 @@
 
 using namespace std;
 
-ValidMissionGenerator::ValidMissionGenerator(ATGraph md, GMGraph g, vector<Constraint> mc, vector<ground_literal> ws, vector<pair<ground_literal,int>> wsf) {
+/*
+    Function: ValidMissionGenerator
+    Objective: Class constructor
+
+    @ Input 1: The Task Graph as an ATGraph object
+    @ Input 2: The Goal Model as a GMGraph object
+    @ Input 3: The vector of mission constraints
+    @ Input 4: The initial state of the world (predicates)
+    @ Input 5: The initial state of the world (functions)
+    @ Input 6: The vector of semantic mappings defined in the configuration file
+    @ Input 7: The Goal Model variable mappings (between them and their values)
+*/
+ValidMissionGenerator::ValidMissionGenerator(ATGraph md, GMGraph g, vector<Constraint> mc, vector<ground_literal> ws, vector<pair<ground_literal,int>> wsf, vector<SemanticMapping> sm, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gmvmap) {
     mission_decomposition = md;
     gm = g;
     mission_constraints = mc;
     world_state = ws;
     world_state_functions = wsf;
+    semantic_mapping = sm;
+    gm_var_map = gmvmap;
 }
 
 /*
@@ -17,12 +31,10 @@ ValidMissionGenerator::ValidMissionGenerator(ATGraph md, GMGraph g, vector<Const
     Objective: Generate the valid mission decompositions based on constraints and on the world knowledge. This
     function iniatilizes variables based on the root node and calls a recursive function that performs the generation
 
-    @ Input 1: The Goal Model variable mappings
-    @ Input 2: The Semantic Mappings defined in the configuration
     @ Output: The valid mission decompositions vector. A mission decomposition is a vector of pairs of the 
     form ([task_id],[task_node])
 */
-vector<vector<pair<int,ATNode>>> ValidMissionGenerator::generate_valid_mission_decompositions(map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map, vector<SemanticMapping> semantic_mapping) {
+vector<vector<pair<int,ATNode>>> ValidMissionGenerator::generate_valid_mission_decompositions() {
     queue<pair<int,ATNode>> mission_queue = generate_mission_queue();
 
     /*
@@ -37,7 +49,7 @@ vector<vector<pair<int,ATNode>>> ValidMissionGenerator::generate_valid_mission_d
     */
     vector<pair<int,ATNode>> possible_conflicts;
     map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> effects_to_apply;
-    recursive_valid_mission_decomposition("", mission_queue, possible_conflicts, gm_var_map, effects_to_apply, -1, semantic_mapping);
+    recursive_valid_mission_decomposition("", mission_queue, possible_conflicts, effects_to_apply, -1);
 
     vector<vector<pair<int,ATNode>>> final_valid_mission_decompositions;
     for(auto mission_decomposition : valid_mission_decompositions) {
@@ -70,16 +82,12 @@ vector<vector<pair<int,ATNode>>> ValidMissionGenerator::generate_valid_mission_d
     @ Input 1: The last operation found in the recursive calls
     @ Input 2: A reference to the mission queue
     @ Input 3: The possible conflicts that need to be analyzed
-    @ Input 4: The Goal Model variable mappings
-    @ Input 5: The map of effects to be applied
-    @ Input 6: The current node depth
-    @ Input 7: The Semantic Mappings defined in the configuration file
+    @ Input 4: The map of effects to be applied
+    @ Input 5: The current node depth
     @ Output: Void. The valid mission decompositions will be generated
 */
 void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op, queue<pair<int,ATNode>>& mission_queue, vector<pair<int,ATNode>>& possible_conflicts, 
-                                                                        map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map,
-                                                                            map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>& effects_to_apply, 
-                                                                                int depth, vector<SemanticMapping> semantic_mapping) {
+                                                                    map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>& effects_to_apply, int depth) {
     /*
         Here we will get the current node and check whether it is an operator or an Abstract Task
     */
@@ -103,6 +111,7 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                     - This is done checking the out edges of the parallel operator node and verifying if the
                     node in the queue is present
                 -> For each child we recursively perform decomposition
+                    - Effects are kept in an effects to apply map, where they are applied after finishing all of the executions
             */
             bool checking_children = true;
 
@@ -170,7 +179,7 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                 }
 
                 if(is_child) {
-                    recursive_valid_mission_decomposition("#",mission_queue,possible_conflicts, gm_var_map, effects_to_apply, depth, semantic_mapping);
+                    recursive_valid_mission_decomposition("#",mission_queue,possible_conflicts, effects_to_apply, depth);
                 } else {
                     checking_children = false;
                 }
@@ -248,14 +257,14 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                 }
 
                 if(is_child) {
-                    recursive_valid_mission_decomposition(";", mission_queue, possible_conflicts, gm_var_map, effects_to_apply, depth, semantic_mapping);
+                    recursive_valid_mission_decomposition(";", mission_queue, possible_conflicts, effects_to_apply, depth);
                 } else {
                     checking_children = false;
                 }
             }
         }
 
-        apply_effects_and_check_conditions(effects_to_apply, depth, current_node, semantic_mapping, gm_var_map);
+        apply_effects_and_check_conditions(effects_to_apply, depth, current_node);
     } else {
        /*
             If we have an AT we have to do the following for each decomposition
@@ -281,13 +290,6 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
                 task_decompositions.push_back(make_pair(target,d));
             }
         }
-
-        /*
-            Expand necessary decompositions using world knowledge 
-
-            -> Will we have a different decompositoion for each valid mission decomposition?
-        */
-
 
         bool add_to_possible_conflicts = false;
         if(valid_mission_decompositions.size() > 0) {
@@ -488,8 +490,9 @@ void ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op
             bool at_least_one_decomposition_valid = false;
 
             for(pair<int,ATNode> task_decomposition : task_decompositions) {
-                //Check preconditions using the initial world state
                 Decomposition d = get<Decomposition>(task_decomposition.second.content);
+
+                //Check preconditions using the initial world state
                 bool preconditions_hold = true;
                 for(auto prec : d.prec) {
                     if(holds_alternative<ground_literal>(prec)) {
@@ -911,12 +914,9 @@ void ValidMissionGenerator::resolve_conflicts(vector<pair<int,ATNode>> possible_
     @ Input 1: A reference to the map of effects to be applied
     @ Input 2: The current node depth
     @ Input 3: The current node to be evaluated
-    @ Input 4: The Semantic Mappings defined in the configuration file
-    @ Input 5: The Goal Model variable mappings
     @ Output: Void. The effects to apply method will be changed and the valid mission decompositionsn will be trimmed (if needed)
 */
-void ValidMissionGenerator::apply_effects_and_check_conditions(map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>& effects_to_apply, int depth, pair<int,ATNode> current_node, vector<SemanticMapping> semantic_mapping,
-                                                map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
+void ValidMissionGenerator::apply_effects_and_check_conditions(map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>& effects_to_apply, int depth, pair<int,ATNode> current_node) {
     vector<int> keys_to_erase;
 
     map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>::iterator eff_it;
