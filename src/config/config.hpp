@@ -27,6 +27,8 @@ class SemanticMapping { //The only type of semantic mapping we have
         void set_mapping_type(std::string mapping_type);
         void set_mapped_type(std::string mapped_type);
 
+        bool has_prop(std::string prop_name);
+
         std::variant<std::string,predicate_definition> get_prop(std::string prop_name);
 
         void operator=(SemanticMapping sm);
