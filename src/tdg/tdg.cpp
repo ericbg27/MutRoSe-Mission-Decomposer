@@ -718,6 +718,17 @@ void TDG::variable_renaming(task& t, vector<pair<string,string>> var_mapping) {
         }
     }
 
+    for(literal& cexp : t.costExpression) {
+        for(string& arg : cexp.arguments) {
+            for(pair<string,string>& arg_mapping : var_mapping) {
+                if(arg_mapping.first == arg) {
+                    arg = arg_mapping.second;
+                    break;
+                }
+            }
+        }
+    }
+
     //Rename task variables
     for(pair<string,string>& var : t.vars) {
         for(pair<string,string>& arg_mapping : var_mapping) {
