@@ -110,6 +110,13 @@ void check_semantic_mapping(vector<SemanticMapping> semantic_mapping, vector<pre
                             throw std::runtime_error(relation_not_found_error);
                         }
 
+                        if(sm.has_prop("predicate_type")) {
+                            if(parse_gm_var_type(relation_type) != "COLLECTION") {
+                                string predicate_type_attr_error = "Cannot have attribute predicate_type for semantic mapping with relation type [" + relation_type + "]";
+
+                                throw std::runtime_error(predicate_type_attr_error);
+                            }
+                        }
                     }
 
                     predicate_definition sm_pred = std::get<predicate_definition>(sm.get_prop("map"));

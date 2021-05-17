@@ -62,11 +62,20 @@ string VariableMapping::get_gm_var() {
     return this->gm_var;
 }
 
-variant<string,predicate_definition> SemanticMapping::get_prop(string prop) {
+bool SemanticMapping::has_prop(string prop) {
     if(this->mapping_props.find(prop) != this->mapping_props.end()) {
+        return true;
+    }
+
+    return false;
+}
+
+variant<string,predicate_definition> SemanticMapping::get_prop(string prop) {
+    if(this->has_prop(prop)) {
         return this->mapping_props[prop];
     } else {
         string no_prop_error = "No property " + prop + " found in semantic mapping";
+        
         throw std::runtime_error(no_prop_error);
     }
 }
