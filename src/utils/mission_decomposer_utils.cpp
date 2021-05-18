@@ -226,6 +226,7 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d) {
 					}
 
 					if(!found_arg) {
+						std::cout << "Could not find argument [" << arg << "] for predicate [" << prec.predicate << "]" << std::endl;
 						can_ground = false;
 						break;
 					}
@@ -239,26 +240,53 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d) {
 						for(pair<pair<variant<vector<string>,string>,string>,string> var_map : at.variable_mapping) {
 							if(arg == var_map.second) {
 								if(holds_alternative<string>(var_map.first.first)) {
-									ground_literal p;
-									p.positive = prec.positive;
-									p.predicate = prec.predicate; 
-									p.args.push_back(std::get<string>(var_map.first.first));
-
-									if(prec.isComparisonExpression) {
-										p.isComparison = true;
-										p.comparison_op_and_value = prec.comparison_op_and_value;
-									}
-
-									inst_prec.push_back(p);
-								} else { // We cannot have function predicates when collection-related variables are used
-									vector<string> prec_vars = std::get<vector<string>>(var_map.first.first);
-									for(string var : prec_vars) {
+									if(inst_prec.size() == 0) {
 										ground_literal p;
 										p.positive = prec.positive;
 										p.predicate = prec.predicate; 
-										p.args.push_back(var);
+										p.args.push_back(std::get<string>(var_map.first.first));
+
+										if(prec.isComparisonExpression) {
+											p.isComparison = true;
+											p.comparison_op_and_value = prec.comparison_op_and_value;
+										}
 
 										inst_prec.push_back(p);
+									} else {
+										vector<ground_literal> new_inst_prec;
+
+										for(ground_literal p : inst_prec) {
+											p.args.push_back(std::get<string>(var_map.first.first));
+
+											new_inst_prec.push_back(p);
+										}
+
+										inst_prec = new_inst_prec;
+									}
+								} else { // We cannot have function predicates when collection-related variables are used
+									vector<string> prec_vars = std::get<vector<string>>(var_map.first.first);
+									if(inst_prec.size() == 0) {
+										for(string var : prec_vars) {
+											ground_literal p;
+											p.positive = prec.positive;
+											p.predicate = prec.predicate; 
+											p.args.push_back(var);
+
+											inst_prec.push_back(p);
+										}
+									} else {
+										vector<ground_literal> new_inst_prec;
+
+										for(ground_literal p : inst_prec) {
+											for(string var : prec_vars) {
+												ground_literal aux = p;
+												aux.args.push_back(var);
+
+												new_inst_prec.push_back(aux);
+											}
+										}
+
+										inst_prec = new_inst_prec;
 									}
 								}
 							}

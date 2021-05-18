@@ -15,7 +15,7 @@
 
     <output>
         <output_type>file</output_type>
-        <file_path>xml/Object Picking/task_output.xml</file_path>
+        <file_path>xml/Object Picking/Multiple Args/task_output.xml</file_path>
         <file_type>xml</file_type>
     </output>
 

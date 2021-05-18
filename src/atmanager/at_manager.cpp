@@ -392,6 +392,7 @@ map<string,vector<AbstractTask>> FileKnowledgeATManager::generate_at_instances(m
 								} else {
 									at.robot_num = get<pair<int,int>>(gm[v].robot_num);
 								}
+								at.variable_mapping = at_inst.variable_mapping;
 								
 								for(VariableMapping var : var_mapping) {
 									if(var.get_task_id() == at_def.first) {
@@ -480,10 +481,10 @@ map<string,vector<AbstractTask>> FileKnowledgeATManager::generate_at_instances(m
 									} else {
 										at.robot_num = get<pair<int,int>>(gm[v].robot_num);
 									}
+									at.variable_mapping = at_inst.variable_mapping;
 
 									string param_value = current_val.get<string>("name");
 									at.params.push_back(param_value);
-
 									
 									for(VariableMapping var : var_mapping) {
 										if(var.get_task_id() == at_def.first) {
@@ -597,6 +598,7 @@ map<string,vector<AbstractTask>> FileKnowledgeATManager::generate_at_instances(m
 								} else {
 									at.robot_num = get<pair<int,int>>(gm[v].robot_num);
 								}
+								at.variable_mapping = at_inst.variable_mapping;
 
 								for(VariableMapping var : var_mapping) {
 									if(var.get_task_id() == at_def.first) {
@@ -712,6 +714,7 @@ map<string,vector<AbstractTask>> FileKnowledgeATManager::generate_at_instances(m
 							at.variable_mapping.push_back(new_var_mapping);
 						} else {
 							string var_mapping_error = "Could not find variable mapping for task " + at.name;
+
 							throw std::runtime_error(var_mapping_error);
 						}
 					}
