@@ -59,7 +59,7 @@
         <mapping>
             <type>attribute</type>
             <name>is_clean</name>
-            <relation>Room</relation>
+            <relates_to>Room</relates_to>
             <belongs_to>world_db</belongs_to>
             <mapped_type>predicate</mapped_type>
             <map>
@@ -70,7 +70,7 @@
         <mapping>
             <type>attribute</type>
             <name>is_prepared</name>
-            <relation>Room</relation>
+            <relates_to>Room</relates_to>
             <belongs_to>world_db</belongs_to>
             <mapped_type>predicate</mapped_type>
             <map>
@@ -81,7 +81,7 @@
         <mapping>
             <type>attribute</type>
             <name>is_sanitized</name>
-            <relation>robot</relation>
+            <relates_to>robot</relates_to>
             <belongs_to>robots_db</belongs_to>
             <mapped_type>predicate</mapped_type>
             <map>
@@ -92,7 +92,7 @@
         <mapping>
             <type>attribute</type>
             <name>door_open</name>
-            <relation>Room</relation>
+            <relates_to>Room</relates_to>
             <belongs_to>world_db</belongs_to>
             <mapped_type>predicate</mapped_type>
             <map>
@@ -103,7 +103,7 @@
         <mapping>
             <type>attribute</type>
             <name>is_clean</name>
-            <relation>Sequence(Room)</relation>
+            <relates_to>Sequence(Room)</relates_to>
             <belongs_to>world_db</belongs_to>
             <mapped_type>predicate</mapped_type>
             <predicate_type>Universal</predicate_type>

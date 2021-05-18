@@ -74,6 +74,8 @@ pair<SemanticMapping, bool> find_predicate_mapping(variant<ground_literal,litera
                             found_args = false;
                             break;
                         }
+
+                        arg_index++;
                     }
 
                     if(found_args) { 

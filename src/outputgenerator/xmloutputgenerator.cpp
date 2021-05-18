@@ -248,7 +248,8 @@ map<string,string> XMLOutputGenerator::output_tasks(pt::ptree& output_file, vect
                         }
                     }
                 }
-                semantic_mapping_error += "when trying to generate output for task " + instance.id + ": " + instance.at.name;
+                semantic_mapping_error += "] when trying to generate output for task " + instance.id + ": " + instance.at.name;
+
                 throw std::runtime_error(semantic_mapping_error);
             } else {
                 /*
@@ -258,7 +259,7 @@ map<string,string> XMLOutputGenerator::output_tasks(pt::ptree& output_file, vect
                 */
                 string prec_output;
 
-                if(prec_mapping.first.get_mapping_type() == "attribute") {  
+                if(prec_mapping.first.get_mapping_type() == attribute_mapping_type) {  
                     vector<string> arguments;
                     string prec_name;
                     if(holds_alternative<ground_literal>(prec)) {
@@ -312,6 +313,10 @@ map<string,string> XMLOutputGenerator::output_tasks(pt::ptree& output_file, vect
                     output_file.put(prec_attr_xml,var_types_list);
 
                     output_file.put(prec_name_xml,prec_output);
+                } else if(prec_mapping.first.get_mapping_type() == ownership_mapping_type) {
+                    /*
+                        Do we need to output preconditions related to ownership type semantic mappings?
+                    */
                 }
 
                 prec_index++;

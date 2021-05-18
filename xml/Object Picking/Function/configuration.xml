@@ -41,7 +41,7 @@
         <mapping>
             <type>attribute</type>
             <name>num_objects</name>
-            <relation>Room</relation>
+            <relates_to>Room</relates_to>
             <belongs_to>world_db</belongs_to>
             <mapped_type>function</mapped_type>
             <map>
