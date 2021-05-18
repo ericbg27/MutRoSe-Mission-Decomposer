@@ -309,7 +309,7 @@ void FileKnowledgeManager::initialize_world_state(vector<ground_literal>& init, 
         //For now we are only mapping attributes
         if(sm.get_mapping_type() == "attribute") {
             string attr_name = std::get<string>(sm.get_prop("name"));
-            string relation_type = std::get<string>(sm.get_prop("relation"));
+            string relation_type = std::get<string>(sm.get_prop(relatesto_key));
             if(relation_type != "robot") {
                 string db = std::get<string>(sm.get_prop("belongs_to"));
 

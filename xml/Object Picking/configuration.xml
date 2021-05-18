@@ -46,7 +46,7 @@
         <mapping>
             <type>attribute</type>
             <name>is_picked</name>
-            <relation>Object</relation>
+            <relates_to>Object</relation>
             <belongs_to>world_db</belongs_to>
             <mapped_type>predicate</mapped_type>
             <map>

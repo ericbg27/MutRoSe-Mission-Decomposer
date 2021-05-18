@@ -65,7 +65,7 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate
             for(SemanticMapping sm : semantic_mapping) {
                 if(sm.get_mapping_type() == "attribute") {
                     if(sm.get_mapped_type() == "predicate") {
-                        string relation = std::get<string>(sm.get_prop("relation"));
+                        string relation = std::get<string>(sm.get_prop(relatesto_key));
                         if(relation == value_and_type.second) {
                             if(std::get<string>(sm.get_prop("name")) == attribute) {
                                 map_pred = std::get<predicate_definition>(sm.get_prop("map"));
@@ -83,7 +83,7 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate
             for(SemanticMapping sm : semantic_mapping) {
                 if(sm.get_mapping_type() == "attribute") {
                     if(sm.get_mapped_type() == "predicate") {
-                        string relation = std::get<string>(sm.get_prop("relation"));
+                        string relation = std::get<string>(sm.get_prop(relatesto_key));
                         if(relation == value_and_type.second) {
                             if(std::get<string>(sm.get_prop("name")) == attribute) {
                                 map_pred = std::get<predicate_definition>(sm.get_prop("map"));
@@ -162,7 +162,7 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate
             for(SemanticMapping sm : semantic_mapping) {
                 if(sm.get_mapping_type() == "attribute") {
                     if(sm.get_mapped_type() == "function") {
-                        string relation = std::get<string>(sm.get_prop("relation"));
+                        string relation = std::get<string>(sm.get_prop(relatesto_key));
                         if(relation == value_and_type.second) {
                             if(std::get<string>(sm.get_prop("name")) == attribute) {
                                 map_pred = std::get<predicate_definition>(sm.get_prop("map"));
@@ -180,7 +180,7 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate
             for(SemanticMapping sm : semantic_mapping) {
                 if(sm.get_mapping_type() == "attribute") {
                     if(sm.get_mapped_type() == "function") {
-                        string relation = std::get<string>(sm.get_prop("relation"));
+                        string relation = std::get<string>(sm.get_prop(relatesto_key));
                         if(relation == value_and_type.second) {
                             if(std::get<string>(sm.get_prop("name")) == attribute) {
                                 map_pred = std::get<predicate_definition>(sm.get_prop("map"));

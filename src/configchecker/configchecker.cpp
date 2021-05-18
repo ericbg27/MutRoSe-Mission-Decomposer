@@ -92,15 +92,25 @@ void check_high_level_loc_types(vector<string> high_level_loc_types, set<string>
 void check_semantic_mapping(vector<SemanticMapping> semantic_mapping, vector<predicate_definition> predicate_definitions, map<string,string> type_mapping, set<string> ocl_types) {
     for(SemanticMapping sm : semantic_mapping) {
         bool is_robot_related_mapping = false;
-        if(holds_alternative<string>(sm.get_prop("relation"))) {
-            if(std::get<string>(sm.get_prop("relation")) == "robot") {
+        if(sm.get_mapping_type() == attribute_mapping_type) {
+            if(holds_alternative<string>(sm.get_prop(relatesto_key))) {
+                if(std::get<string>(sm.get_prop(relatesto_key)) == "robot") {
+                    is_robot_related_mapping = true;
+                }
+            }
+        } else if(sm.get_mapped_type() == ownership_mapping_type) {
+            string owner = std::get<string>(sm.get_prop(owner_key));
+            string owned = std::get<string>(sm.get_prop(owned_key));
+
+            if(owner == "robot" || owned == "robot") { //This probably will need to change
                 is_robot_related_mapping = true;
             }
         }
+
         if(!is_robot_related_mapping) {
-            if(sm.get_mapped_type() == "predicate") {
-                if(sm.get_mapping_type() == "attribute") {
-                    variant<string,predicate_definition> relation_types = sm.get_prop("relation");
+            if(sm.get_mapped_type() == predicate_mapped_type) {
+                if(sm.get_mapping_type() == attribute_mapping_type) {
+                    variant<string,predicate_definition> relation_types = sm.get_prop(relatesto_key);
                     if(holds_alternative<string>(relation_types)) {
                         string relation_type = std::get<string>(relation_types);
 
@@ -119,7 +129,7 @@ void check_semantic_mapping(vector<SemanticMapping> semantic_mapping, vector<pre
                         }
                     }
 
-                    predicate_definition sm_pred = std::get<predicate_definition>(sm.get_prop("map"));
+                    predicate_definition sm_pred = std::get<predicate_definition>(sm.get_prop(map_key));
 
                     bool found_sm_pred = false;
                     for(predicate_definition pred : predicate_definitions) {
@@ -159,6 +169,55 @@ void check_semantic_mapping(vector<SemanticMapping> semantic_mapping, vector<pre
 
                                 throw std::runtime_error(semantic_mapping_error);
                             }
+                        }
+                    }
+                } else if(sm.get_mapping_type() == ownership_mapping_type) {
+                    string owner_type = std::get<string>(sm.get_prop(owner_key));
+                    string owned_type = std::get<string>(sm.get_prop(owned_key));
+                    predicate_definition sm_pred = std::get<predicate_definition>(sm.get_prop(map_key));
+
+                    bool found_sm_pred = false;
+                    for(predicate_definition pred : predicate_definitions) {
+                        if(pred.name == sm_pred.name) {
+                            bool equal_args = true;
+                            if(pred.argument_sorts.size() == sm_pred.argument_sorts.size()) {
+                                for(unsigned int arg_index = 0; arg_index < pred.argument_sorts.size(); ++arg_index) {
+                                    if(pred.argument_sorts.at(arg_index) != sm_pred.argument_sorts.at(arg_index)) {
+                                        equal_args = false;
+                                        break;
+                                    }
+                                }
+
+                                if(equal_args) {
+                                    found_sm_pred = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if(!found_sm_pred) {
+                        string predicate_not_found_error = "Could not find predicate [" + sm_pred.name + "] declared in semantic mappings";
+
+                        throw std::runtime_error(predicate_not_found_error); 
+                    } else {
+                        if(sm_pred.argument_sorts.size() != 2) {
+                            string argument_number_error = "Wrong number of arguments in predicate of ownership type mapping";
+
+                            throw std::runtime_error(argument_number_error);
+                        }
+                        /*
+                            -> For now, first argument must be of owned type and second argument must be of owner type
+                        */
+                        if(type_mapping[owned_type] != sm_pred.argument_sorts.at(0)) {
+                            string semantic_mapping_error = "Cannot map predicate [" + sm_pred.name + "] with argument of type " + sm_pred.argument_sorts.at(0) + " to owned type " + owned_type;
+
+                            throw std::runtime_error(semantic_mapping_error);
+                        }
+                        if(type_mapping[owner_type] != sm_pred.argument_sorts.at(1)) {
+                            string semantic_mapping_error = "Cannot map predicate [" + sm_pred.name + "] with argument of type " + sm_pred.argument_sorts.at(1) + " to owner type " + owner_type;
+
+                            throw std::runtime_error(semantic_mapping_error);
                         }
                     }
                 }

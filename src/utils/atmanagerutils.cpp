@@ -164,7 +164,7 @@ bool check_path_validity(vector<task> path, vector<ground_literal> world_state, 
 						for(SemanticMapping sm : semantic_mappings) {
 							predicate_definition sm_pred = std::get<predicate_definition>(sm.get_prop("map"));
 							if(sm_pred.name == prec.predicate) {
-								string relation_type = std::get<string>(sm.get_prop("relation"));
+								string relation_type = std::get<string>(sm.get_prop(relatesto_key));
 								std::transform(relation_type.begin(),relation_type.end(),relation_type.begin(),::toupper);
 								if(relation_type == var_ocl_type) {
 									map<string, variant<string, predicate_definition>> sm_props = sm.get_mapping_props();
