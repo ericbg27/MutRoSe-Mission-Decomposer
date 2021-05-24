@@ -137,7 +137,7 @@
             "Description": "",
             "GoalType": "Query",
             "Controls": "sanitization_room : Room",
-            "QueriedProperty": "location_db->select(r:Room|r.name == \"SanitizationRoom\")"
+            "QueriedProperty": "location_db->select(r:Room|r.name = \"SanitizationRoom\")"
           }
         },
         {

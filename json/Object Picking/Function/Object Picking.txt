@@ -42,7 +42,7 @@
           "customProperties": {
             "Description": "",
             "GoalType": "Achieve",
-            "AchieveCondition": "rooms->forAll(current_room | current_room.num_objects == 0)",
+            "AchieveCondition": "rooms->forAll(current_room | current_room.num_objects = 0)",
             "Monitors": "rooms",
             "Controls": "current_room : Room"
           }

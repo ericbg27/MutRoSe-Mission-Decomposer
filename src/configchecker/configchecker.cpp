@@ -220,6 +220,59 @@ void check_semantic_mapping(vector<SemanticMapping> semantic_mapping, vector<pre
                             throw std::runtime_error(semantic_mapping_error);
                         }
                     }
+                } else if(sm.get_mapping_type() == relationship_mapping_type) {
+                    string main_entity_type = std::get<string>(sm.get_prop(mainentity_key));
+                    string related_entity_type = std::get<string>(sm.get_prop(relatedentity_key));
+                    predicate_definition sm_pred = std::get<predicate_definition>(sm.get_prop(map_key));
+
+                    bool found_sm_pred = false;
+                    for(predicate_definition pred : predicate_definitions) {
+                        if(pred.name == sm_pred.name) {
+                            bool equal_args = true;
+                            if(pred.argument_sorts.size() == sm_pred.argument_sorts.size()) {
+                                for(unsigned int arg_index = 0; arg_index < pred.argument_sorts.size(); ++arg_index) {
+                                    if(pred.argument_sorts.at(arg_index) != sm_pred.argument_sorts.at(arg_index)) {
+                                        equal_args = false;
+                                        break;
+                                    }
+                                }
+
+                                if(equal_args) {
+                                    found_sm_pred = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if(!found_sm_pred) {
+                        string predicate_not_found_error = "Could not find predicate [" + sm_pred.name + "] declared in semantic mappings";
+
+                        throw std::runtime_error(predicate_not_found_error); 
+                    } else {
+                        if(sm_pred.argument_sorts.size() != 2) {
+                            string argument_number_error = "Wrong number of arguments in predicate of ownership type mapping";
+
+                            throw std::runtime_error(argument_number_error);
+                        }
+                        /*
+                            -> For now, first argument must be of related entity type and second argument must be of main entity type
+                        */
+                        if(type_mapping[related_entity_type] != sm_pred.argument_sorts.at(0)) {
+                            string semantic_mapping_error = "Cannot map predicate [" + sm_pred.name + "] with argument of type " + sm_pred.argument_sorts.at(0) + " to related entity type " + related_entity_type;
+
+                            throw std::runtime_error(semantic_mapping_error);
+                        }
+                        if(type_mapping[main_entity_type] != sm_pred.argument_sorts.at(1)) {
+                            string semantic_mapping_error = "Cannot map predicate [" + sm_pred.name + "] with argument of type " + sm_pred.argument_sorts.at(1) + " to main entity type " + main_entity_type;
+
+                            throw std::runtime_error(semantic_mapping_error);
+                        }
+                    }
+                } else {
+                    string unknown_mapping_type_error = "No mapping type [" + sm.get_mapping_type() + "] for semantic mappings.";
+
+                    throw std::runtime_error(unknown_mapping_type_error);
                 }
             }
         }

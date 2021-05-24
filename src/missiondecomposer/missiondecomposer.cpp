@@ -593,6 +593,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 			int value_index = 0;
 			for(general_annot* child : rannot->children) {
 				pair<vector<string>,string> var_map = std::get<pair<vector<string>,string>>(gm_vars_map[monitored_var.first]);
+
 				instantiated_vars[controlled_var.first] = var_map.first.at(value_index);
 				value_index++;
 

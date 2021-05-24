@@ -264,23 +264,94 @@ void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm
 						aux.push_back(child.second);
 					}
 				} else {
-					string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
-					string prop_val;
-					try {
-						prop_val = child.second.get<string>(prop);
-					} catch(...) {
-						string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
+					if(q.query.at(1) == "=" || q.query.at(1) == "<>") {
+						string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
+						string prop_val;
+						try {
+							prop_val = child.second.get<string>(prop);
+						} catch(...) {
+							string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
 
-						throw std::runtime_error(bad_condition);
-					}
+							throw std::runtime_error(bad_condition);
+						}
 
-					bool result;
-					if(q.query.at(1) == "==") {
-						result = (prop_val == q.query.at(2));
-					} else {
-						result = (prop_val != q.query.at(2));
+						bool result;
+						if(q.query.at(1) == "=") {
+							result = (prop_val == q.query.at(2));
+						} else {
+							result = (prop_val != q.query.at(2));
+						}
+						if(result) aux.push_back(child.second);
+					} else if(q.query.at(1) == "in") {
+						string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
+						string prop_val;
+						try {
+							prop_val = child.second.get<string>(prop);
+						} catch(...) {
+							string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
+
+							throw std::runtime_error(bad_condition);
+						}
+
+						string attr_to_search = q.query.at(2);
+						std::replace(attr_to_search.begin(), attr_to_search.end(), '.', ' ');
+						
+						vector<string> split_attr;
+						
+						stringstream ss(attr_to_search);
+						string tmp;
+						while(ss >> tmp) {
+							split_attr.push_back(tmp);
+						}
+
+						/*
+							If we have [VAR].[ATTR] in [VAR].[ÁTTR] we search in the ptree
+
+							If we have [VAR].[ATTR] in [VAR], where VAR is a collection variable, we search in the variable value
+						*/
+						if(split_attr.size() == 1) {
+							if(holds_alternative<pair<vector<string>,string>>(gm_var_map[split_attr.at(0)])) {
+								pair<vector<string>,string> var_value_and_type = std::get<pair<vector<string>,string>>(gm_var_map[split_attr.at(0)]);
+
+								if(std::find(var_value_and_type.first.begin(), var_value_and_type.first.end(), prop_val) != var_value_and_type.first.end()) {
+									aux.push_back(child.second);
+								}
+							} else {
+								assert(false);
+							}
+						} else if(split_attr.size() == 2) {
+							// Here we need to get the query ptree for the second attribute
+							pt::ptree attr_tree = valid_variables[split_attr.at(0)].second.at(0).get_child(split_attr.at(1));
+
+							string attr_data = attr_tree.data();
+							boost::trim(attr_data);
+							if(attr_tree.empty() && attr_data != "") {
+								vector<string> attr_values;
+
+								stringstream ss(attr_data);
+								string tmp;
+								while(ss >> tmp) {
+									attr_values.push_back(tmp);
+								}
+
+								if(std::find(attr_values.begin(), attr_values.end(), prop_val) != attr_values.end()) {
+									aux.push_back(child.second);
+								}
+							} else if(!attr_tree.empty() && attr_data == "") {
+								BOOST_FOREACH(pt::ptree::value_type val, attr_tree) {
+									if(prop_val == val.second.data()) {
+										aux.push_back(child.second);
+
+										break;
+									}
+								}
+							} else {
+								assert(false);
+							}
+						} else {
+							assert(false);
+						}
 					}
-					if(result) aux.push_back(child.second);
 				}
 			}
 		}

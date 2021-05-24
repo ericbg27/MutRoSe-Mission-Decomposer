@@ -373,7 +373,7 @@ int main(int argc, char** argv) {
 
 	for(task at : abstract_tasks) {
 		TDG t(at, abstract_tasks, primitive_tasks, methods);
-			
+
 		at_decomposition_paths[at.name] = t.retrieve_possible_decompositions();
 	}
 
