@@ -18,8 +18,9 @@ void Condition::set_condition(string cond) {
 
 variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<int,bool>>,bool> Condition::evaluate_condition(variant<pair<string,string>,pair<vector<string>,string>> var_value_and_type, vector<SemanticMapping> semantic_mapping) {
     regex r1("(((\\bnot\\b)[ ]+)?[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}"); // (not) [VAR].[ATTR]
-    regex r2("[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((==)|(!=)){1}[ ]+[\"][A-Za-z0-9]*[\"]){1}"); // [VAR].[ATTR] == "[VALUE]" || [VAR].[ATTR] != "[VALUE]"
-    regex r3("[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((==)|(!=)){1}[ ]+[0-9]+){1}"); // [VAR].[ATTR] == [INTVALUE] || [VAR].[ATTR] != [INTVALUE]
+    regex r2("[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+[\"][A-Za-z0-9]*[\"]){1}"); // [VAR].[ATTR] = "[VALUE]" || [VAR].[ATTR] <> "[VALUE]"
+    regex r3("[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+[0-9]+){1}"); // [VAR].[ATTR] = [INTVALUE] || [VAR].[ATTR] <> [INTVALUE]
+    //TODO: insert expressions using the in operator
     
     bool invalid_condition = false; 
 
@@ -114,7 +115,7 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate
 
         bool negative_condition = false;
         string variable, attribute;
-        if(split_cond.at(2) == "!=") {
+        if(split_cond.at(2) == "<>") {
             negative_condition = true;
         } 
         variable = split_cond.at(0);
@@ -137,7 +138,7 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate
 
         bool negative_condition = false;
         string variable, attribute;
-        if(split_cond.at(2) == "!=") {
+        if(split_cond.at(2) == "<>") {
             negative_condition = true;
         } 
         variable = split_cond.at(0);

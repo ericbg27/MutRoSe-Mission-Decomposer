@@ -230,6 +230,17 @@ map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>,
                     }
 
                     sm.add_prop(belongsto_key, mapping.second.get<string>(belongsto_key));
+                } else if(mapping_type == relationship_mapping_type) {
+                    sm.add_prop(mainentity_key, mapping.second.get<string>(mainentity_key));
+                    sm.add_prop(relatedentity_key, mapping.second.get<string>(relatedentity_key));
+
+                    string relationship_type = mapping.second.get<string>(relationshiptype_key);
+                    sm.add_prop(relationshiptype_key, relationship_type);
+                    if(relationship_type == attribute_relationship_type) {
+                        sm.add_prop(attributename_key, mapping.second.get<string>(attributename_key));
+                    }
+
+                    sm.add_prop(belongsto_key, mapping.second.get<string>(belongsto_key));
                 }
 
                 if(mapped_type == predicate_mapped_type || mapped_type == function_mapped_type) {

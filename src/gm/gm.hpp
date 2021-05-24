@@ -21,7 +21,7 @@
 namespace pt = boost::property_tree;
 
 struct VertexData {
-    int parent;
+    int parent = -1;
     std::vector<int> children;
     std::string id;
     std::string text;

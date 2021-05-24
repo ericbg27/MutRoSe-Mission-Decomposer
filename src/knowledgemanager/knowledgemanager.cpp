@@ -583,6 +583,137 @@ void FileKnowledgeManager::initialize_world_state(vector<ground_literal>& init, 
                     // TODO
                 }
             }
+        } else if(sm.get_mapping_type() == relationship_mapping_type) {
+            string main_entity_type = std::get<string>(sm.get_prop(mainentity_key));
+            string related_entity_type = std::get<string>(sm.get_prop(relatedentity_key));
+
+            if(main_entity_type != "robot" && related_entity_type != "robot") {
+                string db = std::get<string>(sm.get_prop(belongsto_key));
+
+                //In addition to only mapping attributes we are only mapping them to predicates
+                if(sm.get_mapped_type() == predicate_mapped_type) {
+                    predicate_definition pred = std::get<predicate_definition>(sm.get_prop(map_key));
+                        
+                    pt::ptree used_db;
+                    if(db == "robots_db") {
+                        used_db = robotsdb_root;
+                    } else {
+                        used_db = worlddb_root;
+                    }
+
+                    pt::ptree current_tree = used_db;
+                    
+                    stack<pt::ptree> ptree_stack;
+                    
+                    pt::ptree::const_iterator end = current_tree.end();
+                    pt::ptree::const_iterator it = current_tree.begin();
+
+                    while(it != end) {
+                        bool changed_tree = false;
+
+                        pt::ptree::value_type child = *it;
+
+                        if(child.first == main_entity_type) {
+                            set<string> owned_objects;
+
+                            string main_entity_hddl_type = type_mapping[main_entity_type];
+                            string related_entity_hddl_type = type_mapping[related_entity_type];
+                            if(sorts[main_entity_hddl_type].find(child.second.get<string>("name")) != sorts[main_entity_hddl_type].end()) {
+                                string owner_name = child.second.get<string>("name");
+
+                                string relationship_type = std::get<string>(sm.get_prop(relationshiptype_key));
+                                if(relationship_type == attribute_relationship_type) {
+                                    string attribute_name = std::get<string>(sm.get_prop(attributename_key));
+
+                                    vector<string> related_entities;
+
+                                    pt::ptree attr_tree = child.second.get_child(attribute_name);
+                                    if(attr_tree.empty() && !attr_tree.data().empty()) { //Key is value and not tree
+                                        stringstream ss(attr_tree.data());
+
+                                        string temp;
+                                        while(ss >> temp) {
+                                            related_entities.push_back(temp);
+                                        }
+                                    } else if(!attr_tree.empty() && attr_tree.data().empty()) {
+                                        BOOST_FOREACH(pt::ptree::value_type related_entity, attr_tree) {
+                                            related_entities.push_back(related_entity.second.data());
+                                        }    
+                                    }
+
+                                    std::cout << "Related entities: " << std::endl;
+                                    for(string ent : related_entities) {
+                                        std::cout << "Entity: " << ent << std::endl;
+                                    }
+                                    /*pt::ptree attr_tree = child.second.get_child(attribute_name);
+                                    BOOST_FOREACH(pt::ptree::value_type& attr_child, attr_tree) {
+                                        if(attr_child.first == owned_type) {
+                                            if(sorts[owned_hddl_type].find(attr_child.second.get<string>("name")) != sorts[owned_hddl_type].end()) {
+                                                string owned_name = attr_child.second.get<string>("name");
+                                                owned_objects.insert(owned_name);
+
+                                                ground_literal l;
+
+                                                l.predicate = pred.name;
+                                                l.positive = true;
+
+                                                l.args.push_back(owned_name);
+                                                l.args.push_back(owner_name);
+
+                                                init.push_back(l);
+                                            }
+                                        }
+                                    }*/
+                                }
+
+                                /*for(string object : sorts[owned_hddl_type]) {
+                                    if(owned_objects.find(object) == owned_objects.end()) {
+                                        ground_literal l;
+
+                                        l.predicate = pred.name;
+                                        l.positive = false;
+
+                                        l.args.push_back(object);
+                                        l.args.push_back(owner_name);
+
+                                        init.push_back(l);
+                                    }
+                                }*/
+                            }            
+                        } else {
+                            string child_data = child.second.data();
+                            boost::trim(child_data);
+                            if(!child.second.empty() && child_data == "") {
+                                current_tree.pop_front();
+                                if(current_tree.size() > 0) {
+                                    ptree_stack.push(current_tree);
+                                }
+                                current_tree = child.second;
+
+                                end = current_tree.end();
+                                it = current_tree.begin();
+
+                                changed_tree = true;
+                            }
+                        }
+
+                        if(!changed_tree && it != end) {
+                            it++;
+                            current_tree.pop_front();
+                        }
+
+                        if(it == end && ptree_stack.size() > 0) {
+                            current_tree = ptree_stack.top();
+                            ptree_stack.pop();
+
+                            it = current_tree.begin();
+                            end = current_tree.end();
+                        }
+                    }
+                } else if(sm.get_mapped_type() == function_mapped_type) {
+                    // TODO
+                }
+            }
         }
     }
 }

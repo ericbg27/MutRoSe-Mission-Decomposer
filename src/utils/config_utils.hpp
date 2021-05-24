@@ -23,12 +23,15 @@ const std::string argsortsnumber_map_key = "number";
 const std::string predicatetype_key = "predicate_type";
 const std::string owner_key = "owner";
 const std::string owned_key = "owned";
+const std::string mainentity_key = "main_entity";
+const std::string relatedentity_key = "related_entity";
 const std::string relationshiptype_key = "relationship_type";
 const std::string attributename_key = "attribute_name";
 
 // Accepted values
 const std::string attribute_mapping_type = "attribute";
 const std::string ownership_mapping_type = "ownership";
+const std::string relationship_mapping_type = "relationship";
 const std::string predicate_mapped_type = "predicate";
 const std::string function_mapped_type = "function";
 const std::string attribute_relationship_type = "attribute";
