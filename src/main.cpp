@@ -344,8 +344,9 @@ int main(int argc, char** argv) {
 		
 		FileKnowledgeManager* aux = dynamic_cast<FileKnowledgeManager*>(knowledge_manager.get());
 		annot_manager->set_fk_manager(aux);
-
+		std::cout << "Retrieving GM annot..." << std::endl;
 		gmannot = annot_manager->retrieve_gm_annot();
+		std::cout << "Finished" << std::endl;
 	}
 
 	rename_at_instances_in_runtime_annot(gmannot, at_instances, gm);

@@ -1,0 +1,162 @@
+{
+  "actors": [
+    {
+      "id": "d73ad521-4846-4787-b95f-9e79f26341cb",
+      "text": "M1: Clean Rooms",
+      "type": "istar.Actor",
+      "x": 491,
+      "y": 118,
+      "customProperties": {
+        "Description": ""
+      },
+      "nodes": [
+        {
+          "id": "573dfe10-a77f-4c02-811d-e267338092e5",
+          "text": "G1: Clean Rooms That are Dirty [G2;G3]",
+          "type": "istar.Goal",
+          "x": 642,
+          "y": 153,
+          "customProperties": {
+            "Description": ""
+          }
+        },
+        {
+          "id": "3df08496-bc90-433a-a8c8-8dcbbe77bcd9",
+          "text": "G2: Fetch Rooms That Must Be Cleaned",
+          "type": "istar.Goal",
+          "x": 491,
+          "y": 307,
+          "customProperties": {
+            "Description": "",
+            "GoalType": "Query",
+            "Controls": "rooms : Sequence(Rooms)",
+            "QueriedProperty": "location_db->select(r:Room | !r.is_clean)"
+          }
+        },
+        {
+          "id": "7031206a-7f3e-4fae-844a-72293719d993",
+          "text": "G3: Clean Rooms [G4#G5]",
+          "type": "istar.Goal",
+          "x": 793,
+          "y": 323,
+          "customProperties": {
+            "Description": "",
+            "GoalType": "Achieve",
+            "Monitors": "rooms",
+            "Controls": "current_room : Room",
+            "AchieveCondition": "rooms->forAll(current_room | current_room.is_clean)"
+          }
+        },
+        {
+          "id": "3e9eb3b5-9629-4d41-8e90-9fdb031fc871",
+          "text": "G4: Clean Current Room",
+          "type": "istar.Goal",
+          "x": 707,
+          "y": 427,
+          "customProperties": {
+            "Description": "",
+            "Monitors": "current_room"
+          }
+        },
+        {
+          "id": "3998daa8-9cd1-40f8-9baf-5cc14ae88cc4",
+          "text": "AT1: RoomCleaning",
+          "type": "istar.Task",
+          "x": 705,
+          "y": 532,
+          "customProperties": {
+            "Description": "",
+            "Location": "current_room"
+          }
+        },
+        {
+          "id": "677015f6-04e3-440e-81e3-89cc8ff0ab86",
+          "text": "G5: Accidentally Make Room Dirty",
+          "type": "istar.Goal",
+          "x": 885,
+          "y": 419,
+          "customProperties": {
+            "Description": "",
+            "Monitors": "current_room"
+          }
+        },
+        {
+          "id": "e1d41d5b-32b6-4e92-930c-92c22c03b5f3",
+          "text": "AT2: RoomDirty",
+          "type": "istar.Task",
+          "x": 899,
+          "y": 532,
+          "customProperties": {
+            "Description": "",
+            "Location": "current_room"
+          }
+        }
+      ]
+    }
+  ],
+  "orphans": [],
+  "dependencies": [],
+  "links": [
+    {
+      "id": "8caf91c1-d763-4f2d-8f5a-5b02c7fadaee",
+      "type": "istar.AndRefinementLink",
+      "source": "3df08496-bc90-433a-a8c8-8dcbbe77bcd9",
+      "target": "573dfe10-a77f-4c02-811d-e267338092e5"
+    },
+    {
+      "id": "e800d3ab-e5d5-4a00-bb95-bbafdc9e8176",
+      "type": "istar.AndRefinementLink",
+      "source": "7031206a-7f3e-4fae-844a-72293719d993",
+      "target": "573dfe10-a77f-4c02-811d-e267338092e5"
+    },
+    {
+      "id": "9e3f11ab-3b83-4248-98f5-470a76cf9114",
+      "type": "istar.AndRefinementLink",
+      "source": "3e9eb3b5-9629-4d41-8e90-9fdb031fc871",
+      "target": "7031206a-7f3e-4fae-844a-72293719d993"
+    },
+    {
+      "id": "bbf0c984-feb9-4a83-9df0-44fe7d86a4c7",
+      "type": "istar.AndRefinementLink",
+      "source": "3998daa8-9cd1-40f8-9baf-5cc14ae88cc4",
+      "target": "3e9eb3b5-9629-4d41-8e90-9fdb031fc871"
+    },
+    {
+      "id": "5e298517-7016-4534-8a2c-ef2668f80a73",
+      "type": "istar.AndRefinementLink",
+      "source": "677015f6-04e3-440e-81e3-89cc8ff0ab86",
+      "target": "7031206a-7f3e-4fae-844a-72293719d993"
+    },
+    {
+      "id": "6309a239-d805-4306-a1f9-2d4cad6b582f",
+      "type": "istar.AndRefinementLink",
+      "source": "e1d41d5b-32b6-4e92-930c-92c22c03b5f3",
+      "target": "677015f6-04e3-440e-81e3-89cc8ff0ab86"
+    }
+  ],
+  "display": {
+    "573dfe10-a77f-4c02-811d-e267338092e5": {
+      "width": 117,
+      "height": 56.80000305175781
+    },
+    "3df08496-bc90-433a-a8c8-8dcbbe77bcd9": {
+      "width": 116,
+      "height": 61.80000305175781
+    },
+    "677015f6-04e3-440e-81e3-89cc8ff0ab86": {
+      "width": 117,
+      "height": 42.80000305175781
+    }
+  },
+  "tool": "pistar.2.0.0",
+  "istar": "2.0",
+  "saveDate": "Tue, 25 May 2021 19:26:08 GMT",
+  "diagram": {
+    "width": 2000,
+    "height": 1300,
+    "name": "Welcome Model",
+    "customProperties": {
+      "Description": "Welcome to the piStar tool! This model describe some of the recent improvements in the tool.\n\nFor help using this tool, please check the Help menu above"
+    }
+  }
+}

@@ -201,62 +201,7 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
                 }
             }
 
-            /*
-                -> Verify in the children effects if we have any conflicts for each mission decomposition
-                    - If there is, erase the decomposition
-                    - Conflicts onyl happen in predicates effects
-            */
-            
-            vector<int> decompositions_to_erase;
-
-            int decomposition_index = 0;
-            for(auto decomposition : valid_mission_decompositions) {
-                vector<ground_literal> applied_effs;
-
-                bool found_conflict = false;
-                
-                map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>::iterator ceff_it;
-                for(ceff_it = children_effects.begin(); ceff_it != children_effects.end(); ++ceff_it) {
-                    if(decomposition.second.find(ceff_it->first) != decomposition.second.end()) {
-                        for(auto eff : ceff_it->second) {
-                            if(holds_alternative<ground_literal>(eff)) {
-                                ground_literal e = std::get<ground_literal>(eff);
-                                
-                                for(ground_literal a_eff : applied_effs) {
-                                    bool same_predicate = is_same_predicate(e, a_eff);
-
-                                    if(same_predicate) {
-                                        if(e.positive != a_eff.positive) {
-                                            found_conflict = true;
-
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if(found_conflict) break;
-                }
-
-                if(found_conflict) {
-                    decompositions_to_erase.push_back(decomposition_index);
-                }
-
-                decomposition_index++;
-            }
-
-            std::sort(decompositions_to_erase.begin(), decompositions_to_erase.end());
-            for(auto i = decompositions_to_erase.rbegin(); i != decompositions_to_erase.rend(); ++i) {
-                valid_mission_decompositions.erase(valid_mission_decompositions.begin() + *i);
-            }
-
-            if(valid_mission_decompositions.size() == 0) {
-                string conflict_solving_error = "Could not solve conflicts in valid mission decompositions generation";
-
-                throw std::runtime_error(conflict_solving_error);
-            }
+            solve_conflicts(children_effects);
         } else if(op == ";") {
             bool checking_children = true;
 
@@ -347,18 +292,6 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
 
         return children_effects;
     } else {
-       /*
-            If we have an AT we have to do the following for each decomposition
-
-            -> For each valid mission decomposition, check if the world state satisfies the decomposition precondition
-                - If there is no valid mission decomposition, just check against the initial world state
-            -> If the world state satisfies the preconditions, add the task to the valid mission decomposition
-                - If not, we will still need to check if some task in the valid mission decomposition is involved in a sequential constraint
-                with the actual AT. This relates to Context Dependencies
-                - If the effect of this task makes the world state satisfy the precondition, add this decomposition in the valid mission decomposition
-            
-            -> NOTE: IF A TASK DOES NOT HAVE ANY VALID DECOMPOSITION WE RAISE AN ERROR SINCE FOR NOW WE HAVE ONLY AND TASKS IN THE GOAL MODEL
-       */
         vector<pair<int,ATNode>> task_decompositions;
 
         ATGraph::out_edge_iterator ei, ei_end;
@@ -962,6 +895,68 @@ vector<ground_literal> ValidMissionGenerator::apply_pred_effects(map<int,vector<
     }
 
     return ws;
+}
+
+void ValidMissionGenerator::solve_conflicts(std::map<int,std::vector<std::variant<ground_literal,std::pair<ground_literal,int>>>> children_effects) {
+    /*
+        -> Verify in the children effects if we have any conflicts for each mission decomposition
+            - If there is, erase the decomposition
+            - Conflicts onyl happen in predicates effects
+    */     
+    vector<int> decompositions_to_erase;
+
+    int decomposition_index = 0;
+    for(auto decomposition : valid_mission_decompositions) {
+        vector<ground_literal> applied_effs;
+
+        bool found_conflict = false;
+        
+        map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>::iterator ceff_it;
+        for(ceff_it = children_effects.begin(); ceff_it != children_effects.end(); ++ceff_it) {
+            if(decomposition.second.find(ceff_it->first) != decomposition.second.end()) {
+                for(auto eff : ceff_it->second) {
+                    if(holds_alternative<ground_literal>(eff)) {
+                        ground_literal e = std::get<ground_literal>(eff);
+                        
+                        for(ground_literal a_eff : applied_effs) {
+                            bool same_predicate = is_same_predicate(e, a_eff);
+
+                            if(same_predicate) {
+                                if(e.positive != a_eff.positive) {
+                                    found_conflict = true;
+
+                                    break;
+                                }
+                            }
+                        }
+
+                        if(!found_conflict) {
+                            applied_effs.push_back(e);
+                        }
+                    }
+                }
+            }
+
+            if(found_conflict) break;
+        }
+
+        if(found_conflict) {
+            decompositions_to_erase.push_back(decomposition_index);
+        }
+
+        decomposition_index++;
+    }
+
+    std::sort(decompositions_to_erase.begin(), decompositions_to_erase.end());
+    for(auto i = decompositions_to_erase.rbegin(); i != decompositions_to_erase.rend(); ++i) {
+        valid_mission_decompositions.erase(valid_mission_decompositions.begin() + *i);
+    }
+
+    if(valid_mission_decompositions.size() == 0) {
+        string conflict_solving_error = "Could not solve conflicts in valid mission decompositions generation";
+
+        throw std::runtime_error(conflict_solving_error);
+    }
 }
 
 vector<pair<ground_literal,int>> ValidMissionGenerator::apply_func_effects(map<int,vector<pair<ground_literal,int>>> func_eff, set<int> tasks_to_consider) {
