@@ -218,18 +218,14 @@ int main(int argc, char** argv) {
 	*/
 	predicate_definition* at_pred = new predicate_definition();
 	predicate_definition* hascapability_pred = new predicate_definition();
-	//predicate_definition* in_pred = new predicate_definition();
 
 	var_declaration* at_vars = new var_declaration();
 	var_declaration* hascapability_vars = new var_declaration();
-	//var_declaration* in_vars = new var_declaration();
 
 	at_vars->vars.push_back(make_pair("?r","robot"));
 	at_vars->vars.push_back(make_pair("?rloc","robotlocation"));
 	hascapability_vars->vars.push_back(make_pair("?r","robot"));
 	hascapability_vars->vars.push_back(make_pair("?c","capability"));
-	//in_vars->vars.push_back(make_pair("?r", "robot"));
-	//in_vars->vars.push_back(make_pair("?rt", "robotteam"));
 
 	at_pred->name = "at";
 	for(unsigned int i = 0;i < at_vars->vars.size();i++) {
@@ -239,10 +235,6 @@ int main(int argc, char** argv) {
 	for(unsigned int i = 0;i < hascapability_vars->vars.size();i++) {
 		hascapability_pred->argument_sorts.push_back(hascapability_vars->vars[i].second);
 	}
-	/*in_pred->name = "in";
-	for(unsigned int i = 0;i < in_vars->vars.size();i++) {
-		in_pred->argument_sorts.push_back(in_vars->vars[i].second);
-	}*/
 
 	expand_sorts();
 	/*
@@ -259,48 +251,6 @@ int main(int argc, char** argv) {
 	flatten_mdp_tasks();
 
 	parsed_method_to_data_structures(false, false, false);
-
-	/*std::cout << "HDDL Functions: " << std::endl;
-	for(auto f : parsed_functions) {
-		std::cout << "Predicate definition: ";
-		std::cout << f.first.name << " ";
-		for(string arg : f.first.argument_sorts) {
-			std::cout << arg << " ";
-		}
-		std::cout << std::endl;
-		std::cout << "Type: " << f.second << std::endl;
-	}
-
-	std::cout << "Actions cost change effects: " << std::endl;
-	for(task t : primitive_tasks) {
-		std::cout << "Task: " << t.name << std::endl;
-		for(literal ce : t.costExpression) {
-			std::cout << "Eff: " << ce.predicate << " ";
-			for(string arg : ce.arguments) {
-				std::cout << arg << " ";
-			}
-			std::cout << std::endl;
-			std::cout << "Value: " << ce.costValue << std::endl;
-			if(ce.isAssignCostChangeExpression) {
-				std::cout << "Is assign" << std::endl;
-			}
-		}
-	}
-
-	std::cout << "Actions function predicates: " << std::endl;
-	for(task t : primitive_tasks) {
-		std::cout << "Task: " << t.name << std::endl;
-		for(literal ce : t.prec) {
-			if(ce.isComparisonExpression) {
-				std::cout << "Prec: " << "(" << ce.comparison_op_and_value.first << " ( " << ce.predicate << " ";
-				for(string arg : ce.arguments) {
-					std::cout << arg << " ";
-				}
-				std::cout << " ) ";
-				std::cout << ce.comparison_op_and_value.second << ")" << std::endl;
-			}
-		}
-	}*/
 
 	/*
 		Goal Model parsing and generation of Abstract tasks instances

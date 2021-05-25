@@ -30,6 +30,14 @@ const std::string istar_task = "istar.Task";
 const std::set<std::string> default_props{description_prop, queried_property_prop, failure_condition_prop, achieve_condition_prop};
 
 const string world_db_query_var = "location_db";
+
+const std::string hddl_robot_type = "robot";
+const std::string hddl_robotteam_type = "robotteam";
+
+const std::string ocl_equal = "=";
+const std::string ocl_different = "<>";
+const std::string ocl_in = "in";
+const std::string spaced_ocl_in = " in ";
 //**********************************************************************************************************************************
 
 class AchieveCondition : public Condition {

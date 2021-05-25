@@ -264,7 +264,7 @@ void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm
 						aux.push_back(child.second);
 					}
 				} else {
-					if(q.query.at(1) == "=" || q.query.at(1) == "<>") {
+					if(q.query.at(1) == ocl_equal || q.query.at(1) == ocl_different) {
 						string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
 						string prop_val;
 						try {
@@ -276,13 +276,13 @@ void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm
 						}
 
 						bool result;
-						if(q.query.at(1) == "=") {
+						if(q.query.at(1) == ocl_equal) {
 							result = (prop_val == q.query.at(2));
 						} else {
 							result = (prop_val != q.query.at(2));
 						}
 						if(result) aux.push_back(child.second);
-					} else if(q.query.at(1) == "in") {
+					} else if(q.query.at(1) == ocl_in) {
 						string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
 						string prop_val;
 						try {

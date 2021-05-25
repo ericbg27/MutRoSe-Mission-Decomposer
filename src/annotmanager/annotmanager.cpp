@@ -94,7 +94,7 @@ general_annot* FileKnowledgeAnnotManager::retrieve_gm_annot() {
 */ 
 void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* node_annot, vector<int> &vctr,  pt::ptree worlddb, int current_node, map<string,pair<string,vector<pt::ptree>>>& valid_variables, 
                                                                 map<int,AchieveCondition> valid_forAll_conditions, map<int,int>& node_depths) {    
-    set<string> operators {";","#","FALLBACK","OPT","|"};
+    set<string> operators {sequential_op,parallel_op,"FALLBACK","OPT","|"};
 
     set<string>::iterator op_it;
 
@@ -157,7 +157,7 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
                     new_annots.push_back(aux);
                 }
 
-                node_annot->content = "#";
+                node_annot->content = parallel_op;
                 node_annot->type = OPERATOR;
                 node_annot->related_goal = "";
                 node_annot->children.clear();
@@ -224,7 +224,7 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
 
             if(gm[vctr.at(0)].children.size() > 1) {
                 if(expanded_annot->content == "") {
-                    expanded_annot->content = ";";
+                    expanded_annot->content = sequential_op;
                     for(int child : gm[vctr.at(0)].children) {
                         general_annot* aux = new general_annot();
 
@@ -298,7 +298,7 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
                         new_annots.push_back(aux);
                     }
 
-                    node_annot->content = "#";
+                    node_annot->content = parallel_op;
                     node_annot->type = OPERATOR;
                     node_annot->related_goal = "";
                     node_annot->children.clear();
