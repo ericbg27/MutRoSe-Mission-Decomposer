@@ -193,7 +193,7 @@ QueriedProperty parse_select_expr(string expr) {
 
     regex e2("[!a-zA-Z]{1}[a-zA-Z_.0-9]*");
     regex e3("[a-zA-Z]{1}[a-zA-Z_.0-9]*");
-    if((ss.str().find("=") == string::npos) && (ss.str().find("<>") == string::npos) && ss.str().find(" in ") == string::npos) {
+    if((ss.str().find(ocl_equal) == string::npos) && (ss.str().find(ocl_different) == string::npos) && ss.str().find(spaced_ocl_in) == string::npos) {
         getline(ss, aux, ')');
         if(regex_search(aux,m,e2)) {
             q.query.push_back(m[0]);
@@ -202,21 +202,21 @@ QueriedProperty parse_select_expr(string expr) {
             q.query.push_back(m[0]);
         }
     } else {
-        if(ss.str().find("=") != string::npos || ss.str().find("<>") != string::npos) {
+        if(ss.str().find(ocl_equal) != string::npos || ss.str().find(ocl_different) != string::npos) {
             getline(ss,aux,'=');
             regex_search(aux,m,e3);
             q.query.push_back(m[0]);
             
-            if(ss.str().find("=") != string::npos) {
-                q.query.push_back("=");
+            if(ss.str().find(ocl_equal) != string::npos) {
+                q.query.push_back(ocl_equal);
             } else {
-                q.query.push_back("<>");
+                q.query.push_back(ocl_different);
             }
 
             getline(ss,aux,')');
             regex_search(aux,m,e3);
             q.query.push_back(m[0]);
-        } else if(ss.str().find(" in ") != string::npos) {
+        } else if(ss.str().find(spaced_ocl_in) != string::npos) {
             vector<string> split_query;
 
             string temp;

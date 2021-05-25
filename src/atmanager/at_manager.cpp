@@ -61,16 +61,6 @@ map<string,vector<AbstractTask>> FileKnowledgeATManager::generate_at_instances(m
 	}
 
 	/*
-		Get the high-level location types
-	*/
-	set<string> dsl_locations; //Locations that must be declared in the DSL
-	BOOST_FOREACH(pt::ptree::value_type& child, world_tree) {
-		if(std::find(high_level_loc_types.begin(), high_level_loc_types.end(), child.first) != high_level_loc_types.end()) {
-			dsl_locations.insert(child.second.get<string>("name"));
-		}
-	}
-
-	/*
 		Variable initializations
 	*/
 	map<int,int> node_depths;
@@ -126,9 +116,9 @@ void FileKnowledgeATManager::recursive_at_instances_generation(int current, int 
 			
 		throw std::runtime_error(except);
 	}
-	if(parent_annot->content == ";") {
+	if(parent_annot->content == sequential_op) {
 		insert_events = false;
-	} else if(parent_annot->content == "#") {
+	} else if(parent_annot->content == parallel_op) {
 		insert_events = true;
 	}
 
@@ -137,6 +127,7 @@ void FileKnowledgeATManager::recursive_at_instances_generation(int current, int 
 	if(gm[current].type == istar_goal) {
 		if(gm[current].custom_props.find(context_prop) != gm[current].custom_props.end()) {
 			Context c = std::get<Context>(gm[current].custom_props[context_prop]);
+			
 			if(c.get_context_type() == trigger_context_type) {
 				valid_events[depth].push_back(c.get_condition());
 				insert_events = true;
@@ -234,9 +225,9 @@ void FileKnowledgeATManager::recursive_at_instances_generation(int current, int 
 
 		at.fixed_robot_num = gm[current].fixed_robot_num;
 		if(holds_alternative<int>(gm[current].robot_num)) {
-			at.robot_num = get<int>(gm[current].robot_num); 
+			at.robot_num = std::get<int>(gm[current].robot_num); 
 		} else {
-			at.robot_num = get<pair<int,int>>(gm[current].robot_num);
+			at.robot_num = std::get<pair<int,int>>(gm[current].robot_num);
 		}
 
 		if(gm[current].custom_props.find(location_prop) != gm[current].custom_props.end()) {

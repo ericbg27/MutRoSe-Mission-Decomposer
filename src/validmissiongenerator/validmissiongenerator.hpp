@@ -21,6 +21,7 @@ class ValidMissionGenerator {
         std::map<int,std::vector<std::variant<ground_literal,std::pair<ground_literal,int>>>> recursive_valid_mission_decomposition(std::string last_op, std::queue<std::pair<int,ATNode>>& mission_queue, int depth, std::map<int, std::vector<std::variant<ground_literal,std::pair<ground_literal,int>>>> effects_to_apply);
 
         void check_conditions(std::map<int, std::vector<std::variant<ground_literal,std::pair<ground_literal,int>>>> effects_to_apply, std::pair<int,ATNode> current_node);
+        void solve_conflicts(std::map<int,std::vector<std::variant<ground_literal,std::pair<ground_literal,int>>>> children_effects);
         
         std::vector<ground_literal> apply_pred_effects(std::map<int,std::vector<ground_literal>> pred_eff, set<int> tasks_to_consider);
         std::vector<std::pair<ground_literal,int>> apply_func_effects(std::map<int,std::vector<std::pair<ground_literal,int>>> func_eff, set<int> tasks_to_consider);

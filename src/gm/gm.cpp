@@ -142,7 +142,7 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
     v.periodic = false;
     v.group = true;
     v.divisible = true;
-    //v.non_cooperative = false;
+
     string s = "";
 
     map<string,string>::iterator cp_it;
@@ -163,12 +163,10 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
         } else if(cp_it->first == "Group") {
             string aux = cp_it->second;
             transform(aux.begin(), aux.end(), aux.begin(), ::tolower);
-            //istringstream(boost::to_lower_copy(cp_it->second)) >> std::boolalpha >> v.non_cooperative;
             istringstream(aux) >> std::boolalpha >> v.group;
         } else if(cp_it->first == "Divisible") {
             string aux = cp_it->second;
             transform(aux.begin(), aux.end(), aux.begin(), ::tolower);
-            //istringstream(boost::to_lower_copy(cp_it->second)) >> std::boolalpha >> v.non_cooperative;
             istringstream(aux) >> std::boolalpha >> v.divisible;
         } else if(cp_it->first == controls_prop || cp_it->first == monitors_prop) {
             v.custom_props[cp_it->first] = parse_vars(cp_it->second);
@@ -208,6 +206,7 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
         } else {
             if(default_props.find(cp_it->first) == default_props.end()) {
                 string error_str = "Invalid property " + cp_it->first + " in vertex " + v.text;
+
                 throw std::runtime_error(error_str);
             }
         }
@@ -232,7 +231,10 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
         if(aux.find("select")) {
             v.custom_props[queried_property_prop] = parse_select_expr(custom_props[queried_property_prop]);
         } else {
-            v.custom_props[queried_property_prop] = custom_props[queried_property_prop];
+            //v.custom_props[queried_property_prop] = custom_props[queried_property_prop];
+            string missing_select_statement_error = "Missing select statement in Query Goal [" + parse_goal_text(v.text).first + "]";
+
+            throw std::runtime_error(missing_select_statement_error);
         }
     } else if(std::get<string>(v.custom_props[goal_type_prop]) == perform_goal_type) {
         if(custom_props.find(failure_condition_prop) != custom_props.end()) {
@@ -422,17 +424,17 @@ void check_undefined_number_of_robots(GMGraph& gm, vector<task> abstract_tasks, 
                 if(at.name == at_id_name.second) {
                     for(int var_index = 0;var_index < at.number_of_original_vars;var_index++) {
                         string var_type = at.vars.at(var_index).second;
-                        if(var_type == "robot") {
+                        if(var_type == hddl_robot_type) {
                             robot_number++;
                         } else {
-                            if(var_type == "robotteam") { //Maybe later change this to deal with subtypes of robotteam
+                            if(var_type == hddl_robotteam_type) { //Maybe later change this to deal with subtypes of robotteam
                                 throw std::runtime_error("Tasks without RobotNumber attribute cannot have robotteam variable!");
                             }
                             bool is_robot_subtype = false;
                             for(sort_definition def : sort_definitions) {
                                 if(std::find(def.declared_sorts.begin(),def.declared_sorts.end(),var_type) != def.declared_sorts.end()) {
                                     if(def.has_parent_sort) {
-                                        if(def.parent_sort == "robot") {
+                                        if(def.parent_sort == hddl_robot_type) {
                                             is_robot_subtype = true;
                                             break;
                                         }
@@ -454,48 +456,6 @@ void check_undefined_number_of_robots(GMGraph& gm, vector<task> abstract_tasks, 
         }
     }
 }
-
-/*vector<pair<string,string>> parse_var_mapping(string text) {
-    vector<string> mappings;
-    stringstream ss(text);
-
-    while(ss.good()) {
-        string mapping;
-        getline(ss,mapping,',');
-        mappings.push_back(mapping);
-    }
-
-    vector<pair<string,string>> parsed_mappings;
-
-    regex hddl_varname("[\?]{1}[a-zA-Z]{1}[a-zA-Z_-]+"); //Here we are assuming HDDL variables can contain - and _
-    regex varname("[a-zA-Z]{1}[a-zA-Z_0-9]+");
-    smatch m;
-
-    for(string map : mappings) {
-        ss.clear();
-        
-        int cnt = 0;
-        pair<string,string> splitted_mapping;
-        std::replace(map.begin(),map.end(),':',' ');
-        string var;
-        stringstream aux(map);
-        while(aux >> var) {
-            if(cnt == 0) {
-                regex_search(var,m,hddl_varname);
-                splitted_mapping.first = m[0];
-            } else {
-                regex_search(var,m,varname);
-                splitted_mapping.second = m[0];
-            }
-            
-            cnt++;
-        }
-
-        parsed_mappings.push_back(splitted_mapping);
-    }
-
-    return parsed_mappings;
-}*/
 
 /*
     Function: print_gm_nodes_info
