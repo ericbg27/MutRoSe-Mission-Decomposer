@@ -14,7 +14,7 @@
 
 class ValidMissionGenerator {
     public:
-        ValidMissionGenerator(ATGraph md, GMGraph g, std::vector<Constraint> mc, std::vector<ground_literal> ws, std::vector<std::pair<ground_literal,int>> wsf, std::vector<SemanticMapping> sm, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gmvmap);
+        ValidMissionGenerator(ATGraph md, GMGraph g, std::vector<Constraint> mc, std::vector<ground_literal> ws, std::vector<std::pair<ground_literal,int>> wsf, std::vector<SemanticMapping> sm, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gmvmap, bool verb);
 
         std::vector<std::vector<std::pair<int,ATNode>>> generate_valid_mission_decompositions();
 
@@ -29,6 +29,7 @@ class ValidMissionGenerator {
         std::queue<std::pair<int,ATNode>> generate_mission_queue();
 
     private:
+        bool verbose;
         ATGraph mission_decomposition;
         GMGraph gm;
         std::vector<Constraint> mission_constraints;

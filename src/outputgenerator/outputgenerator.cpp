@@ -4,6 +4,10 @@
 
 using namespace std;
 
+void OutputGenerator::set_verbose(bool verb) {
+    verbose = verb;
+}
+
 void OutputGenerator::set_mission_decomposition(ATGraph md) {
     mission_decomposition = md;
 }

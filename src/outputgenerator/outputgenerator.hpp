@@ -27,8 +27,10 @@ class OutputGenerator {
         void set_gm(GMGraph g);
         void set_world_state(std::vector<ground_literal> ws);
         void set_world_state_functions(std::vector<std::pair<ground_literal,int>> wsf);
+        void set_verbose(bool verb);
 
     protected:
+        bool verbose;
         ATGraph mission_decomposition;
         GMGraph gm;
         std::vector<ground_literal> world_state;

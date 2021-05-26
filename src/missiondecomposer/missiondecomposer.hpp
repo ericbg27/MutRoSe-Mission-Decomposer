@@ -34,6 +34,7 @@ class MissionDecomposer {
         
         void create_non_coop_edges(int node_id);
         
+        void set_verbose(bool verb);
         void set_mission_decomposer_type(mission_decomposer_type mdt);
         void set_world_state(std::vector<ground_literal> ws);
         void set_world_state_functions(std::vector<std::pair<ground_literal,int>> wsf);
@@ -45,6 +46,7 @@ class MissionDecomposer {
         mission_decomposer_type get_mission_decomposer_type();
     
     protected:
+        bool verbose;
         ATGraph mission_decomposition;
         std::vector<ground_literal> world_state;
         std::vector<std::pair<ground_literal,int>> world_state_functions;
@@ -72,7 +74,7 @@ class FileKnowledgeMissionDecomposer : public MissionDecomposer {
 
 class MissionDecomposerFactory {
     public:
-        std::shared_ptr<MissionDecomposer> create_mission_decomposer(std::shared_ptr<KnowledgeManager> k_manager, std::vector<ground_literal> ws, std::vector<std::pair<ground_literal,int>> wsf, std::map<std::string,std::vector<DecompositionPath>> atpaths, std::map<std::string,std::vector<AbstractTask>> atinst, general_annot* gma, GMGraph g);
+        std::shared_ptr<MissionDecomposer> create_mission_decomposer(std::shared_ptr<KnowledgeManager> k_manager, std::vector<ground_literal> ws, std::vector<std::pair<ground_literal,int>> wsf, std::map<std::string,std::vector<DecompositionPath>> atpaths, std::map<std::string,std::vector<AbstractTask>> atinst, general_annot* gma, GMGraph g, bool verb);
 };
 
 #endif

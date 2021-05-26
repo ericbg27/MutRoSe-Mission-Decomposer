@@ -6,6 +6,10 @@
 
 using namespace std;
 
+void MissionDecomposer::set_verbose(bool verb) {
+	verbose = verb;
+}
+
 void MissionDecomposer::set_mission_decomposer_type(mission_decomposer_type mdt) {
 	md_type = mdt;
 }
@@ -266,7 +270,9 @@ bool MissionDecomposer::check_context_dependency(int parent_node, int current_no
 
 					boost::add_edge(boost::vertex(d_id, mission_decomposition), boost::vertex(current_node, mission_decomposition), e, mission_decomposition);
 
-					cout << "Context satisfied with task " << std::get<Decomposition>(mission_decomposition[d_id].content).id << ": " << at.name << endl;
+					if(verbose) {
+						cout << "Context satisfied with task " << std::get<Decomposition>(mission_decomposition[d_id].content).id << ": " << at.name << endl;
+					}
 
 					//For now we create the dependency between the first AT that satisfies its context
 					found_at = true;
@@ -673,7 +679,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 			d.id = at.id + "|" + to_string(path_id);
 			d.path = path;
 			d.at = at;
-			instantiate_decomposition_predicates(at,d);
+			instantiate_decomposition_predicates(at,d,verbose);
 
 			path_id++;
 
@@ -694,7 +700,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 }
 
 shared_ptr<MissionDecomposer> MissionDecomposerFactory::create_mission_decomposer(shared_ptr<KnowledgeManager> k_manager, vector<ground_literal> ws, vector<pair<ground_literal,int>> wsf, map<string,vector<DecompositionPath>> atpaths, 
-																							map<string,vector<AbstractTask>> atinst, general_annot* gma, GMGraph g) {
+																							map<string,vector<AbstractTask>> atinst, general_annot* gma, GMGraph g, bool verb) {
 	shared_ptr<MissionDecomposer> mission_decomposer;
 	
 	if(k_manager->get_knowledge_type() == FILEKNOWLEDGE) {
@@ -712,6 +718,7 @@ shared_ptr<MissionDecomposer> MissionDecomposerFactory::create_mission_decompose
 	mission_decomposer->set_at_instances(atinst);
 	mission_decomposer->set_gm_annot(gma);
 	mission_decomposer->set_gm(g);
+	mission_decomposer->set_verbose(verb);
 
 	return mission_decomposer;
 }

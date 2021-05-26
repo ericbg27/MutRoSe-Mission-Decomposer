@@ -4,7 +4,7 @@
 
 using namespace std;
 
-void expand_decomposition(Decomposition& d, vector<pair<ground_literal,int>> world_state_func) {
+void expand_decomposition(Decomposition& d, vector<pair<ground_literal,int>> world_state_func, bool verbose) {
     if(d.path.needs_expansion) {
         vector<pair<vector<task>,int>> expansions_to_insert;
 
@@ -72,6 +72,6 @@ void expand_decomposition(Decomposition& d, vector<pair<ground_literal,int>> wor
             d.path.decomposition.insert(d.path.decomposition.begin()+expansion.second, expansion.first.begin(), expansion.first.end());
         }
 
-        instantiate_decomposition_predicates(d.at, d);
+        instantiate_decomposition_predicates(d.at, d, verbose);
     }
 }

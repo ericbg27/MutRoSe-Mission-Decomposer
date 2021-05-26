@@ -51,15 +51,15 @@ void XMLOutputGenerator::generate_instances_output(vector<SemanticMapping> seman
         -> All constraints to be introduced in the output are sequential, since parallel is not a constraint by itself
             - It would be only if we had simultaneity constraints or non-overlapping constraints
     */
-    vector<Constraint> final_mission_constraints = transform_at_constraints(mission_decomposition,mission_constraints,gm);
+    vector<Constraint> final_mission_constraints = transform_at_constraints(mission_decomposition,mission_constraints,gm,verbose);
 
-    generate_noncoop_constraints(final_mission_constraints,mission_decomposition);
+    generate_execution_constraints(final_mission_constraints,mission_decomposition, verbose);
     
     // With the final constraints and the mission decomposition graph we generate our output
 
     pt::ptree output_file;
 
-    ValidMissionGenerator valid_missions_generator(mission_decomposition, gm, final_mission_constraints, world_state, world_state_functions, semantic_mapping, gm_var_map);
+    ValidMissionGenerator valid_missions_generator(mission_decomposition, gm, final_mission_constraints, world_state, world_state_functions, semantic_mapping, gm_var_map, verbose);
     vector<vector<pair<int,ATNode>>> valid_mission_decompositions = valid_missions_generator.generate_valid_mission_decompositions();
 
     vector<Decomposition> task_instances;

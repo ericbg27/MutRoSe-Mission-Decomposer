@@ -698,11 +698,11 @@ void generate_constraints_from_stacks(stack<pair<int,ATNode>>& operators_stack, 
                     * If it has with a high-level node (like a goal) we have to find all of the instances it has this dependency
                     * If a parallel dependency between these tasks exist, change to sequential. If it is already sequential, nothing needs to be done
 */
-vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vector<Constraint> mission_constraints, GMGraph gm) {
+vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vector<Constraint> mission_constraints, GMGraph gm, bool verbose) {
     vector<Constraint> transformed_constraints;
     map<int,vector<pair<int,ATNode>>> constraint_nodes_decompositions;
 
-    std::cout << std::endl;
+    /*std::cout << std::endl;
     std::cout << "Mission constraints size: " << mission_constraints.size() << std::endl;
     std::cout << "Mission Constraints:" << std::endl; 
     for(Constraint c : mission_constraints) {
@@ -714,7 +714,7 @@ vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vecto
         }
         std::cout << std::get<AbstractTask>(c.nodes_involved.second.second.content).id;
         std::cout << std::endl;
-    }
+    }*/
 
     for(Constraint c : mission_constraints) {
         if(c.type == SEQ) {
@@ -833,32 +833,44 @@ vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vecto
         }
     }
 
-    std::cout << std::endl;
-    std::cout << "Transformed constraints size: " << transformed_constraints.size() << std::endl;
-    std::cout << "Transformed Constraints:" << std::endl; 
-    for(Constraint c : transformed_constraints) {
-        std::cout << std::get<Decomposition>(c.nodes_involved.first.second.content).id;
-        if(c.type == PAR) {
-            std::cout << " # ";
-        } else {
-            std::cout << " ; ";
-        }
-        std::cout << std::get<Decomposition>(c.nodes_involved.second.second.content).id;
+    if(verbose) {
         std::cout << std::endl;
+        std::cout << "Number of Sequential Mission Constraints: " << transformed_constraints.size() << std::endl;
+        std::cout << "Sequential Constraints:" << std::endl; 
+        for(Constraint c : transformed_constraints) {
+            std::cout << std::get<Decomposition>(c.nodes_involved.first.second.content).id;
+            if(c.type == PAR) {
+                string parallel_constraint_error = "Parallel constraints should not exist in final constraints";
+
+                throw std::runtime_error(parallel_constraint_error);
+            } else {
+                std::cout << " ; ";
+            }
+            std::cout << std::get<Decomposition>(c.nodes_involved.second.second.content).id;
+            std::cout << std::endl;
+        }
+    } else {
+        for(Constraint c : transformed_constraints) {
+            if(c.type == PAR) {
+                string parallel_constraint_error = "Parallel constraints should not exist in final constraints";
+
+                throw std::runtime_error(parallel_constraint_error);
+            }
+        }
     }
 
     return transformed_constraints;
 }
 
 /*
-    Function: generate_noncoop_constraints
+    Function: generate_execution_constraints
     Objective: Generate execution constraints present in the mission
 
     @ Input 1: A reference to the vector of constraints
     @ Input 2: The Task Graph as an ATGraph object
     @ Output: Void. The execution constraints will be added to the constraint vector
 */
-void generate_noncoop_constraints(vector<Constraint>& mission_constraints, ATGraph mission_decomposition) {
+void generate_execution_constraints(vector<Constraint>& mission_constraints, ATGraph mission_decomposition, bool verbose) {
     map<int,set<int>> non_coop_constraint_map;
     map<int,vector<pair<int,ATNode>>> constraint_nodes_decompositions;
 
@@ -922,16 +934,18 @@ void generate_noncoop_constraints(vector<Constraint>& mission_constraints, ATGra
         }
     }
 
-    std::cout << std::endl;
-    std::cout << "Non Coop constraints size: " << non_coop_constraints.size() << std::endl;
-    std::cout << "Non Coop Constraints:" << std::endl; 
-    for(Constraint c : non_coop_constraints) {
-        std::cout << get<Decomposition>(c.nodes_involved.first.second.content).id;
-        std::cout << " NC ";
-        std::cout << get<Decomposition>(c.nodes_involved.second.second.content).id;
+    if(verbose) {
+        std::cout << std::endl;
+        std::cout << "Number of execution constraints: " << non_coop_constraints.size() << std::endl;
+        std::cout << "Execution Constraints:" << std::endl; 
+        for(Constraint c : non_coop_constraints) {
+            std::cout << get<Decomposition>(c.nodes_involved.first.second.content).id;
+            std::cout << " EC ";
+            std::cout << get<Decomposition>(c.nodes_involved.second.second.content).id;
+            std::cout << std::endl;
+        }
         std::cout << std::endl;
     }
-    std::cout << std::endl;
 }
 
 /*
