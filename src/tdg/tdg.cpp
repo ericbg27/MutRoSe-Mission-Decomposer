@@ -19,7 +19,7 @@ using namespace std;
     @ Input 4: The methods defined in HDDL
     @ Output: void. The TDG object
 */ 
-TDG::TDG(task root_abstract_task, vector<task> a_tasks, vector<task> p_tasks, vector<method> ms) {
+TDG::TDG(task root_abstract_task, vector<task> a_tasks, vector<task> p_tasks, vector<method> ms, bool verbose) {
     abstract_tasks = a_tasks;
     primitive_tasks = p_tasks;
     methods = ms;
@@ -37,6 +37,8 @@ TDG::TDG(task root_abstract_task, vector<task> a_tasks, vector<task> p_tasks, ve
     n.id = id;
 
     add_task_path(n);
+
+    this->verbose = verbose; 
 }
 
 /*
@@ -106,7 +108,9 @@ vector<DecompositionPath> TDG::decomposition_recursion(vector<int> dfs_nodes, in
         */
         vector<vector<int>> possible_orderings = find_method_possible_orderings(n.m,n.children);
 
-        print_method_possible_orderings(possible_orderings, n);
+        if(verbose) {
+            print_method_possible_orderings(possible_orderings, n);
+        }
 
         bool expansion_needed = false;
         literal expansion_pred;

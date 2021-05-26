@@ -69,7 +69,7 @@ class DFSATVisitor : public boost::default_dfs_visitor {
 
 std::pair<ATGraph,std::map<int,int>> generate_trimmed_at_graph(ATGraph mission_decomposition);
 
-void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d);
+void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, bool verbose);
 
 std::vector<std::pair<int,ATNode>> find_decompositions(ATGraph mission_decomposition, int node_id);
 

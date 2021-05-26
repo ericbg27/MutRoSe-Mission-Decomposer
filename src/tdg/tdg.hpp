@@ -54,7 +54,7 @@ class TDGDFSVisitor : public boost::default_dfs_visitor {
 
 class TDG {
     public:
-        TDG(task root_abstract_task, std::vector<task> a_tasks, std::vector<task> p_tasks, std::vector<method> ms);
+        TDG(task root_abstract_task, std::vector<task> a_tasks, std::vector<task> p_tasks, std::vector<method> ms, bool verbose);
 
         std::vector<DecompositionPath> retrieve_possible_decompositions();
         std::vector<DecompositionPath> decomposition_recursion(std::vector<int> dfs_nodes, int current_pos, std::vector<std::pair<std::string,std::string>> parent_vars, 
@@ -78,6 +78,7 @@ class TDG {
         std::pair<bool,std::pair<literal,bool>> check_predicates(task t, std::vector<std::pair<std::string,std::string>> var_mapping, int t_id, std::vector<literal>& world_state);
     
     private:
+        bool verbose;
         int root;
         TDGraph tdg;
         std::vector<task> abstract_tasks;

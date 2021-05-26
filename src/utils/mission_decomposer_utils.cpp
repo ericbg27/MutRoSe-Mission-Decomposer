@@ -204,7 +204,7 @@ pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decompositi
 	@ Input 3: The map between OCL goal model variables and HDDL variables
     @ Output: Void. The decomposition predicates are instantiated
 */
-void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d) {
+void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, bool verbose) {
 	int task_counter = 1, task_number;
 
 	task_number = d.path.decomposition.size();
@@ -226,7 +226,9 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d) {
 					}
 
 					if(!found_arg) {
-						std::cout << "Could not find argument [" << arg << "] for predicate [" << prec.predicate << "]" << std::endl;
+						if(verbose) {
+							std::cout << "Could not find argument [" << arg << "] for predicate [" << prec.predicate << "]" << std::endl;
+						}
 						can_ground = false;
 						break;
 					}

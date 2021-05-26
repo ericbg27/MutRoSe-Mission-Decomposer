@@ -16,7 +16,7 @@ using namespace std;
     @ Input 6: The vector of semantic mappings defined in the configuration file
     @ Input 7: The Goal Model variable mappings (between them and their values)
 */
-ValidMissionGenerator::ValidMissionGenerator(ATGraph md, GMGraph g, vector<Constraint> mc, vector<ground_literal> ws, vector<pair<ground_literal,int>> wsf, vector<SemanticMapping> sm, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gmvmap) {
+ValidMissionGenerator::ValidMissionGenerator(ATGraph md, GMGraph g, vector<Constraint> mc, vector<ground_literal> ws, vector<pair<ground_literal,int>> wsf, vector<SemanticMapping> sm, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gmvmap, bool verb) {
     mission_decomposition = md;
     gm = g;
     mission_constraints = mc;
@@ -24,6 +24,7 @@ ValidMissionGenerator::ValidMissionGenerator(ATGraph md, GMGraph g, vector<Const
     world_state_functions = wsf;
     semantic_mapping = sm;
     gm_var_map = gmvmap;
+    verbose = verb;
 }
 
 /*
@@ -56,19 +57,21 @@ vector<vector<pair<int,ATNode>>> ValidMissionGenerator::generate_valid_mission_d
         final_valid_mission_decompositions.push_back(mission_decomposition.first);
     }
 
-    std::cout << "Valid Mission Decompositions: " << std::endl;
-    for(auto mission_decomposition : final_valid_mission_decompositions) {
-        std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl;
-        unsigned int index = 1;
-        for(pair<int,ATNode> node : mission_decomposition) {
-            if(index == mission_decomposition.size()) {
-                std::cout << get<Decomposition>(node.second.content).id << std::endl;
-            } else {
-                std::cout << get<Decomposition>(node.second.content).id << " -> ";
+    if(verbose) {
+        std::cout << "Valid Mission Decompositions: " << std::endl;
+        for(auto mission_decomposition : final_valid_mission_decompositions) {
+            std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl;
+            unsigned int index = 1;
+            for(pair<int,ATNode> node : mission_decomposition) {
+                if(index == mission_decomposition.size()) {
+                    std::cout << get<Decomposition>(node.second.content).id << std::endl;
+                } else {
+                    std::cout << get<Decomposition>(node.second.content).id << " -> ";
+                }
+                index++;
             }
-            index++;
+            std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl << std::endl;
         }
-        std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl << std::endl;
     }
 
     return final_valid_mission_decompositions;
@@ -422,7 +425,7 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
                         involved in this kind of dependency, preconditions do not hold.
                     */
                     if(preconditions_hold) {
-                        expand_decomposition(d, wsf);
+                        expand_decomposition(d, wsf, verbose);
 
                         ATGraph::in_edge_iterator iei, ied;
 
@@ -491,7 +494,9 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
                                 - If we can, everything is fine and we add it
                                 - If we can't move on to the next
                         */
-                       std::cout << "Preconditions did not hold for task: " << d.id << std::endl;
+                        if(verbose) {
+                            std::cout << "Preconditions did not hold for task: " << d.id << std::endl;
+                        }
                     }
                 }
 
@@ -565,7 +570,7 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
                     /*
                         If preconditions hold we create a new valid mission decomposition
                     */
-                    expand_decomposition(d, world_state_functions);
+                    expand_decomposition(d, world_state_functions, verbose);
 
                     AbstractTask at1 = get<AbstractTask>(current_node.second.content);
                     pair<vector<pair<int,ATNode>>,set<int>> new_valid_mission;
@@ -680,15 +685,17 @@ queue<pair<int,ATNode>> ValidMissionGenerator::generate_mission_queue() {
         }
     }
 
-    queue<pair<int,ATNode>> queue_copy = mission_queue;
-    std::cout << "Mission Queue" << std::endl;
-    while(!queue_copy.empty()) {
-        pair<int,ATNode> node = queue_copy.front();
-        queue_copy.pop(); 
-        if(node.second.node_type == ATASK) {
-            std::cout << "ATASK: " << get<AbstractTask>(node.second.content).id << " - " << get<AbstractTask>(node.second.content).name << std::endl;
-        } else {
-            std::cout << "OPERATOR: " << get<string>(node.second.content) << std::endl;
+    if(verbose) {
+        queue<pair<int,ATNode>> queue_copy = mission_queue;
+        std::cout << "Mission Queue" << std::endl;
+        while(!queue_copy.empty()) {
+            pair<int,ATNode> node = queue_copy.front();
+            queue_copy.pop(); 
+            if(node.second.node_type == ATASK) {
+                std::cout << "ATASK: " << get<AbstractTask>(node.second.content).id << " - " << get<AbstractTask>(node.second.content).name << std::endl;
+            } else {
+                std::cout << "OPERATOR: " << get<string>(node.second.content) << std::endl;
+            }
         }
     }
 
