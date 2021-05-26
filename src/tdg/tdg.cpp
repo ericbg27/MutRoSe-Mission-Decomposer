@@ -17,6 +17,7 @@ using namespace std;
     @ Input 2: The abstract tasks defined in HDDL
     @ Input 3: The primitive tasks defined in HDDL
     @ Input 4: The methods defined in HDDL
+    @ Input 5: The verbose flag
     @ Output: void. The TDG object
 */ 
 TDG::TDG(task root_abstract_task, vector<task> a_tasks, vector<task> p_tasks, vector<method> ms, bool verbose) {
@@ -45,8 +46,7 @@ TDG::TDG(task root_abstract_task, vector<task> a_tasks, vector<task> p_tasks, ve
     Function: retrieve possible decompositions
     Objective: Find all possible decompositions of the root abstract task
 
-    @ Output: A vector of the possible decompositions of the task. One must note that 
-    these are not necessarily valid in the current world state
+    @ Output: A vector of the possible decompositions of the task. One must note that these are not necessarily valid in the current world state
 
     NOTE: Need to deal with cycles. Checking predicates is needed.
         - For each path starting in method m1 we need to have as initial state of the world the methods preconditions (if any).
@@ -148,8 +148,7 @@ vector<DecompositionPath> TDG::decomposition_recursion(vector<int> dfs_nodes, in
 
                 /*
                     If we have an action, check for preconditions based on the current world state and only call decomposition if they are met
-                */
-                        
+                */             
                 pair<bool,pair<literal,bool>> checking_result;
                 checking_result = check_predicates(child_task,child_var_mapping,c,world_state_copy);
 
@@ -266,8 +265,7 @@ vector<DecompositionPath> TDG::decomposition_recursion(vector<int> dfs_nodes, in
             }
 
             /*
-                Methods preconditions are transformed into actions, so we only check for preconditions when
-                checking methods children
+                Methods preconditions are transformed into actions, so we only check for preconditions when checking methods children
             */
             vector<DecompositionPath> aux = decomposition_recursion(dfs_nodes,c_pos,original_vars,world_state,child_var_mapping);
             generated_paths.insert(generated_paths.end(),aux.begin(),aux.end());
@@ -614,7 +612,7 @@ pair<bool,pair<literal,bool>> TDG::check_predicates(task t, vector<pair<string,s
     @ Input 3: The variable mapping with respect to the TDG's root abstract task
     @ Output: Void. The reference to the world state is changed
 */ 
-void TDG::change_world_state(task t,vector<literal>& world_state, vector<pair<string,string>> variable_mapping) {
+void TDG::change_world_state(task t, vector<literal>& world_state, vector<pair<string,string>> variable_mapping) {
     vector<literal> t_effs = t.eff;
     vector<literal> t_costexp = t.costExpression;
 

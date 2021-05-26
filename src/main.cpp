@@ -231,7 +231,9 @@ int main(int argc, char** argv) {
 		sort_definitions.push_back(robotteam_sort);
 	}
 
-	//Add capabilities as constants to be used in the rest of the code
+	/*
+		Add capabilities as constants to be used in the rest of the code
+	*/
 	string s = "sort_for_";
 	for(string c : capabilities_definitions) {
 		string remove_sort = s + c;

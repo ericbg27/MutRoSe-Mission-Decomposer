@@ -689,6 +689,7 @@ void generate_constraints_from_stacks(stack<pair<int,ATNode>>& operators_stack, 
     @ Input 1: The Task Graph as an ATGraph object
     @ Input 2: The vector of constraints
     @ Input 3: The goal model as a GMGraph object
+    @ Input 4: The verbose flag
     @ Output: The final constraint vector of the mission
 
     NOTES:  -> For now we will only return the sequential constraints since they define precedence. Parallel constraints are not considered
@@ -701,20 +702,6 @@ void generate_constraints_from_stacks(stack<pair<int,ATNode>>& operators_stack, 
 vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vector<Constraint> mission_constraints, GMGraph gm, bool verbose) {
     vector<Constraint> transformed_constraints;
     map<int,vector<pair<int,ATNode>>> constraint_nodes_decompositions;
-
-    /*std::cout << std::endl;
-    std::cout << "Mission constraints size: " << mission_constraints.size() << std::endl;
-    std::cout << "Mission Constraints:" << std::endl; 
-    for(Constraint c : mission_constraints) {
-        std::cout << std::get<AbstractTask>(c.nodes_involved.first.second.content).id;
-        if(c.type == PAR) {
-            std::cout << " # ";
-        } else {
-            std::cout << " ; ";
-        }
-        std::cout << std::get<AbstractTask>(c.nodes_involved.second.second.content).id;
-        std::cout << std::endl;
-    }*/
 
     for(Constraint c : mission_constraints) {
         if(c.type == SEQ) {
@@ -750,7 +737,7 @@ vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vecto
 
                 -> We have to check which tasks are involved in a Non-group or Non-divisible group goal
                 -> These will involve the same robots
-                    - We can assume that these will use the same number of robots
+                    - We assume that these will use the same number of robots
             */
             bool non_coop_nodes = boost::edge(n1.first,n2.first,mission_decomposition).second;
             unsigned int i,j;
@@ -868,6 +855,7 @@ vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vecto
 
     @ Input 1: A reference to the vector of constraints
     @ Input 2: The Task Graph as an ATGraph object
+    @ Input 3: The verbose flag
     @ Output: Void. The execution constraints will be added to the constraint vector
 */
 void generate_execution_constraints(vector<Constraint>& mission_constraints, ATGraph mission_decomposition, bool verbose) {

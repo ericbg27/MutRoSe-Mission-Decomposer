@@ -230,13 +230,11 @@ void FileKnowledgeManager::initialize_objects(map<string,set<string>>& sorts, ve
     Function: initialize_world_state
     Objective: Initialize the world state based on the world and robots knowledge. We also use the semantic mappings
 
-    @ Input 1: The robots database object
-    @ Input 2: The world knowledge database object
-    @ Input 3: A reference to the initial world state vector
-    @ Input 4: A reference to the initial function values (in the future we may remove this)
-    @ Input 5: The vector of semantic mappings given in the configuration file
-    @ Input 6: The mapping between HDDL types and OCL types
-    @ Input 7: The sorts map with the existing objects
+    @ Input 1: A reference to the initial world state vector
+    @ Input 2: A reference to the initial function values (in the future we may remove this)
+    @ Input 3: The vector of semantic mappings given in the configuration file
+    @ Input 4: The mapping between HDDL types and OCL types
+    @ Input 5: The sorts map with the existing objects
     @ Output: Void. The reference to the initial world state vector is initialized
 */ 
 void FileKnowledgeManager::initialize_world_state(vector<ground_literal>& init, vector<pair<ground_literal,int>>& init_functions, vector<SemanticMapping> semantic_mapping, map<string,string> type_mapping, map<string,set<string>> sorts) {
@@ -347,6 +345,7 @@ void FileKnowledgeManager::initialize_world_state(vector<ground_literal>& init, 
 
                                 l.predicate = pred.name;
                                 l.positive = val;
+
                                 /*
                                     For now, semantic mappings only involve one argument, which is of the hddl_type. With this in mind,
                                     we get the name attribute in the xml
@@ -428,6 +427,7 @@ void FileKnowledgeManager::initialize_world_state(vector<ground_literal>& init, 
 
                                 l.predicate = pred.name;
                                 l.positive = true;
+                                
                                 /*
                                     For now, semantic mappings only involve one argument, which is of the hddl_type. With this in mind,
                                     we get the name attribute in the xml
@@ -640,45 +640,7 @@ void FileKnowledgeManager::initialize_world_state(vector<ground_literal>& init, 
                                             related_entities.push_back(related_entity.second.data());
                                         }    
                                     }
-
-                                    std::cout << "Related entities: " << std::endl;
-                                    for(string ent : related_entities) {
-                                        std::cout << "Entity: " << ent << std::endl;
-                                    }
-                                    /*pt::ptree attr_tree = child.second.get_child(attribute_name);
-                                    BOOST_FOREACH(pt::ptree::value_type& attr_child, attr_tree) {
-                                        if(attr_child.first == owned_type) {
-                                            if(sorts[owned_hddl_type].find(attr_child.second.get<string>("name")) != sorts[owned_hddl_type].end()) {
-                                                string owned_name = attr_child.second.get<string>("name");
-                                                owned_objects.insert(owned_name);
-
-                                                ground_literal l;
-
-                                                l.predicate = pred.name;
-                                                l.positive = true;
-
-                                                l.args.push_back(owned_name);
-                                                l.args.push_back(owner_name);
-
-                                                init.push_back(l);
-                                            }
-                                        }
-                                    }*/
                                 }
-
-                                /*for(string object : sorts[owned_hddl_type]) {
-                                    if(owned_objects.find(object) == owned_objects.end()) {
-                                        ground_literal l;
-
-                                        l.predicate = pred.name;
-                                        l.positive = false;
-
-                                        l.args.push_back(object);
-                                        l.args.push_back(owner_name);
-
-                                        init.push_back(l);
-                                    }
-                                }*/
                             }            
                         } else {
                             string child_data = child.second.data();

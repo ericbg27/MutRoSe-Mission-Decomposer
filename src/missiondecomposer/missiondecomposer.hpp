@@ -32,7 +32,7 @@ class MissionDecomposer {
         bool check_context_dependency(int parent_node, int current_node, Context context, general_annot* rannot, std::map<std::string, std::variant<std::string,std::vector<std::string>>> instantiated_vars,
                                     std::vector<SemanticMapping> semantic_mapping);
         
-        void create_non_coop_edges(int node_id);
+        void create_execution_constraint_edges(int node_id);
         
         void set_verbose(bool verb);
         void set_mission_decomposer_type(mission_decomposer_type mdt);
