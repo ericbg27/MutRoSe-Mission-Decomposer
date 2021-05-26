@@ -1,11 +1,4 @@
 <configuration>
-    <robots_db>
-        <type>file</type>
-        <file_type>xml</file_type>
-        <path>xml/Room Cleaning/Robots_db.xml</path>
-        <xml_root>robots_db</xml_root>
-    </robots_db>
-
     <world_db>
         <type>file</type>
         <file_type>xml</file_type>

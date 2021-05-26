@@ -14,7 +14,7 @@ using namespace std;
 std::shared_ptr<KnowledgeManager> KnowledgeManagerFactory::create_knowledge_manager(std::map<std::string, std::variant<std::map<std::string,std::string>, std::vector<std::string>, std::vector<SemanticMapping>, std::vector<VariableMapping>, pair<std::string,std::string>>> cfg) {
     string dbs_type = "";
 
-    vector<string> dbs = {"world_db","robots_db"};
+    vector<string> dbs = {"world_db"};
 
     for(unsigned int i = 0; i < dbs.size(); i++) {
         string db_name = dbs.at(i);
@@ -78,10 +78,6 @@ void FileKnowledgeManager::construct_knowledge_base(string db_name, map<string, 
             XMLKnowledgeBase wk(db_name, db_knowledge, db_root);
 
             world_knowledge = make_shared<XMLKnowledgeBase>(wk);
-        } else if(db_name == "robots_db") {
-            XMLKnowledgeBase rk(db_name, db_knowledge, db_root);
-
-            robots_knowledge = make_shared<XMLKnowledgeBase>(rk);
         }
     } else {
         string unsupported_db_file_type_error = "File type " + db_file_type + " is not supported as a database";
@@ -94,12 +90,10 @@ void FileKnowledgeManager::construct_knowledge_base(string db_name, map<string, 
     Function: initialize_objects
     Objective: Initalize the objects on the sorts map based on the knowledge bases (world and robot)
 
-    @ Input 1: World knowledge database
-    @ Input 2: Robots database
-    @ Input 3: The reference to the sorts map
-    @ Input 4: The high-level location type (for now it is only one)
-    @ Input 5: The map of abstract task instances
-    @ Input 6: The mapping between HDDL types and OCL types
+    @ Input 1: The reference to the sorts map
+    @ Input 2: The high-level location type (for now it is only one)
+    @ Input 3: The map of abstract task instances
+    @ Input 4: The mapping between HDDL types and OCL types
     @ Output: Void. The sorts are initialized
 */ 
 void FileKnowledgeManager::initialize_objects(map<string,set<string>>& sorts, vector<string> high_level_loc_types, map<string,vector<AbstractTask>>& at_instances, map<string,string> type_mapping) {
@@ -110,27 +104,9 @@ void FileKnowledgeManager::initialize_objects(map<string,set<string>>& sorts, ve
     } else {
         worlddb_root = world_knowledge->get_knowledge().get_child(world_knowledge->get_root_key());
     }
-
-    pt::ptree robotsdb_root;
-    if(robots_knowledge->get_root_key() == "") {
-        robotsdb_root = robots_knowledge->get_knowledge();
-    } else {
-        robotsdb_root = robots_knowledge->get_knowledge().get_child(robots_knowledge->get_root_key());
-    }
-    /*
-        All the robots considered for the mission are present in the assignments file. In order to add them as constants we need to check
-        if they have types.
-
-        -> If a robot does not have a type we put it as native robot type
-        -> Robot locations are given as robotlocation type
-    */
-    /*bool has_object_type = false;
-    if(sorts["object"].size() > 0) {    
-        has_object_type = true;
-    }*/
     
     /*
-        Here we will add locations and robots. For locations we need to be careful: we need to check what is the type of the location!
+        Here we will add locations. We need to be careful: we need to check what is the type of the location!
 
         -> For now this means that we need to check if that location is of location_type and present in the World model
         -> If it isn't, it will be added as default location type
@@ -196,34 +172,6 @@ void FileKnowledgeManager::initialize_objects(map<string,set<string>>& sorts, ve
             end = current_tree.end();
         }
     }
-
-    /*map<string,vector<string>> robot_types;
-
-    BOOST_FOREACH(pt::ptree::value_type child, robotsdb_root) {
-        if(child.first == "robot") {
-            Robot r;
-            r.name = child.second.get<string>("name");
-            boost::optional<string> r_type = child.second.get_optional("type");
-            if(r_type) {
-                r.type = child.second.get<string>("type");
-            }
-            r.pos = child.second.get<string>("pos");
-
-            assigned_robots.push_back(r);
-
-            if(has_object_type) {
-                sorts["object"].insert(r.name);
-                sorts["object"].insert(r.pos);
-            }
-                            
-            sorts["robot"].insert(r.name);
-            if(sorts.find(r.type) != sorts.end()) { //The robot type is present in sorts
-                sorts[r.type].insert(r.name);
-            }
-
-            sorts["robotlocation"].insert(r.pos);
-        }
-    } */
 }
 
 /*
@@ -238,65 +186,12 @@ void FileKnowledgeManager::initialize_objects(map<string,set<string>>& sorts, ve
     @ Output: Void. The reference to the initial world state vector is initialized
 */ 
 void FileKnowledgeManager::initialize_world_state(vector<ground_literal>& init, vector<pair<ground_literal,int>>& init_functions, vector<SemanticMapping> semantic_mapping, map<string,string> type_mapping, map<string,set<string>> sorts) {
-    /*
-        Here we will create the following native predicates:
-            - at ?r - robot ?rloc - robotlocation
-            - hascapability ?r - robot ?c - capability
-        
-        -> When we have the configuration file we can initialize user-defined predicates and probabilistic predicates
-    */
     pt::ptree worlddb_root;
     if(world_knowledge->get_root_key() == "") {
         worlddb_root = world_knowledge->get_knowledge();
     } else {
         worlddb_root = world_knowledge->get_knowledge().get_child(world_knowledge->get_root_key());
     }
-
-    pt::ptree robotsdb_root;
-    if(robots_knowledge->get_root_key() == "") {
-        robotsdb_root = robots_knowledge->get_knowledge();
-    } else {
-        robotsdb_root = robots_knowledge->get_knowledge().get_child(robots_knowledge->get_root_key());
-    }
-
-    //Initialize at predicates
-    /*for(Robot r : assigned_robots) {
-        ground_literal l;
-        l.predicate = "at";
-        l.positive = true;
-        l.args.push_back(r.name);
-        l.args.push_back(r.pos);
-
-        init.push_back(l);
-    }
-
-    for(Robot r : assigned_robots) {
-        BOOST_FOREACH(pt::ptree::value_type& child, robotsdb_root) {
-            if(child.first == "robot") {
-                string robot_name = child.second.get<string>("name");
-                if(r.name == robot_name){
-                    pt::ptree robot_attr = child.second.get_child("capabilities").get_child("<xmlattr>");
-                    int cap_number = robot_attr.get<int>("number");
-
-                    stringstream ss(child.second.get_child("capabilities").data());
-                    for(int i = 0;i < cap_number;i++) {
-                        ground_literal l;
-                            
-                        l.predicate = "hascapability";
-                        l.positive = true;
-                        l.args.push_back(r.name);
-
-                        string cap_name;
-                        ss >> cap_name;
-
-                        l.args.push_back(cap_name);
-                            
-                        init.push_back(l);
-                    }
-                }
-            }
-        }
-    }*/
 
     /*
         Initialize predicates from semantic mappings given at the configuration file
@@ -309,18 +204,12 @@ void FileKnowledgeManager::initialize_world_state(vector<ground_literal>& init, 
             string attr_name = std::get<string>(sm.get_prop(name_key));
             string relation_type = std::get<string>(sm.get_prop(relatesto_key));
             if(relation_type != "robot") {
-                string db = std::get<string>(sm.get_prop(belongsto_key));
-
                 //In addition to only mapping attributes we are only mapping them to predicates
                 if(sm.get_mapped_type() == predicate_mapped_type) {
                     predicate_definition pred = std::get<predicate_definition>(sm.get_prop(map_key));
                         
                     pt::ptree used_db;
-                    if(db == "robots_db") {
-                        used_db = robotsdb_root;
-                    } else {
-                        used_db = worlddb_root;
-                    }
+                    used_db = worlddb_root;
 
                     pt::ptree current_tree = used_db;
                     
@@ -392,11 +281,7 @@ void FileKnowledgeManager::initialize_world_state(vector<ground_literal>& init, 
                     predicate_definition pred = std::get<predicate_definition>(sm.get_prop(map_key));
                         
                     pt::ptree used_db;
-                    if(db == "robots_db") {
-                        used_db = robotsdb_root;
-                    } else {
-                        used_db = worlddb_root;
-                    }
+                    used_db = worlddb_root;
 
                     pt::ptree current_tree = used_db;
                     
@@ -477,18 +362,12 @@ void FileKnowledgeManager::initialize_world_state(vector<ground_literal>& init, 
             string owned_type = std::get<string>(sm.get_prop(owned_key));
 
             if(owner_type != "robot" && owned_type != "robot") {
-                string db = std::get<string>(sm.get_prop(belongsto_key));
-
                 //In addition to only mapping attributes we are only mapping them to predicates
                 if(sm.get_mapped_type() == predicate_mapped_type) {
                     predicate_definition pred = std::get<predicate_definition>(sm.get_prop(map_key));
                         
                     pt::ptree used_db;
-                    if(db == "robots_db") {
-                        used_db = robotsdb_root;
-                    } else {
-                        used_db = worlddb_root;
-                    }
+                    used_db = worlddb_root;
 
                     pt::ptree current_tree = used_db;
                     
@@ -588,18 +467,12 @@ void FileKnowledgeManager::initialize_world_state(vector<ground_literal>& init, 
             string related_entity_type = std::get<string>(sm.get_prop(relatedentity_key));
 
             if(main_entity_type != "robot" && related_entity_type != "robot") {
-                string db = std::get<string>(sm.get_prop(belongsto_key));
-
                 //In addition to only mapping attributes we are only mapping them to predicates
                 if(sm.get_mapped_type() == predicate_mapped_type) {
                     predicate_definition pred = std::get<predicate_definition>(sm.get_prop(map_key));
                         
                     pt::ptree used_db;
-                    if(db == "robots_db") {
-                        used_db = robotsdb_root;
-                    } else {
-                        used_db = worlddb_root;
-                    }
+                    used_db = worlddb_root;
 
                     pt::ptree current_tree = used_db;
                     
@@ -682,10 +555,6 @@ void FileKnowledgeManager::initialize_world_state(vector<ground_literal>& init, 
 
 shared_ptr<FileKnowledgeBase> FileKnowledgeManager::get_world_knowledge() {
     return this->world_knowledge;
-}
-
-shared_ptr<FileKnowledgeBase> FileKnowledgeManager::get_robots_knowledge() {
-    return this->robots_knowledge;
 }
 
 /*
