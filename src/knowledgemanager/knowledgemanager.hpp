@@ -39,11 +39,9 @@ class FileKnowledgeManager : public KnowledgeManager {
         void initialize_world_state(std::vector<ground_literal>& init, std::vector<pair<ground_literal,int>>& init_functions, std::vector<SemanticMapping> semantic_mapping, std::map<std::string,std::string> type_mapping, std::map<std::string,std::set<std::string>> sorts);
 
         shared_ptr<FileKnowledgeBase> get_world_knowledge();
-        shared_ptr<FileKnowledgeBase> get_robots_knowledge();
 
     private:
         shared_ptr<FileKnowledgeBase> world_knowledge;
-        shared_ptr<FileKnowledgeBase> robots_knowledge;
 };
 
 class KnowledgeManagerFactory {
@@ -51,18 +49,6 @@ class KnowledgeManagerFactory {
         static std::shared_ptr<KnowledgeManager> create_knowledge_manager(std::map<std::string, std::variant<std::map<std::string,std::string>, std::vector<std::string>, std::vector<SemanticMapping>, std::vector<VariableMapping>, pair<std::string,std::string>>> cfg);
 };
 
-struct Robot {
-    std::string name;
-    std::string type;
-    std::string pos;
-};
-
 void print_world_state(std::vector<ground_literal> world_state, vector<pair<ground_literal,int>> world_functions);
-
-inline bool operator==(const Robot& r1, const Robot& r2) {
-    return (r1.name == r2.name);
-}
-
-extern std::vector<Robot> assigned_robots;
 
 #endif

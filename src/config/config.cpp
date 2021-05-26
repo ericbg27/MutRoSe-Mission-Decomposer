@@ -18,8 +18,8 @@ map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>,
     pt::read_xml(filename, config_root);
 
     BOOST_FOREACH(pt::ptree::value_type& config, config_root.get_child("configuration")) {
-        //Read Robot and World Database Info
-        vector<string> databases {"robots_db","world_db"};
+        //Read Databases Info
+        vector<string> databases {"world_db"};
         for(string db : databases) {
             if(config.first == db) {
                 boost::optional<string> db_type_attr = config.second.get_optional<string>("type");

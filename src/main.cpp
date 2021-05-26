@@ -72,9 +72,6 @@ bool has_when = false;
 bool has_capabilities_definitions = false;
 bool verbose = false;
 
-//Structures related to robots and world model
-vector<Robot> assigned_robots;
-
 int main(int argc, char** argv) {
 	cin.sync_with_stdio(false);
 	cout.sync_with_stdio(false);
@@ -168,7 +165,6 @@ int main(int argc, char** argv) {
 	KnowledgeManagerFactory k_manager_factory;
 	shared_ptr<KnowledgeManager> knowledge_manager = k_manager_factory.create_knowledge_manager(cfg);
 	knowledge_manager->construct_knowledge_base("world_db", cfg);
-	knowledge_manager->construct_knowledge_base("robots_db", cfg);
 
 	vector<string> output = std::get<vector<string>>(cfg["output"]);
 
@@ -290,9 +286,6 @@ int main(int argc, char** argv) {
 
 	check_config(variable_mapping, type_mapping, gm, abstract_tasks, semantic_mapping, high_level_loc_types, predicate_definitions);
 
-	/*
-		TODO: Add flag which will indicate if we need to verify or not our constructs (deal with errors)
-	*/
 	check_gm_validity(gm);
 
 	if(verbose) {
