@@ -31,10 +31,7 @@ at_manager_type ATManager::get_at_manager_type() {
 
 /*
     Function: generate_at_instances
-    Objective: This function goes through the goal model in a depth-first search maaner. In this GM walk-through
-	we use the world knowledge in order to instantiate variables and verify high-level location types. Also, in
-	here we evaluate forAll condition, events, etc.
-	Short Description: Go through the Goal Model and find out how many tasks must be created (and how many of each).
+    Objective: This function initializes variables and calls a recursive function which populates at_instances
 
 	@ Input 1: The variable mapping of the GM
 	@ Input 2: The variable mappings between HDDL and the Goal Model
@@ -60,9 +57,6 @@ map<string,vector<AbstractTask>> FileKnowledgeATManager::generate_at_instances(m
 		}
 	}
 
-	/*
-		Variable initializations
-	*/
 	map<int,int> node_depths;
 
 	recursive_at_instances_generation(0, 0, node_depths, world_tree, var_mapping, gm_var_map, false);
@@ -70,6 +64,23 @@ map<string,vector<AbstractTask>> FileKnowledgeATManager::generate_at_instances(m
 	return at_instances;
 }
 
+/*
+    Function: recursive_at_instances_generation
+    Objective: This function goes through the goal model in a depth-first search maaner. In this GM walk-through
+	we use the world knowledge in order to instantiate variables and verify high-level location types. Also, in
+	here we evaluate forAll condition, events, etc.
+	Short Description: Go through the Goal Model and find out how many tasks must be created (and how many of each).
+
+	@ Input 1: The ID of the current node
+	@ Input 2: The depth of the current node
+	@ Input 3: A map of the node depths
+	@ Input 4: The world knowledge ptree
+	@ Input 5: The variable mappings between HDDL and the Goal Model
+	@ Input 6: The variable mapping of the GM
+	@ Input 7: A flag which indicates if events need to be inserted
+	
+    @ Output: Void. The AT instances attribute is populated
+*/
 void FileKnowledgeATManager::recursive_at_instances_generation(int current, int depth, map<int,int>& node_depths, pt::ptree world_tree, vector<VariableMapping> var_mapping,
 																map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map, bool insert_events) {	
 	if(gm[current].parent != -1) {

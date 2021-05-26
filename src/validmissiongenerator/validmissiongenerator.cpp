@@ -15,6 +15,7 @@ using namespace std;
     @ Input 5: The initial state of the world (functions)
     @ Input 6: The vector of semantic mappings defined in the configuration file
     @ Input 7: The Goal Model variable mappings (between them and their values)
+    @ Input 8: The verbose flag
 */
 ValidMissionGenerator::ValidMissionGenerator(ATGraph md, GMGraph g, vector<Constraint> mc, vector<ground_literal> ws, vector<pair<ground_literal,int>> wsf, vector<SemanticMapping> sm, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gmvmap, bool verb) {
     mission_decomposition = md;
@@ -487,13 +488,6 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
 
                         valid_task_decomposition = true;
                     } else {
-                        /*
-                            Here we have to put the code for checking for context dependecies
-
-                            -> If there is any we check the constraints to see if we can add the task decomposition to the mission decomposition or not
-                                - If we can, everything is fine and we add it
-                                - If we can't move on to the next
-                        */
                         if(verbose) {
                             std::cout << "Preconditions did not hold for task: " << d.id << std::endl;
                         }

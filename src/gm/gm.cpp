@@ -428,7 +428,9 @@ void check_undefined_number_of_robots(GMGraph& gm, vector<task> abstract_tasks, 
                             robot_number++;
                         } else {
                             if(var_type == hddl_robotteam_type) { //Maybe later change this to deal with subtypes of robotteam
-                                throw std::runtime_error("Tasks without RobotNumber attribute cannot have robotteam variable!");
+                                string prohibited_robotteam_error = "Tasks without RobotNumber attribute cannot have robotteam variable!";
+
+                                throw std::runtime_error(prohibited_robotteam_error);
                             }
                             bool is_robot_subtype = false;
                             for(sort_definition def : sort_definitions) {

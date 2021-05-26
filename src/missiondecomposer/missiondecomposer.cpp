@@ -97,15 +97,12 @@ void MissionDecomposer::final_context_dependency_links_generation() {
     Objective: Verify context dependencies involving a given node. This is called if the context of some task is not
 	valid at the moment we evaluate it, so we go through all of the paths to the left of the Goal Model
 
-    @ Input 1: A reference to Task Graph as an ATGraph object
-	@ Input 2: The parent node ID of the node being evaluated 
-	@ Input 3: The ID of the node being evaluated
-	@ Input 4: The context of the current node
-	@ Input 5: The runtime annotation of the current node
-	@ Input 6: The current world state
-	@ Input 7: The instantiated OCL goal model variables
-	@ Input 8: The abstract tasks decomposition paths map
-	@ Input 9: The semantic mapping vector
+	@ Input 1: The parent node ID of the node being evaluated 
+	@ Input 2: The ID of the node being evaluated
+	@ Input 3: The context of the current node
+	@ Input 4: The runtime annotation of the current node
+	@ Input 5: The instantiated OCL goal model variables
+	@ Input 6: The semantic mapping vector
     @ Output: A boolean flag indicating if the context of the node was satisfied with some abstract task
 */
 bool MissionDecomposer::check_context_dependency(int parent_node, int current_node, Context context, general_annot* rannot, map<string, variant<string,vector<string>>> instantiated_vars, 
@@ -123,7 +120,6 @@ bool MissionDecomposer::check_context_dependency(int parent_node, int current_no
 
 		-> If any effects corresponds to the given context we link this node with the node that has the context
 	*/
-
 	pair<bool,pair<string,predicate_definition>> var_and_pred =  get_pred_from_context(context, semantic_mapping);
 
 	bool found_at = false;
@@ -287,13 +283,13 @@ bool MissionDecomposer::check_context_dependency(int parent_node, int current_no
 }
 
 /*
-    Function: create_non_coop_edges
+    Function: create_execution_constraint_edges
     Objective: Create execution constraint edges with the current node (if they do not exist)
 
 	@ Input 1: The ID of the node being evaluated
     @ Output: Void. The task graph is modified
 */
-void MissionDecomposer::create_non_coop_edges(int node_id) {
+void MissionDecomposer::create_execution_constraint_edges(int node_id) {
 	int non_coop_parent_id = -1;
 	int current_node = node_id;
 
@@ -648,6 +644,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 
 		if(!found_at) {
 			string at_not_found_error = "Could not find AT " + rannot->content.substr(0,rannot->content.find("_")) + " definition";
+			
 			throw std::runtime_error(at_not_found_error);
 		}
 
@@ -663,7 +660,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 		boost::add_edge(boost::vertex(parent, mission_decomposition), boost::vertex(node_id, mission_decomposition), e, mission_decomposition);
 
 		if(non_coop) {
-			create_non_coop_edges(node_id);
+			create_execution_constraint_edges(node_id);
 		}
 
 		AbstractTask at = std::get<AbstractTask>(node.content);
