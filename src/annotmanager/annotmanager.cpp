@@ -269,6 +269,7 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
             node_annot->children = expanded_annot->children;
             node_annot->related_goal = expanded_annot->related_goal;
             
+            int current = vctr.at(0);
             vctr.erase(vctr.begin());
 
             bool expanded_in_forAll = false;
@@ -280,7 +281,48 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
                 int generated_instances = valid_variables[iterated_var].second.size();
 
                 if(generated_instances > 1) {
-                    int c_node = vctr.at(0);
+                    vector<int> to_copy;
+
+                    bool finished = false;
+                    unsigned int node_index = 0;
+
+                    VertexData node = gm[current];
+
+                    unsigned int children_found = 0;  
+                    while(!finished) {
+                        bool must_copy = false;
+
+                        if(children_found < node.children.size()) {
+                            if(std::find(node.children.begin(), node.children.end(), vctr.at(node_index)) != node.children.end()) {
+                                children_found++;
+                            }
+
+                            must_copy = true;
+                        } 
+
+                        if(children_found == node.children.size()) {
+                            VertexData aux = gm[vctr.at(node_index)];
+
+                            if(aux.parent == node.parent) {
+                                finished = true;
+                            } else if(node_index == vctr.size()-1) {
+                                finished = true;
+                                must_copy = true;
+                            } else {
+                                must_copy = true;
+                            }
+                        }
+                        
+                        if(must_copy) {
+                            to_copy.push_back(vctr.at(node_index));
+                        }
+
+                        node_index++;
+                    }
+
+                    for(int factor = 1; factor < generated_instances; factor++) {
+                        vctr.insert(vctr.begin()+(factor*to_copy.size()), to_copy.begin(), to_copy.end());
+                    }
 
                     vector<general_annot*> new_annots;
                     for(int i = 0; i < generated_instances; i++) {
@@ -309,7 +351,6 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
                     }
 
                     int index = 0;
-                    unsigned int child_index = 0;
                     for(general_annot* node_ch : node_annot->children) {
                         string var_type = valid_variables[iterated_var].first;
                         vector<pt::ptree> iteration_var_value;
@@ -318,22 +359,10 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
                         valid_variables[iteration_var] = make_pair(var_type, iteration_var_value);
 
                         for(general_annot* child : node_ch->children) {
+                            int c_node = vctr.at(0);
                             child->parent = node_ch;
-                            vector<int> vctr_aux = vctr;
+
                             recursive_gm_annot_generation(child, vctr, worlddb, c_node, valid_variables, valid_forAll_conditions, node_depths);
-                            
-                            if(child_index < node_annot->children.size()-1) {
-                                unsigned int nodes_diff = vctr_aux.size() - vctr.size();
-                                
-                                vector<int> to_insert(vctr_aux.begin(),vctr_aux.begin() + nodes_diff);
-                                std::reverse(to_insert.begin(),to_insert.end());
-
-                                for(int elem : to_insert) {
-                                    vctr.insert(vctr.begin(),elem);
-                                }   
-                            }
-
-                            child_index++;
                         }
 
                         index++;
