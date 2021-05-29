@@ -129,7 +129,7 @@ void FileKnowledgeATManager::recursive_at_instances_generation(int current, int 
 	}
 	if(parent_annot->content == sequential_op) {
 		insert_events = false;
-	} else if(parent_annot->content == parallel_op) {
+	} else if(parent_annot->content == parallel_op || parent_annot->content == "") {
 		insert_events = true;
 	}
 
