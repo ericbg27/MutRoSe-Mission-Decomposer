@@ -108,7 +108,7 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
        */
         string op = std::get<string>(current_node.second.content);
 
-        if(op == "#") {
+        if(op == "#") { // Here is the only place where we check for an OR decomposition
             /*
                 If the operator is parallel we:
 
@@ -119,6 +119,11 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
                     - Effects are kept in an effects to apply map, where they are applied after finishing all of the executions
             */
             bool checking_children = true;
+            bool is_or = false;
+
+            vector<pair<vector<pair<int,ATNode>>,set<int>>> initial_decompositions = valid_mission_decompositions;
+
+            vector<vector<pair<vector<pair<int,ATNode>>,set<int>>>> child_decompositions;
 
             while(checking_children) {
                 if(mission_queue.size() == 0) {
@@ -133,6 +138,10 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
                     int source = boost::source(*ei,mission_decomposition);
                     int target = boost::target(*ei,mission_decomposition);
                     auto edge = boost::edge(source,target,mission_decomposition).first;
+
+                    if(mission_decomposition[edge].edge_type == NORMALOR) {
+                        is_or = true;
+                    }
 
                     int children_num = 0;
                     ATGraph::out_edge_iterator target_ei, target_ei_end;
@@ -158,7 +167,7 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
                                 */
                                if(mission_decomposition[t].node_type != GOALNODE) {
                                     goal_node = false;
-                                    if(mission_decomposition[e].edge_type == NORMAL) {
+                                    if(mission_decomposition[e].edge_type == NORMALAND || mission_decomposition[e].edge_type == NORMALOR) {
                                         if(t == next_node.first) {
                                             is_child = true;
                                             break;
@@ -174,7 +183,7 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
                             break;
                         }
                     } else {
-                        if(mission_decomposition[edge].edge_type == NORMAL) {
+                        if(mission_decomposition[edge].edge_type == NORMALAND || mission_decomposition[edge].edge_type == NORMALOR) {
                             if(target == next_node.first) {
                                 is_child = true;
                                 break;
@@ -184,24 +193,66 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
                 }
 
                 if(is_child) {
-                    map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> child_effects;
-                    child_effects = recursive_valid_mission_decomposition("#", mission_queue, depth, child_effects);
+                    if(!is_or) {
+                        map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> child_effects;
+                        child_effects = recursive_valid_mission_decomposition("#", mission_queue, depth, child_effects);
 
-                    map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>::iterator ceff_it;
-                    for(ceff_it = child_effects.begin(); ceff_it != child_effects.end(); ++ceff_it) {
-                        if(children_effects.find(ceff_it->first) == children_effects.end()) {
-                            children_effects[ceff_it->first] = ceff_it->second;
-                        } else {
-                            vector<variant<ground_literal,pair<ground_literal,int>>> aux = children_effects[ceff_it->first];
-                            aux.insert(aux.end(), ceff_it->second.begin(), ceff_it->second.end());
+                        map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>::iterator ceff_it;
+                        for(ceff_it = child_effects.begin(); ceff_it != child_effects.end(); ++ceff_it) {
+                            if(children_effects.find(ceff_it->first) == children_effects.end()) {
+                                children_effects[ceff_it->first] = ceff_it->second;
+                            } else {
+                                vector<variant<ground_literal,pair<ground_literal,int>>> aux = children_effects[ceff_it->first];
+                                aux.insert(aux.end(), ceff_it->second.begin(), ceff_it->second.end());
 
-                            children_effects[ceff_it->first] = aux;
+                                children_effects[ceff_it->first] = aux;
+                            }
                         }
+                        
+                        child_effects.clear();
+                    } else {
+                        /*
+                            Here is where we deal with an OR decomposed node
+
+                            -> We need to keep the valid mission decompositions vector we have at the moment we reach this node
+                                - For each child, the valid mission decompositions vector will be reset to this vector
+                                - A valid mission decompositions vector will be kept for each child
+                                - At the end, all of the children valid mission decompositions vector will be appended to form the global valid mission decompositions vector
+                            
+                            -> How to deal with the child_effects and children_effects?
+                                - Possibly nothing will need to be done
+                                - The key in these maps is the ID of the node, which solves any problem related to conflicts
+                        */
+                        valid_mission_decompositions = initial_decompositions;
+
+                        map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> child_effects;
+                        child_effects = recursive_valid_mission_decomposition("#", mission_queue, depth, child_effects);
+
+                        map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>::iterator ceff_it;
+                        for(ceff_it = child_effects.begin(); ceff_it != child_effects.end(); ++ceff_it) {
+                            if(children_effects.find(ceff_it->first) == children_effects.end()) {
+                                children_effects[ceff_it->first] = ceff_it->second;
+                            } else {
+                                vector<variant<ground_literal,pair<ground_literal,int>>> aux = children_effects[ceff_it->first];
+                                aux.insert(aux.end(), ceff_it->second.begin(), ceff_it->second.end());
+
+                                children_effects[ceff_it->first] = aux;
+                            }
+                        }
+                        
+                        child_effects.clear();
+
+                        child_decompositions.push_back(valid_mission_decompositions);
                     }
-                    
-                    child_effects.clear();
                 } else {
                     checking_children = false;
+                }
+            }
+
+            if(is_or) {
+                valid_mission_decompositions.clear();
+                for(auto decomposition : child_decompositions) {
+                    valid_mission_decompositions.insert(valid_mission_decompositions.end(), decomposition.begin(), decomposition.end());
                 }
             }
 
@@ -243,7 +294,7 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
                                 */
                                if(mission_decomposition[t].node_type != GOALNODE) {
                                     goal_node = false;
-                                    if(mission_decomposition[e].edge_type == NORMAL) {
+                                    if(mission_decomposition[e].edge_type == NORMALAND || mission_decomposition[e].edge_type == NORMALOR) {
                                         if(t == next_node.first) {
                                             is_child = true;
                                             break;
@@ -259,7 +310,7 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
                             break;
                         }
                     } else {
-                        if(mission_decomposition[edge].edge_type == NORMAL) {
+                        if(mission_decomposition[edge].edge_type == NORMALAND || mission_decomposition[edge].edge_type == NORMALOR) {
                             if(target == next_node.first) {
                                 is_child = true;
                                 break;
@@ -645,7 +696,7 @@ queue<pair<int,ATNode>> ValidMissionGenerator::generate_mission_queue() {
                     auto target = boost::target(*ei,mission_decomposition);
                     auto edge = boost::edge(source,target,mission_decomposition);
 
-                    if(mission_decomposition[edge.first].edge_type == NORMAL) {
+                    if(mission_decomposition[edge.first].edge_type == NORMALAND || mission_decomposition[edge.first].edge_type == NORMALOR) {
                         out_edge_num++;
                     }
                 }
@@ -716,7 +767,7 @@ void ValidMissionGenerator::check_conditions(std::map<int, std::vector<std::vari
                 auto target = boost::target(*ei,mission_decomposition);
                 auto edge = boost::edge(source,target,mission_decomposition);
 
-                if(mission_decomposition[edge.first].edge_type == NORMAL) {
+                if(mission_decomposition[edge.first].edge_type == NORMALAND || mission_decomposition[edge.first].edge_type == NORMALOR) {
                     if(mission_decomposition[target].node_type == GOALNODE) {
                         achievel_goal_id = std::get<string>(mission_decomposition[target].content);
                         break;

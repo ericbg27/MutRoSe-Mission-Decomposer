@@ -123,6 +123,24 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
 				valid_forAll_conditions[depth] = a;
 			}
 		}
+
+        GMGraph::out_edge_iterator ei, ei_end;
+		for(boost::tie(ei,ei_end) = out_edges(current_node,gm);ei != ei_end;++ei) {
+            int source = boost::source(*ei,gm);
+            int target = boost::target(*ei,gm);
+            auto edge = boost::edge(source,target,gm).first;
+
+			EdgeData e = gm[edge];
+            if(e.type == istar_or) {
+                node_annot->or_decomposition = true;
+            }
+        }
+    }
+
+    if(node_annot->content == sequential_op && node_annot->or_decomposition) {
+        string sequential_or_error = "OR decomposed goal cannot have sequential runtime annotations";
+
+        throw std::runtime_error(sequential_or_error);
     }
 
     /*
@@ -224,7 +242,7 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
 
             if(gm[vctr.at(0)].children.size() > 1) {
                 if(expanded_annot->content == "") {
-                    expanded_annot->content = sequential_op;
+                    expanded_annot->content = parallel_op;
                     for(int child : gm[vctr.at(0)].children) {
                         general_annot* aux = new general_annot();
 

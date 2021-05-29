@@ -37,7 +37,7 @@ struct ATNode {
     int parent;
 };
 
-enum at_edge_type {NORMAL,CDEPEND,NONCOOP};
+enum at_edge_type {NORMALOR,NORMALAND,CDEPEND,NONCOOP};
 
 struct ATEdge {
     at_edge_type edge_type;

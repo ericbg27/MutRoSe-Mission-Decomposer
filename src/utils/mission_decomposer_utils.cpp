@@ -29,7 +29,7 @@ pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decompositi
 			auto target = boost::target(*ei,mission_decomposition);
 			auto edge = boost::edge(source,target,mission_decomposition);
 
-			if(mission_decomposition[edge.first].edge_type == NORMAL) {
+			if(mission_decomposition[edge.first].edge_type == NORMALAND || mission_decomposition[edge.first].edge_type == NORMALOR) {
 				out_edge_num++;
 			}
 		}
@@ -72,12 +72,14 @@ pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decompositi
 			ATGraph::out_edge_iterator ei, ei_end;
 
 			//Only insert OP nodes that have more than one outer edge of normal type (more than one child)
+			at_edge_type edge_type;
 			for(boost::tie(ei,ei_end) = out_edges(*i,mission_decomposition);ei != ei_end;++ei) {
 				auto source = boost::source(*ei,mission_decomposition);
 				auto target = boost::target(*ei,mission_decomposition);
 				auto edge = boost::edge(source,target,mission_decomposition);
 
-				if(mission_decomposition[edge.first].edge_type == NORMAL) {
+				if(mission_decomposition[edge.first].edge_type == NORMALAND || mission_decomposition[edge.first].edge_type == NORMALOR) {
+					edge_type = mission_decomposition[edge.first].edge_type;
 					out_edge_num++;
 				}
 			}
@@ -92,7 +94,7 @@ pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decompositi
 
 				if(int(*i) != root) {
 					ATEdge e;
-					e.edge_type = NORMAL;
+					e.edge_type = edge_type;
 					e.source = ids_map[parent];
 					e.target = node_id;
 
@@ -114,12 +116,12 @@ pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decompositi
 						a_node.parent = mission_decomposition[root].parent;
 					}
 
-					if(mission_decomposition[edge.first].edge_type == NORMAL) {
+					if(mission_decomposition[edge.first].edge_type == NORMALAND || mission_decomposition[edge.first].edge_type == NORMALOR) {
 						if(a_node.node_type == ATASK) {
 							int task_id = boost::add_vertex(a_node, trimmed_mission_decomposition);
 								
 							ATEdge e;
-							e.edge_type = NORMAL;
+							e.edge_type = mission_decomposition[edge.first].edge_type;
 							e.source = node_id;
 							e.target = task_id;
 
@@ -143,12 +145,12 @@ pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decompositi
 						a_node.parent = mission_decomposition[root].parent;
 					}
 
-					if(mission_decomposition[edge.first].edge_type == NORMAL) {
+					if(mission_decomposition[edge.first].edge_type == NORMALAND || mission_decomposition[edge.first].edge_type == NORMALOR) {
 						if(a_node.node_type == ATASK) {
 							int task_id = boost::add_vertex(a_node, trimmed_mission_decomposition);
 								
 							ATEdge e;
-							e.edge_type = NORMAL;
+							e.edge_type = mission_decomposition[edge.first].edge_type;
 							e.source = parent;
 							e.target = task_id;
 
@@ -173,12 +175,12 @@ pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decompositi
 					a_node.parent = mission_decomposition[root].parent;
 				}
 
-				if(mission_decomposition[edge.first].edge_type == NORMAL) {
+				if(mission_decomposition[edge.first].edge_type == NORMALAND || mission_decomposition[edge.first].edge_type == NORMALOR) {
 					if(a_node.node_type == ATASK) {
 						int task_id = boost::add_vertex(a_node, trimmed_mission_decomposition);
 								
 						ATEdge e;
-						e.edge_type = NORMAL;
+						e.edge_type = mission_decomposition[edge.first].edge_type;
 						e.source = parent;
 						e.target = task_id;
 
@@ -570,7 +572,7 @@ void find_non_coop_task_ids(ATGraph mission_decomposition, int node_id, set<int>
 			auto target = boost::target(*ei,mission_decomposition);
 			auto edge = boost::edge(source,target,mission_decomposition);
 
-			if(mission_decomposition[edge.first].edge_type == NORMAL) {
+			if(mission_decomposition[edge.first].edge_type == NORMALOR || mission_decomposition[edge.first].edge_type == NORMALAND) {
 				find_non_coop_task_ids(mission_decomposition,target,task_ids);
 			}
 		}
@@ -755,7 +757,7 @@ void print_mission_decomposition(ATGraph mission_decomposition) {
 			auto e = boost::edge(*i,*ai,mission_decomposition).first;
 
 			ATEdge edge = mission_decomposition[e];
-			if(edge.edge_type == NORMAL) {
+			if(edge.edge_type == NORMALAND || edge.edge_type == NORMALOR) {
 				std::cout << " ----> ";
 			} else if(edge.edge_type == NONCOOP) { 
 				std::cout << " -NC-> ";
@@ -790,7 +792,7 @@ bool is_unique_branch(ATGraph mission_decomposition) {
 				auto target = boost::target(*ei,mission_decomposition);
 				auto edge = boost::edge(source,target,mission_decomposition);
 
-				if(mission_decomposition[edge.first].edge_type == NORMAL) {
+				if(mission_decomposition[edge.first].edge_type == NORMALAND || mission_decomposition[edge.first].edge_type == NORMALOR) {
 					out_edge_num++;
 				}
 			}
