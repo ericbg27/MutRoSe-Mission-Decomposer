@@ -43,7 +43,7 @@ void XMLOutputGenerator::generate_instances_output(vector<SemanticMapping> seman
             c.nodes_involved.second = n2;
         }
     }
-
+    
     /*
         Generate final mission constraints
 

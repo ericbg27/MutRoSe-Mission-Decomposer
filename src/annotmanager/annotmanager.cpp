@@ -257,7 +257,7 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
 
                         expanded_annot->children.push_back(aux);
                     }
-                }
+                } 
             } else { //Means-end decomposition
                 int only_child = gm[vctr.at(0)].children.at(0);
                 expanded_annot->content = get_node_name(gm[vctr.at(0)].text);

@@ -652,20 +652,64 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 		node.parent = parent;
 		node.is_achieve_type = is_forAll || is_achieve;
 
+		int achieve_goalnode_id = -1;
+		if(is_achieve && node.node_type == OP) {
+			ATNode new_achieve_node = node;
+
+			new_achieve_node.node_type = GOALNODE;
+			new_achieve_node.content = rannot->related_goal;
+
+			node.non_coop = false;
+			node.group = true;
+			node.divisible = true;
+
+			achieve_goalnode_id = boost::add_vertex(new_achieve_node, mission_decomposition);
+
+			node.parent = achieve_goalnode_id;
+			node.is_achieve_type = false;
+		}
+
 		node_id = boost::add_vertex(node, mission_decomposition);
 
-		if(parent != -1) {
+		if(achieve_goalnode_id == -1) {
+			if(parent != -1) {
+				ATEdge e;
+				if(rannot->parent->or_decomposition) {
+					e.edge_type = NORMALOR;
+				} else {
+					e.edge_type = NORMALAND;
+				}
+				e.source = parent;
+				e.target = node_id;
+
+				//mission_decomposition[node_id].parent = parent;
+				boost::add_edge(boost::vertex(parent, mission_decomposition), boost::vertex(node_id, mission_decomposition), e, mission_decomposition);
+			}
+		} else {
+			if(parent != -1) {
+				ATEdge e;
+				if(rannot->parent->or_decomposition) {
+					e.edge_type = NORMALOR;
+				} else {
+					e.edge_type = NORMALAND;
+				}
+				e.source = parent;
+				e.target = achieve_goalnode_id;
+
+				//mission_decomposition[node_id].parent = parent;
+				boost::add_edge(boost::vertex(parent, mission_decomposition), boost::vertex(achieve_goalnode_id, mission_decomposition), e, mission_decomposition);
+			}
+
 			ATEdge e;
 			if(rannot->parent->or_decomposition) {
 				e.edge_type = NORMALOR;
 			} else {
 				e.edge_type = NORMALAND;
 			}
-			e.source = parent;
+			e.source = achieve_goalnode_id;
 			e.target = node_id;
 
-			//mission_decomposition[node_id].parent = parent;
-			boost::add_edge(boost::vertex(parent, mission_decomposition), boost::vertex(node_id, mission_decomposition), e, mission_decomposition);
+			boost::add_edge(boost::vertex(achieve_goalnode_id, mission_decomposition), boost::vertex(node_id, mission_decomposition), e, mission_decomposition);
 		}
 		/*
 			- Check if context is active

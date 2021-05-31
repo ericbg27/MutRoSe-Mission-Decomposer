@@ -375,7 +375,6 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
 
                 for(pair<int,ATNode> task_decomposition : task_decompositions) {
                     Decomposition d = get<Decomposition>(task_decomposition.second.content);
-                    
                     // World state will be the initial world state + the effects in effects_to_apply (given which tasks are in the set of tasks of the decomposition)
                     vector<ground_literal> ws = world_state;
                     vector<pair<ground_literal,int>> wsf = world_state_functions;
@@ -429,7 +428,7 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
 
                     bool preconditions_hold = true;
                     for(auto prec : d.prec) { 
-                        if(holds_alternative<ground_literal>(prec)) {                   
+                        if(holds_alternative<ground_literal>(prec)) {              
                             ground_literal p = get<ground_literal>(prec);
                             
                             if(!p.isComparison) {
@@ -548,7 +547,7 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
                 if(!valid_task_decomposition) {
                     AbstractTask at = get<AbstractTask>(current_node.second.content);
                     string invalid_task_decomposition_error = "NO VALID DECOMPOSITIONS FOR TASK " + at.id + ": " + at.name;
-                    
+
                     throw std::runtime_error(invalid_task_decomposition_error);
                 }
             }
@@ -656,7 +655,6 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
                 throw std::runtime_error(invalid_task_decomposition_error);
             }
         }
-
         // Return effects of task here
         return decompositions_effects;
     }
@@ -778,7 +776,7 @@ void ValidMissionGenerator::check_conditions(std::map<int, std::vector<std::vari
             achievel_goal_id = std::get<string>(current_node.second.content);
         }
 
-        int gm_node_id = find_gm_node_by_id(achievel_goal_id, gm);
+        int gm_node_id = find_gm_node_by_id(achievel_goal_id, gm); 
 
         AchieveCondition achieve_condition = get<AchieveCondition>(gm[gm_node_id].custom_props[achieve_condition_prop]);
 
