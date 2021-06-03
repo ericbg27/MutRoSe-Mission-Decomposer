@@ -108,235 +108,10 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
        */
         string op = std::get<string>(current_node.second.content);
 
-        if(op == "#") { // Here is the only place where we check for an OR decomposition
-            /*
-                If the operator is parallel we:
-
-                -> Go through the queue while the next node in the queue is a child of this operator
-                    - This is done checking the out edges of the parallel operator node and verifying if the
-                    node in the queue is present
-                -> For each child we recursively perform decomposition
-                    - Effects are kept in an effects to apply map, where they are applied after finishing all of the executions
-            */
-            bool checking_children = true;
-            bool is_or = false;
-
-            vector<pair<vector<pair<int,ATNode>>,set<int>>> initial_decompositions = valid_mission_decompositions;
-
-            vector<vector<pair<vector<pair<int,ATNode>>,set<int>>>> child_decompositions;
-
-            while(checking_children) {
-                if(mission_queue.size() == 0) {
-                    break;
-                }
-                pair<int,ATNode> next_node = mission_queue.front();
-
-                bool is_child = false;
-
-                ATGraph::out_edge_iterator ei, ei_end;
-                for(boost::tie(ei,ei_end) = out_edges(current_node.first,mission_decomposition);ei != ei_end;++ei) {
-                    int source = boost::source(*ei,mission_decomposition);
-                    int target = boost::target(*ei,mission_decomposition);
-                    auto edge = boost::edge(source,target,mission_decomposition).first;
-
-                    if(mission_decomposition[edge].edge_type == NORMALOR) {
-                        is_or = true;
-                    }
-
-                    int children_num = 0;
-                    ATGraph::out_edge_iterator target_ei, target_ei_end;
-                    for(boost::tie(target_ei,target_ei_end) = out_edges(target,mission_decomposition);target_ei != target_ei_end;++target_ei) {
-                        children_num++;
-                    }
-
-                    /*
-                        If we have a goal node as child we have to search its children for the next node
-                    */
-                    if(mission_decomposition[target].node_type == GOALNODE || (mission_decomposition[target].node_type == OP && children_num < 2)) {
-                        bool goal_node = true;
-                        int child_id = target;
-                        while(goal_node) {
-                            ATGraph::out_edge_iterator ci, ci_end;
-                            for(boost::tie(ci,ci_end) = out_edges(child_id,mission_decomposition);ci != ci_end;++ci) {
-                                int s = boost::source(*ci,mission_decomposition);
-                                int t = boost::target(*ci,mission_decomposition);
-                                auto e = boost::edge(s,t,mission_decomposition).first;
-
-                                /*
-                                    A goal node only has a goal as child if it has a Means-end decomposition
-                                */
-                               if(mission_decomposition[t].node_type != GOALNODE) {
-                                    goal_node = false;
-                                    if(mission_decomposition[e].edge_type == NORMALAND || mission_decomposition[e].edge_type == NORMALOR) {
-                                        if(t == next_node.first) {
-                                            is_child = true;
-                                            break;
-                                        }
-                                    }
-                                } else {
-                                    child_id = t;
-                                }
-                            }
-                        }
-
-                        if(is_child) {
-                            break;
-                        }
-                    } else {
-                        if(mission_decomposition[edge].edge_type == NORMALAND || mission_decomposition[edge].edge_type == NORMALOR) {
-                            if(target == next_node.first) {
-                                is_child = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if(is_child) {
-                    if(!is_or) {
-                        map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> child_effects;
-                        child_effects = recursive_valid_mission_decomposition("#", mission_queue, depth, child_effects);
-
-                        map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>::iterator ceff_it;
-                        for(ceff_it = child_effects.begin(); ceff_it != child_effects.end(); ++ceff_it) {
-                            if(children_effects.find(ceff_it->first) == children_effects.end()) {
-                                children_effects[ceff_it->first] = ceff_it->second;
-                            } else {
-                                vector<variant<ground_literal,pair<ground_literal,int>>> aux = children_effects[ceff_it->first];
-                                aux.insert(aux.end(), ceff_it->second.begin(), ceff_it->second.end());
-
-                                children_effects[ceff_it->first] = aux;
-                            }
-                        }
-                        
-                        child_effects.clear();
-                    } else {
-                        /*
-                            Here is where we deal with an OR decomposed node
-
-                            -> We need to keep the valid mission decompositions vector we have at the moment we reach this node
-                                - For each child, the valid mission decompositions vector will be reset to this vector
-                                - A valid mission decompositions vector will be kept for each child
-                                - At the end, all of the children valid mission decompositions vector will be appended to form the global valid mission decompositions vector
-                            
-                            -> How to deal with the child_effects and children_effects?
-                                - Possibly nothing will need to be done
-                                - The key in these maps is the ID of the node, which solves any problem related to conflicts
-                        */
-                        valid_mission_decompositions = initial_decompositions;
-
-                        map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> child_effects;
-                        child_effects = recursive_valid_mission_decomposition("#", mission_queue, depth, child_effects);
-
-                        map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>::iterator ceff_it;
-                        for(ceff_it = child_effects.begin(); ceff_it != child_effects.end(); ++ceff_it) {
-                            if(children_effects.find(ceff_it->first) == children_effects.end()) {
-                                children_effects[ceff_it->first] = ceff_it->second;
-                            } else {
-                                vector<variant<ground_literal,pair<ground_literal,int>>> aux = children_effects[ceff_it->first];
-                                aux.insert(aux.end(), ceff_it->second.begin(), ceff_it->second.end());
-
-                                children_effects[ceff_it->first] = aux;
-                            }
-                        }
-                        
-                        child_effects.clear();
-
-                        child_decompositions.push_back(valid_mission_decompositions);
-                    }
-                } else {
-                    checking_children = false;
-                }
-            }
-
-            if(is_or) {
-                valid_mission_decompositions.clear();
-                for(auto decomposition : child_decompositions) {
-                    valid_mission_decompositions.insert(valid_mission_decompositions.end(), decomposition.begin(), decomposition.end());
-                }
-            }
-
-            solve_conflicts(children_effects);
+        if(op == "#") {
+            check_parallel_op_children(mission_queue, children_effects, depth, current_node);
         } else if(op == ";") {
-            bool checking_children = true;
-
-            while(checking_children) {
-                if(mission_queue.size() == 0) {
-                    break;
-                }
-                pair<int,ATNode> next_node = mission_queue.front();
-                bool is_child = false;
-
-                ATGraph::out_edge_iterator ei, ei_end;
-                for(boost::tie(ei,ei_end) = out_edges(current_node.first,mission_decomposition);ei != ei_end;++ei) {
-                    int source = boost::source(*ei,mission_decomposition);
-                    int target = boost::target(*ei,mission_decomposition);
-                    auto edge = boost::edge(source,target,mission_decomposition).first;
-
-                    int children_num = 0;
-                    ATGraph::out_edge_iterator target_ei, target_ei_end;
-                    for(boost::tie(target_ei,target_ei_end) = out_edges(target,mission_decomposition);target_ei != target_ei_end;++target_ei) {
-                        children_num++;
-                    }
-
-                    if(mission_decomposition[target].node_type == GOALNODE || (mission_decomposition[target].node_type == OP && children_num < 2)) {
-                        bool goal_node = true;
-                        int child_id = target;
-                        while(goal_node) {
-                            ATGraph::out_edge_iterator ci, ci_end;
-                            for(boost::tie(ci,ci_end) = out_edges(child_id,mission_decomposition);ci != ci_end;++ci) {
-                                int s = boost::source(*ci,mission_decomposition);
-                                int t = boost::target(*ci,mission_decomposition);
-                                auto e = boost::edge(s,t,mission_decomposition).first;
-
-                                /*
-                                    A goal node only has a goal as child if it has a Means-end decomposition
-                                */
-                               if(mission_decomposition[t].node_type != GOALNODE) {
-                                    goal_node = false;
-                                    if(mission_decomposition[e].edge_type == NORMALAND || mission_decomposition[e].edge_type == NORMALOR) {
-                                        if(t == next_node.first) {
-                                            is_child = true;
-                                            break;
-                                        }
-                                    }
-                                } else {
-                                    child_id = t;
-                                }
-                            }
-                        }
-
-                        if(is_child) {
-                            break;
-                        }
-                    } else {
-                        if(mission_decomposition[edge].edge_type == NORMALAND || mission_decomposition[edge].edge_type == NORMALOR) {
-                            if(target == next_node.first) {
-                                is_child = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if(is_child) {
-                    map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> aux = recursive_valid_mission_decomposition(";", mission_queue, depth, children_effects);
-                    
-                    map<int, vector<variant<ground_literal,pair<ground_literal,int>>>>::iterator ceff_it;
-                    for(ceff_it = aux.begin(); ceff_it != aux.end(); ++ceff_it) {
-                        if(children_effects.find(ceff_it->first) == children_effects.end()) {
-                            children_effects[ceff_it->first] = ceff_it->second;
-                        } else {
-                            vector<variant<ground_literal,pair<ground_literal,int>>> tmp = children_effects[ceff_it->first];
-                            tmp.insert(tmp.end(), ceff_it->second.begin(), ceff_it->second.end());
-
-                            children_effects[ceff_it->first] = tmp;
-                        }
-                    }
-                } else {
-                    checking_children = false;
-                }
-            }
+            check_sequential_op_children(mission_queue, children_effects, depth, current_node);
         }
 
         /*
@@ -378,98 +153,12 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
                     // World state will be the initial world state + the effects in effects_to_apply (given which tasks are in the set of tasks of the decomposition)
                     vector<ground_literal> ws = world_state;
                     vector<pair<ground_literal,int>> wsf = world_state_functions;
-                    map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>::iterator eff_it;
-                    for(eff_it = effects_to_apply.begin(); eff_it != effects_to_apply.end(); ++eff_it) {
-                        if(valid_mission_decomposition.second.find(eff_it->first) != valid_mission_decomposition.second.end()) {
-                            for(auto eff : eff_it->second) {
-                                bool found_predicate = false;
-                                if(holds_alternative<ground_literal>(eff)) {
-                                    ground_literal e = std::get<ground_literal>(eff);
-                                    for(ground_literal& state : ws) {
-                                        bool same_predicate = is_same_predicate(state, e);
-
-                                        if(same_predicate) {
-                                            if(e.positive != state.positive) {
-                                                state.positive = e.positive;
-                                            }
-
-                                            found_predicate = true;
-                                        }
-                                    }
-
-                                    if(!found_predicate) {
-                                        ws.push_back(e);
-                                    }
-                                } else {
-                                    pair<ground_literal,int> e = std::get<pair<ground_literal,int>>(eff);
-                                    for(pair<ground_literal,int>& f_state : wsf) {
-                                        bool same_predicate = is_same_predicate(f_state.first, e.first);
-
-                                        if(same_predicate) {
-                                            if(e.first.isAssignCostChange) {
-                                                f_state.second = e.second;
-                                            } else {
-                                                f_state.second += e.second;
-                                            }
-
-                                            found_predicate = true;
-                                        }
-                                    }
-
-                                    if(!found_predicate) {
-                                        wsf.push_back(e);
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    
+                    apply_effects_in_valid_decomposition(ws, wsf, valid_mission_decomposition, effects_to_apply);
 
                     vector<pair<int,ATNode>> m_decomposition = valid_mission_decomposition.first;
 
-                    bool preconditions_hold = true;
-                    for(auto prec : d.prec) { 
-                        if(holds_alternative<ground_literal>(prec)) {              
-                            ground_literal p = get<ground_literal>(prec);
-                            
-                            if(!p.isComparison) {
-                                for(ground_literal state : ws) {
-                                    bool same_predicate = is_same_predicate(state, p);
-
-                                    if(same_predicate) {
-                                        if(state.positive != p.positive) {
-                                            preconditions_hold = false;
-                                            break;
-                                        }
-                                    }
-                                }
-                            } else {
-                                for(pair<ground_literal,int> func_state : wsf) {
-                                    bool same_predicate = is_same_predicate(func_state.first, p);
-                                    
-                                    if(same_predicate) {
-                                        string comparison_op = p.comparison_op_and_value.first;
-                                        int comparison_value = p.comparison_op_and_value.second;
-                                            
-                                        if(comparison_op == equal_comparison_op) {
-                                            if(comparison_value != func_state.second) {
-                                                preconditions_hold = false;
-                                                break;
-                                            }
-                                        } else if(comparison_op == greater_comparison_op) {
-                                            if(comparison_value >= func_state.second) {
-                                                preconditions_hold = false;
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        } 
-
-                        if(!preconditions_hold) {
-                            break;
-                        }
-                    }
+                    bool preconditions_hold = check_decomposition_preconditions(ws, wsf, d);
 
                     /*
                         Check for any context dependency in current decomposition. If a valid mission decomposition does not contain any tasks
@@ -565,50 +254,7 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
                 Decomposition d = get<Decomposition>(task_decomposition.second.content);
 
                 //Check preconditions using the initial world state
-                bool preconditions_hold = true;
-                for(auto prec : d.prec) {
-                    if(holds_alternative<ground_literal>(prec)) {
-                        ground_literal p = get<ground_literal>(prec);
-                        
-                        if(!p.isComparison) {
-                            for(ground_literal state : world_state) {
-                                bool same_predicate = is_same_predicate(state, p);
-                            
-                                if(same_predicate) {
-                                    if(state.positive != p.positive) {
-                                        preconditions_hold = false;
-                                        break;
-                                    }
-                                }
-                            }
-                        } else {
-                            for(pair<ground_literal,int> func_state : world_state_functions) {
-                                bool same_predicate = is_same_predicate(func_state.first, p);
-
-                                if(same_predicate) {
-                                    string comparison_op = p.comparison_op_and_value.first;
-                                    int comparison_value = p.comparison_op_and_value.second;
-                                            
-                                    if(comparison_op == equal_comparison_op) {
-                                        if(comparison_value != func_state.second) {
-                                            preconditions_hold = false;
-                                            break;
-                                        }
-                                    } else if(comparison_op == greater_comparison_op) {
-                                        if(comparison_value >= func_state.second) {
-                                            preconditions_hold = false;
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if(!preconditions_hold) {
-                        break;
-                    }
-                }
+                bool preconditions_hold = check_decomposition_preconditions(world_state, world_state_functions, d);
 
                 if(preconditions_hold) {
                     /*
@@ -655,9 +301,264 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
                 throw std::runtime_error(invalid_task_decomposition_error);
             }
         }
+        
         // Return effects of task here
         return decompositions_effects;
     }
+}
+
+/*
+    Function: check_sequential_op_children
+    Objective: Check children of a sequential operator when generating valid mission decompositions.
+    Functioning: The basic functioning is:
+        -> Go through the queue while the next node in the queue is a child of this operator
+            - This is done checking the out edges of the parallel operator node and verifying if the node in the queue is present
+        -> For each child we recursively perform decomposition
+            - Effects are kept in a children effects map and are applied after each child execution
+    
+    @ Input 1: A reference to the mission queue
+    @ Input 2: A reference to the children effects map
+    @ Input 3: The current node depth
+    @ Inpui 4: The current node info
+    @ Output: Void. The recursive call to the valid missions generation function is performed for each child.
+*/
+void ValidMissionGenerator::check_sequential_op_children(queue<pair<int,ATNode>>& mission_queue, map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>& children_effects, int depth, pair<int,ATNode> current_node) {
+    bool checking_children = true;
+
+    while(checking_children) {
+        if(mission_queue.size() == 0) {
+            break;
+        }
+        pair<int,ATNode> next_node = mission_queue.front();
+        bool is_child = false;
+
+        ATGraph::out_edge_iterator ei, ei_end;
+        for(boost::tie(ei,ei_end) = out_edges(current_node.first,mission_decomposition);ei != ei_end;++ei) {
+            int source = boost::source(*ei,mission_decomposition);
+            int target = boost::target(*ei,mission_decomposition);
+            auto edge = boost::edge(source,target,mission_decomposition).first;
+
+            int children_num = 0;
+            ATGraph::out_edge_iterator target_ei, target_ei_end;
+            for(boost::tie(target_ei,target_ei_end) = out_edges(target,mission_decomposition);target_ei != target_ei_end;++target_ei) {
+                children_num++;
+            }
+
+            if(mission_decomposition[target].node_type == GOALNODE || (mission_decomposition[target].node_type == OP && children_num < 2)) {
+                bool goal_node = true;
+                int child_id = target;
+                while(goal_node) {
+                    ATGraph::out_edge_iterator ci, ci_end;
+                    for(boost::tie(ci,ci_end) = out_edges(child_id,mission_decomposition);ci != ci_end;++ci) {
+                        int s = boost::source(*ci,mission_decomposition);
+                        int t = boost::target(*ci,mission_decomposition);
+                        auto e = boost::edge(s,t,mission_decomposition).first;
+
+                        /*
+                            A goal node only has a goal as child if it has a Means-end decomposition
+                        */
+                        if(mission_decomposition[t].node_type != GOALNODE) {
+                            goal_node = false;
+                            if(mission_decomposition[e].edge_type == NORMALAND || mission_decomposition[e].edge_type == NORMALOR) {
+                                if(t == next_node.first) {
+                                    is_child = true;
+                                    break;
+                                }
+                            }
+                        } else {
+                            child_id = t;
+                        }
+                    }
+                }
+
+                if(is_child) {
+                    break;
+                }
+            } else {
+                if(mission_decomposition[edge].edge_type == NORMALAND || mission_decomposition[edge].edge_type == NORMALOR) {
+                    if(target == next_node.first) {
+                        is_child = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if(is_child) {
+            map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> aux = recursive_valid_mission_decomposition(";", mission_queue, depth, children_effects);
+            
+            map<int, vector<variant<ground_literal,pair<ground_literal,int>>>>::iterator ceff_it;
+            for(ceff_it = aux.begin(); ceff_it != aux.end(); ++ceff_it) {
+                if(children_effects.find(ceff_it->first) == children_effects.end()) {
+                    children_effects[ceff_it->first] = ceff_it->second;
+                } else {
+                    vector<variant<ground_literal,pair<ground_literal,int>>> tmp = children_effects[ceff_it->first];
+                    tmp.insert(tmp.end(), ceff_it->second.begin(), ceff_it->second.end());
+
+                    children_effects[ceff_it->first] = tmp;
+                }
+            }
+        } else {
+            checking_children = false;
+        }
+    }
+}
+
+/*
+    Function: check_parallel_op_children
+    Objective: Check children of a parallel operator when generating valid mission decompositions.
+    Functioning: The basic functioning is:
+        -> Go through the queue while the next node in the queue is a child of this operator
+            - This is done checking the out edges of the parallel operator node and verifying if the node in the queue is present
+        -> For each child we recursively perform decomposition
+            - Effects are kept in a children effects map, where they are applied after finishing all of the executions
+    
+    @ Input 1: A reference to the mission queue
+    @ Input 2: A reference to the children effects map
+    @ Input 3: The current node depth
+    @ Inpui 4: The current node info
+    @ Output: Void. The recursive call to the valid missions generation function is performed for each child.
+*/
+void ValidMissionGenerator::check_parallel_op_children(queue<pair<int,ATNode>>& mission_queue, map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>& children_effects, int depth, pair<int,ATNode> current_node) {
+    bool checking_children = true;
+    bool is_or = false;
+
+    vector<pair<vector<pair<int,ATNode>>,set<int>>> initial_decompositions = valid_mission_decompositions;
+
+    vector<vector<pair<vector<pair<int,ATNode>>,set<int>>>> child_decompositions;
+
+    while(checking_children) {
+        if(mission_queue.size() == 0) {
+            break;
+        }
+        pair<int,ATNode> next_node = mission_queue.front();
+
+        bool is_child = false;
+
+        ATGraph::out_edge_iterator ei, ei_end;
+        for(boost::tie(ei,ei_end) = out_edges(current_node.first,mission_decomposition);ei != ei_end;++ei) {
+            int source = boost::source(*ei,mission_decomposition);
+            int target = boost::target(*ei,mission_decomposition);
+            auto edge = boost::edge(source,target,mission_decomposition).first;
+
+            if(mission_decomposition[edge].edge_type == NORMALOR) {
+                is_or = true;
+            }
+
+            int children_num = 0;
+            ATGraph::out_edge_iterator target_ei, target_ei_end;
+            for(boost::tie(target_ei,target_ei_end) = out_edges(target,mission_decomposition);target_ei != target_ei_end;++target_ei) {
+                children_num++;
+            }
+
+            /*
+                If we have a goal node as child we have to search its children for the next node
+            */
+            if(mission_decomposition[target].node_type == GOALNODE || (mission_decomposition[target].node_type == OP && children_num < 2)) {
+                bool goal_node = true;
+                int child_id = target;
+                while(goal_node) {
+                    ATGraph::out_edge_iterator ci, ci_end;
+                    for(boost::tie(ci,ci_end) = out_edges(child_id,mission_decomposition);ci != ci_end;++ci) {
+                        int s = boost::source(*ci,mission_decomposition);
+                        int t = boost::target(*ci,mission_decomposition);
+                        auto e = boost::edge(s,t,mission_decomposition).first;
+
+                        /*
+                            A goal node only has a goal as child if it has a Means-end decomposition
+                        */
+                        if(mission_decomposition[t].node_type != GOALNODE) {
+                            goal_node = false;
+                            if(mission_decomposition[e].edge_type == NORMALAND || mission_decomposition[e].edge_type == NORMALOR) {
+                                if(t == next_node.first) {
+                                    is_child = true;
+                                    break;
+                                }
+                            }
+                        } else {
+                            child_id = t;
+                        }
+                    }
+                }
+
+                if(is_child) {
+                    break;
+                }
+            } else {
+                if(mission_decomposition[edge].edge_type == NORMALAND || mission_decomposition[edge].edge_type == NORMALOR) {
+                    if(target == next_node.first) {
+                        is_child = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if(is_child) {
+            if(!is_or) {
+                map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> child_effects;
+                child_effects = recursive_valid_mission_decomposition("#", mission_queue, depth, child_effects);
+
+                map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>::iterator ceff_it;
+                for(ceff_it = child_effects.begin(); ceff_it != child_effects.end(); ++ceff_it) {
+                    if(children_effects.find(ceff_it->first) == children_effects.end()) {
+                        children_effects[ceff_it->first] = ceff_it->second;
+                    } else {
+                        vector<variant<ground_literal,pair<ground_literal,int>>> aux = children_effects[ceff_it->first];
+                        aux.insert(aux.end(), ceff_it->second.begin(), ceff_it->second.end());
+
+                        children_effects[ceff_it->first] = aux;
+                    }
+                }
+                
+                child_effects.clear();
+            } else {
+                /*
+                    Here is where we deal with an OR decomposed node
+
+                    -> We need to keep the valid mission decompositions vector we have at the moment we reach this node
+                        - For each child, the valid mission decompositions vector will be reset to this vector
+                        - A valid mission decompositions vector will be kept for each child
+                        - At the end, all of the children valid mission decompositions vector will be appended to form the global valid mission decompositions vector
+                    
+                    -> How to deal with the child_effects and children_effects?
+                        - Possibly nothing will need to be done
+                        - The key in these maps is the ID of the node, which solves any problem related to conflicts
+                */
+                valid_mission_decompositions = initial_decompositions;
+
+                map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> child_effects;
+                child_effects = recursive_valid_mission_decomposition("#", mission_queue, depth, child_effects);
+
+                map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>::iterator ceff_it;
+                for(ceff_it = child_effects.begin(); ceff_it != child_effects.end(); ++ceff_it) {
+                    if(children_effects.find(ceff_it->first) == children_effects.end()) {
+                        children_effects[ceff_it->first] = ceff_it->second;
+                    } else {
+                        vector<variant<ground_literal,pair<ground_literal,int>>> aux = children_effects[ceff_it->first];
+                        aux.insert(aux.end(), ceff_it->second.begin(), ceff_it->second.end());
+
+                        children_effects[ceff_it->first] = aux;
+                    }
+                }
+                
+                child_effects.clear();
+
+                child_decompositions.push_back(valid_mission_decompositions);
+            }
+        } else {
+            checking_children = false;
+        }
+    }
+
+    if(is_or) {
+        valid_mission_decompositions.clear();
+        for(auto decomposition : child_decompositions) {
+            valid_mission_decompositions.insert(valid_mission_decompositions.end(), decomposition.begin(), decomposition.end());
+        }
+    }
+
+    solve_conflicts(children_effects);
 }
 
 /*

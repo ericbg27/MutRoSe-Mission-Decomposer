@@ -22,6 +22,7 @@ void expand_decomposition(Decomposition& d, vector<pair<ground_literal,int>> wor
                             arguments.push_back(std::get<string>(var_map.first.first));
                         } else {
                             // Shouldn't happen at this point! (Check)
+                            assert(false);
                         }
                     }
                 }
