@@ -18,20 +18,23 @@ vector<Constraint> ConstraintManager::generate_mission_constraints() {
      bool is_unique = is_unique_branch(mission_decomposition);
     
     if(!is_unique) {
-        pair<ATGraph,map<int,int>> trimmed_mission_decomposition = generate_trimmed_at_graph(mission_decomposition);  
-        generate_at_constraints(trimmed_mission_decomposition.first);
-      
+        pair<ATGraph,map<int,int>> trimmed_mission_decomposition_data = generate_trimmed_at_graph(mission_decomposition);
+
+        ATGraph trimmed_mission_decomposition = trimmed_mission_decomposition_data.first;
+        generate_at_constraints(trimmed_mission_decomposition);
+
+        map<int,int> id_map = trimmed_mission_decomposition_data.second;
         for(Constraint& c : mission_constraints) {
-            pair<int,ATNode> n1 = c.nodes_involved.first;
-            pair<int,ATNode> n2 = c.nodes_involved.second;
+            pair<int,ATNode> node1 = c.nodes_involved.first;
+            pair<int,ATNode> node2 = c.nodes_involved.second;
 
-            n1.second.parent = trimmed_mission_decomposition.second[n1.second.parent];
-            n1.first = trimmed_mission_decomposition.second[n1.first];
-            n2.second.parent = trimmed_mission_decomposition.second[n2.second.parent];
-            n2.first = trimmed_mission_decomposition.second[n2.first];
+            node1.second.parent = id_map[node1.second.parent];
+            node1.first = id_map[node1.first];
+            node2.second.parent = id_map[node2.second.parent];
+            node2.first = id_map[node2.first];
 
-            c.nodes_involved.first = n1;
-            c.nodes_involved.second = n2;
+            c.nodes_involved.first = node1;
+            c.nodes_involved.second = node2;
         }
     }
 
@@ -45,6 +48,7 @@ vector<Constraint> ConstraintManager::generate_mission_constraints() {
     Function: generate_at_constraints
     Objective: Generate all mission constraints, including parallel ones
 
+    @ Input: The trimmed mission decomposition as an ATGraph object
     @ Output: The vector with all of the mission constraints
 */
 void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decomposition) {
@@ -67,22 +71,22 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
     DFSATVisitor vis;
     boost::depth_first_search(trimmed_mission_decomposition, vis, colormap, 0);
 
-    vector<int> vctr = vis.GetVector();
-    operators_stack.push(make_pair(vctr.at(0),trimmed_mission_decomposition[vctr.at(0)]));
+    vector<int> depth_first_nodes = vis.GetVector();
+    operators_stack.push(make_pair(depth_first_nodes.at(0),trimmed_mission_decomposition[depth_first_nodes.at(0)]));
 
-    pair<int,int> current_root_node = make_pair(vctr.at(0),1);
+    pair<int,int> current_root_node = make_pair(depth_first_nodes.at(0),1);
 
-    unsigned int index;
-    for(index = 1;index < vctr.size();index++) {  
-        int v = index;
+    unsigned int dfs_node_index;
+    for(dfs_node_index = 1;dfs_node_index < depth_first_nodes.size();dfs_node_index++) {  
+        int current_node_index = dfs_node_index;
 
-        pair<int,ATNode> current_node = make_pair(v, trimmed_mission_decomposition[v]);
+        pair<int,ATNode> current_node = make_pair(current_node_index, trimmed_mission_decomposition[current_node_index]);
 
-        if(current_node.second.parent == vctr.at(0)) {
+        if(current_node.second.parent == depth_first_nodes.at(0)) {
             pair<int,ATNode> artificial_node;
             artificial_node.first = -1;
 
-            if(v != vctr.at(1)) {
+            if(current_node_index != depth_first_nodes.at(1)) {
                 generate_constraints_from_stacks(current_branch_operators_stack, current_branch_nodes_stack, existing_constraints);
 
                 while(!current_branch_nodes_stack.empty()) {
@@ -95,15 +99,15 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
             }
 
             current_root_node.first = current_node.first;
-            current_root_node.second = index+1;
-        } else if(current_node.second.parent == current_root_node.first && v != vctr.at(current_root_node.second)) {
+            current_root_node.second = dfs_node_index+1;
+        } else if(current_node.second.parent == current_root_node.first && current_node_index != depth_first_nodes.at(current_root_node.second)) {
             pair<int,ATNode> artificial_node;
             artificial_node.first = -1;
 
             current_branch_nodes_stack.push(artificial_node);
 
             current_root_node.first = current_node.first;
-            current_root_node.second = index+1;
+            current_root_node.second = dfs_node_index+1;
         }
 
         if(current_node.second.node_type == ATASK) {
@@ -396,9 +400,9 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
     Objective: Generate constraints based on an input operators stack and an input nodes stack. Additionally, an existing
     constraints map is updated since this is an auxiliary function of the generate_at_constraints function
 
-    @ Input 1: The operators stack
-    @ Input 2: The nodes stack
-    @ Input 3: The existing constraints map
+    @ Input 1: A reference to the operators stack
+    @ Input 2: A reference to the nodes stack
+    @ Input 3: A reference to the existing constraints map
     @ Output: Void. The input structures are updated
 */
 void ConstraintManager::generate_constraints_from_stacks(stack<pair<int,ATNode>>& operators_stack, stack<variant<pair<int,ATNode>,Constraint>>& nodes_stack, map<int,set<int>>& existing_constraints) {
@@ -888,9 +892,6 @@ void ConstraintManager::transform_at_constraints() {
     Function: generate_execution_constraints
     Objective: Generate execution constraints present in the mission
 
-    @ Input 1: A reference to the vector of constraints
-    @ Input 2: The Task Graph as an ATGraph object
-    @ Input 3: The verbose flag-
     @ Output: Void. The execution constraints will be added to the constraint vector
 */
 void ConstraintManager::generate_execution_constraints() {
