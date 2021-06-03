@@ -301,14 +301,15 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
                 throw std::runtime_error(invalid_task_decomposition_error);
             }
         }
+        
         // Return effects of task here
         return decompositions_effects;
     }
 }
 
 /*
-    Function: check_parallel_op_children
-    Objective: Check children of a parallel operator when generating valid mission decompositions.
+    Function: check_sequential_op_children
+    Objective: Check children of a sequential operator when generating valid mission decompositions.
     Functioning: The basic functioning is:
         -> Go through the queue while the next node in the queue is a child of this operator
             - This is done checking the out edges of the parallel operator node and verifying if the node in the queue is present
