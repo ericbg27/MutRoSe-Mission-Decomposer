@@ -153,98 +153,12 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
                     // World state will be the initial world state + the effects in effects_to_apply (given which tasks are in the set of tasks of the decomposition)
                     vector<ground_literal> ws = world_state;
                     vector<pair<ground_literal,int>> wsf = world_state_functions;
-                    map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>::iterator eff_it;
-                    for(eff_it = effects_to_apply.begin(); eff_it != effects_to_apply.end(); ++eff_it) {
-                        if(valid_mission_decomposition.second.find(eff_it->first) != valid_mission_decomposition.second.end()) {
-                            for(auto eff : eff_it->second) {
-                                bool found_predicate = false;
-                                if(holds_alternative<ground_literal>(eff)) {
-                                    ground_literal e = std::get<ground_literal>(eff);
-                                    for(ground_literal& state : ws) {
-                                        bool same_predicate = is_same_predicate(state, e);
-
-                                        if(same_predicate) {
-                                            if(e.positive != state.positive) {
-                                                state.positive = e.positive;
-                                            }
-
-                                            found_predicate = true;
-                                        }
-                                    }
-
-                                    if(!found_predicate) {
-                                        ws.push_back(e);
-                                    }
-                                } else {
-                                    pair<ground_literal,int> e = std::get<pair<ground_literal,int>>(eff);
-                                    for(pair<ground_literal,int>& f_state : wsf) {
-                                        bool same_predicate = is_same_predicate(f_state.first, e.first);
-
-                                        if(same_predicate) {
-                                            if(e.first.isAssignCostChange) {
-                                                f_state.second = e.second;
-                                            } else {
-                                                f_state.second += e.second;
-                                            }
-
-                                            found_predicate = true;
-                                        }
-                                    }
-
-                                    if(!found_predicate) {
-                                        wsf.push_back(e);
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    
+                    apply_effects_in_valid_decomposition(ws, wsf, valid_mission_decomposition, effects_to_apply);
 
                     vector<pair<int,ATNode>> m_decomposition = valid_mission_decomposition.first;
 
-                    bool preconditions_hold = true;
-                    for(auto prec : d.prec) { 
-                        if(holds_alternative<ground_literal>(prec)) {              
-                            ground_literal p = get<ground_literal>(prec);
-                            
-                            if(!p.isComparison) {
-                                for(ground_literal state : ws) {
-                                    bool same_predicate = is_same_predicate(state, p);
-
-                                    if(same_predicate) {
-                                        if(state.positive != p.positive) {
-                                            preconditions_hold = false;
-                                            break;
-                                        }
-                                    }
-                                }
-                            } else {
-                                for(pair<ground_literal,int> func_state : wsf) {
-                                    bool same_predicate = is_same_predicate(func_state.first, p);
-                                    
-                                    if(same_predicate) {
-                                        string comparison_op = p.comparison_op_and_value.first;
-                                        int comparison_value = p.comparison_op_and_value.second;
-                                            
-                                        if(comparison_op == equal_comparison_op) {
-                                            if(comparison_value != func_state.second) {
-                                                preconditions_hold = false;
-                                                break;
-                                            }
-                                        } else if(comparison_op == greater_comparison_op) {
-                                            if(comparison_value >= func_state.second) {
-                                                preconditions_hold = false;
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        } 
-
-                        if(!preconditions_hold) {
-                            break;
-                        }
-                    }
+                    bool preconditions_hold = check_decomposition_preconditions(ws, wsf, d);
 
                     /*
                         Check for any context dependency in current decomposition. If a valid mission decomposition does not contain any tasks
@@ -340,50 +254,7 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
                 Decomposition d = get<Decomposition>(task_decomposition.second.content);
 
                 //Check preconditions using the initial world state
-                bool preconditions_hold = true;
-                for(auto prec : d.prec) {
-                    if(holds_alternative<ground_literal>(prec)) {
-                        ground_literal p = get<ground_literal>(prec);
-                        
-                        if(!p.isComparison) {
-                            for(ground_literal state : world_state) {
-                                bool same_predicate = is_same_predicate(state, p);
-                            
-                                if(same_predicate) {
-                                    if(state.positive != p.positive) {
-                                        preconditions_hold = false;
-                                        break;
-                                    }
-                                }
-                            }
-                        } else {
-                            for(pair<ground_literal,int> func_state : world_state_functions) {
-                                bool same_predicate = is_same_predicate(func_state.first, p);
-
-                                if(same_predicate) {
-                                    string comparison_op = p.comparison_op_and_value.first;
-                                    int comparison_value = p.comparison_op_and_value.second;
-                                            
-                                    if(comparison_op == equal_comparison_op) {
-                                        if(comparison_value != func_state.second) {
-                                            preconditions_hold = false;
-                                            break;
-                                        }
-                                    } else if(comparison_op == greater_comparison_op) {
-                                        if(comparison_value >= func_state.second) {
-                                            preconditions_hold = false;
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if(!preconditions_hold) {
-                        break;
-                    }
-                }
+                bool preconditions_hold = check_decomposition_preconditions(world_state, world_state_functions, d);
 
                 if(preconditions_hold) {
                     /*
