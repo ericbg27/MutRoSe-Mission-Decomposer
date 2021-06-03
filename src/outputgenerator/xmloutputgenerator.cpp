@@ -21,45 +21,15 @@ using namespace std;
 */
 void XMLOutputGenerator::generate_instances_output(vector<SemanticMapping> semantic_mapping, map<string,set<string>> sorts, vector<sort_definition> sort_definitions, 
                                                     vector<predicate_definition> predicate_definitions, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
-    vector<Constraint> mission_constraints;
-    
-    bool is_unique = is_unique_branch(mission_decomposition);
-    
-    if(!is_unique) {
-        pair<ATGraph,map<int,int>> trimmed_mission_decomposition = generate_trimmed_at_graph(mission_decomposition);  
-        
-        mission_constraints = generate_at_constraints(trimmed_mission_decomposition.first);
-        
-        for(Constraint& c : mission_constraints) {
-            pair<int,ATNode> n1 = c.nodes_involved.first;
-            pair<int,ATNode> n2 = c.nodes_involved.second;
+    ConstraintManager constraint_generator(gm, mission_decomposition, verbose);
 
-            n1.second.parent = trimmed_mission_decomposition.second[n1.second.parent];
-            n1.first = trimmed_mission_decomposition.second[n1.first];
-            n2.second.parent = trimmed_mission_decomposition.second[n2.second.parent];
-            n2.first = trimmed_mission_decomposition.second[n2.first];
-
-            c.nodes_involved.first = n1;
-            c.nodes_involved.second = n2;
-        }
-    }
-    
-    /*
-        Generate final mission constraints
-
-        -> Here we don't include parallel constraints since we resolve context dependencies
-        -> All constraints to be introduced in the output are sequential, since parallel is not a constraint by itself
-            - It would be only if we had simultaneity constraints or non-overlapping constraints
-    */
-    vector<Constraint> final_mission_constraints = transform_at_constraints(mission_decomposition,mission_constraints,gm,verbose);
-
-    generate_execution_constraints(final_mission_constraints,mission_decomposition, verbose);
+    vector<Constraint> mission_constraints = constraint_generator.generate_mission_constraints();
     
     // With the final constraints and the mission decomposition graph we generate our output
 
     pt::ptree output_file;
 
-    ValidMissionGenerator valid_missions_generator(mission_decomposition, gm, final_mission_constraints, world_state, world_state_functions, semantic_mapping, gm_var_map, verbose);
+    ValidMissionGenerator valid_missions_generator(mission_decomposition, gm, mission_constraints, world_state, world_state_functions, semantic_mapping, gm_var_map, verbose);
     vector<vector<pair<int,ATNode>>> valid_mission_decompositions = valid_missions_generator.generate_valid_mission_decompositions();
 
     vector<Decomposition> task_instances;
@@ -87,7 +57,7 @@ void XMLOutputGenerator::generate_instances_output(vector<SemanticMapping> seman
 
     map<string,string> task_id_map = output_tasks(output_file, task_instances, semantic_mapping);
 
-    output_constraints(output_file, final_mission_constraints, task_id_map);
+    output_constraints(output_file, mission_constraints, task_id_map);
 
     output_mission_decompositions(output_file, valid_mission_decompositions, task_id_map);
 
@@ -483,11 +453,11 @@ map<string,string> XMLOutputGenerator::output_tasks(pt::ptree& output_file, vect
             - Group (Important only if constraint is of NC type)
             - Divisible (Important only if constraint is of NC type)
 */
-void XMLOutputGenerator::output_constraints(pt::ptree& output_file, vector<Constraint> final_mission_constraints, map<string,string> task_id_map) {
+void XMLOutputGenerator::output_constraints(pt::ptree& output_file, vector<Constraint> mission_constraints, map<string,string> task_id_map) {
     output_file.put("constraints","");
     
     int constraint_counter = 0;
-    for(Constraint c : final_mission_constraints) {
+    for(Constraint c : mission_constraints) {
         string constraint_name = "constraints.constraint" + to_string(constraint_counter);
 
         string constraint_attr = constraint_name + ".type";
