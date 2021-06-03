@@ -2,21 +2,62 @@
 
 using namespace std;
 
+ConstraintManager::ConstraintManager(GMGraph g, ATGraph md, bool verb) {
+    this->mission_decomposition = md;
+    this->gm = g;
+    this->verbose = verb;
+}
+
+/*
+    Function: generate_mission_constraints
+    Objective: Generate mission constraints (sequential and execution)
+
+    Output: The mission constraints.
+*/
+vector<Constraint> ConstraintManager::generate_mission_constraints() {
+     bool is_unique = is_unique_branch(mission_decomposition);
+    
+    if(!is_unique) {
+        pair<ATGraph,map<int,int>> trimmed_mission_decomposition_data = generate_trimmed_at_graph(mission_decomposition);
+
+        ATGraph trimmed_mission_decomposition = trimmed_mission_decomposition_data.first;
+        generate_at_constraints(trimmed_mission_decomposition);
+
+        map<int,int> id_map = trimmed_mission_decomposition_data.second;
+        for(Constraint& c : mission_constraints) {
+            pair<int,ATNode> node1 = c.nodes_involved.first;
+            pair<int,ATNode> node2 = c.nodes_involved.second;
+
+            node1.second.parent = id_map[node1.second.parent];
+            node1.first = id_map[node1.first];
+            node2.second.parent = id_map[node2.second.parent];
+            node2.first = id_map[node2.first];
+
+            c.nodes_involved.first = node1;
+            c.nodes_involved.second = node2;
+        }
+    }
+
+    transform_at_constraints();
+    generate_execution_constraints();
+
+    return mission_constraints;
+}
+
 /*
     Function: generate_at_constraints
     Objective: Generate all mission constraints, including parallel ones
 
-    @ Input: The task graph as an ATGraph object
+    @ Input: The trimmed mission decomposition as an ATGraph object
     @ Output: The vector with all of the mission constraints
 */
-vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition) {
+void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decomposition) {
     stack<pair<int,ATNode>> operators_stack;
     stack<variant<pair<int,ATNode>,Constraint>> nodes_stack;
 
     stack<pair<int,ATNode>> current_branch_operators_stack;
     stack<variant<pair<int,ATNode>,Constraint>> current_branch_nodes_stack;
 
-    vector<Constraint> mission_constraints;
     map<int,set<int>> existing_constraints;
 
     /*
@@ -30,24 +71,24 @@ vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition
     DFSATVisitor vis;
     boost::depth_first_search(trimmed_mission_decomposition, vis, colormap, 0);
 
-    vector<int> vctr = vis.GetVector();
-    operators_stack.push(make_pair(vctr.at(0),trimmed_mission_decomposition[vctr.at(0)]));
+    vector<int> depth_first_nodes = vis.GetVector();
+    operators_stack.push(make_pair(depth_first_nodes.at(0),trimmed_mission_decomposition[depth_first_nodes.at(0)]));
 
-    pair<int,int> current_root_node = make_pair(vctr.at(0),1);
+    pair<int,int> current_root_node = make_pair(depth_first_nodes.at(0),1);
 
-    unsigned int index;
-    for(index = 1;index < vctr.size();index++) {      
-        int v = index;
+    unsigned int dfs_node_index;
+    for(dfs_node_index = 1;dfs_node_index < depth_first_nodes.size();dfs_node_index++) {  
+        int current_node_index = dfs_node_index;
 
-        pair<int,ATNode> current_node = make_pair(v, trimmed_mission_decomposition[v]);
+        pair<int,ATNode> current_node = make_pair(current_node_index, trimmed_mission_decomposition[current_node_index]);
 
-        if(current_node.second.parent == vctr.at(0)) {
+        if(current_node.second.parent == depth_first_nodes.at(0)) {
             pair<int,ATNode> artificial_node;
             artificial_node.first = -1;
 
-            if(v != vctr.at(1)) {
+            if(current_node_index != depth_first_nodes.at(1)) {
                 generate_constraints_from_stacks(current_branch_operators_stack, current_branch_nodes_stack, existing_constraints);
-                
+
                 while(!current_branch_nodes_stack.empty()) {
                     nodes_stack.push(current_branch_nodes_stack.top());
                     
@@ -58,15 +99,15 @@ vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition
             }
 
             current_root_node.first = current_node.first;
-            current_root_node.second = index+1;
-        } else if(current_node.second.parent == current_root_node.first && v != vctr.at(current_root_node.second)) {
+            current_root_node.second = dfs_node_index+1;
+        } else if(current_node.second.parent == current_root_node.first && current_node_index != depth_first_nodes.at(current_root_node.second)) {
             pair<int,ATNode> artificial_node;
             artificial_node.first = -1;
 
             current_branch_nodes_stack.push(artificial_node);
 
             current_root_node.first = current_node.first;
-            current_root_node.second = index+1;
+            current_root_node.second = dfs_node_index+1;
         }
 
         if(current_node.second.node_type == ATASK) {
@@ -81,7 +122,7 @@ vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition
                 stack<variant<pair<int,ATNode>,Constraint>> nodes_stack_cpy = current_branch_nodes_stack;
                 for(int cnt = 0;cnt < 2;cnt++) {
                     if(holds_alternative<pair<int,ATNode>>(nodes_stack_cpy.top())) {
-                        if(get<pair<int,ATNode>>(nodes_stack_cpy.top()).first == -1) {
+                        if(std::get<pair<int,ATNode>>(nodes_stack_cpy.top()).first == -1) {
                             new_branch = true;
                         }
                         nodes_stack_cpy.pop();
@@ -101,7 +142,7 @@ vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition
                                 - If we have a parallel operator we take into consideration all of the constraints we have until reaching one that has id -1 or the
                                 first created constraint
                     */
-                    if(get<string>(current_branch_operators_stack.top().second.content) == "#") {
+                    if(std::get<string>(current_branch_operators_stack.top().second.content) == "#") {
                         /*
                             While we don't reach an artificial node or the end of the nodes stack we populate our temporary vector
                         */
@@ -109,7 +150,7 @@ vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition
                         bool end_reached = false;
                         while(!end_reached) {
                             if(holds_alternative<pair<int,ATNode>>(current_branch_nodes_stack.top())) {
-                                if(get<pair<int,ATNode>>(current_branch_nodes_stack.top()).first == -1) {
+                                if(std::get<pair<int,ATNode>>(current_branch_nodes_stack.top()).first == -1) {
                                     end_reached = true;
                                 }
                             }
@@ -352,8 +393,6 @@ vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition
 
         nodes_stack.pop();
     }
-
-    return mission_constraints; 
 }
 
 /*
@@ -361,12 +400,12 @@ vector<Constraint> generate_at_constraints(ATGraph trimmed_mission_decomposition
     Objective: Generate constraints based on an input operators stack and an input nodes stack. Additionally, an existing
     constraints map is updated since this is an auxiliary function of the generate_at_constraints function
 
-    @ Input 1: The operators stack
-    @ Input 2: The nodes stack
-    @ Input 3: The existing constraints map
+    @ Input 1: A reference to the operators stack
+    @ Input 2: A reference to the nodes stack
+    @ Input 3: A reference to the existing constraints map
     @ Output: Void. The input structures are updated
 */
-void generate_constraints_from_stacks(stack<pair<int,ATNode>>& operators_stack, stack<variant<pair<int,ATNode>,Constraint>>& nodes_stack, map<int,set<int>>& existing_constraints) {
+void ConstraintManager::generate_constraints_from_stacks(stack<pair<int,ATNode>>& operators_stack, stack<variant<pair<int,ATNode>,Constraint>>& nodes_stack, map<int,set<int>>& existing_constraints) {
     while(!operators_stack.empty()) {
         pair<int,ATNode> current_op = operators_stack.top();
         operators_stack.pop();
@@ -699,7 +738,7 @@ void generate_constraints_from_stacks(stack<pair<int,ATNode>>& operators_stack, 
                     * If it has with a high-level node (like a goal) we have to find all of the instances it has this dependency
                     * If a parallel dependency between these tasks exist, change to sequential. If it is already sequential, nothing needs to be done
 */
-vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vector<Constraint> mission_constraints, GMGraph gm, bool verbose) {
+void ConstraintManager::transform_at_constraints() {
     vector<Constraint> transformed_constraints;
     map<int,vector<pair<int,ATNode>>> constraint_nodes_decompositions;
 
@@ -846,19 +885,16 @@ vector<Constraint> transform_at_constraints(ATGraph mission_decomposition, vecto
         }
     }
 
-    return transformed_constraints;
+    mission_constraints = transformed_constraints;
 }
 
 /*
     Function: generate_execution_constraints
     Objective: Generate execution constraints present in the mission
 
-    @ Input 1: A reference to the vector of constraints
-    @ Input 2: The Task Graph as an ATGraph object
-    @ Input 3: The verbose flag
     @ Output: Void. The execution constraints will be added to the constraint vector
 */
-void generate_execution_constraints(vector<Constraint>& mission_constraints, ATGraph mission_decomposition, bool verbose) {
+void ConstraintManager::generate_execution_constraints() {
     map<int,set<int>> non_coop_constraint_map;
     map<int,vector<pair<int,ATNode>>> constraint_nodes_decompositions;
 
@@ -945,7 +981,7 @@ void generate_execution_constraints(vector<Constraint>& mission_constraints, ATG
     @ Input 3: The constraint type
     @ Output: The generated constraint
 */
-Constraint generate_constraint(pair<int,ATNode> n1, pair<int,ATNode> n2, constraint_type type) {
+Constraint ConstraintManager::generate_constraint(pair<int,ATNode> n1, pair<int,ATNode> n2, constraint_type type) {
     Constraint c;
     c.type = type;
     c.nodes_involved = make_pair(n1,n2);
