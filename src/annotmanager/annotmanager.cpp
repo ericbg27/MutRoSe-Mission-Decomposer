@@ -48,11 +48,6 @@ general_annot* FileKnowledgeAnnotManager::retrieve_gm_annot() {
 
     recursive_fill_up_runtime_annot(gmannot, gm[vctr.at(0)]);
 
-    map<string,pair<string,vector<pt::ptree>>> valid_variables;
-
-    map<int,int> node_depths;
-    map<int,AchieveCondition> valid_forAll_conditions;
-
     node_depths[vctr.at(0)] = 0;
 
     int current_node = vctr.at(0);
@@ -74,9 +69,109 @@ general_annot* FileKnowledgeAnnotManager::retrieve_gm_annot() {
         worlddb = xml_base->get_knowledge();
     }
 
-    recursive_gm_annot_generation(gmannot, vctr, worlddb, current_node, valid_variables, valid_forAll_conditions, node_depths);
+    std::map<int,AchieveCondition> valid_forAll_conditions;
+
+    recursive_gm_annot_generation(gmannot, vctr, worlddb, current_node, valid_forAll_conditions);
 
     return gmannot;
+}
+
+void AnnotManager::expand_node_vector(std::vector<int>& vctr, int current, int generated_instances) {
+    vector<int> to_copy;
+
+    bool finished = false;
+    unsigned int node_index = 0;
+
+    VertexData node = gm[current];
+
+    unsigned int children_found = 0;  
+    while(!finished) {
+        bool must_copy = false;
+
+        if(children_found < node.children.size()) {
+            if(std::find(node.children.begin(), node.children.end(), vctr.at(node_index)) != node.children.end()) {
+                children_found++;
+            }
+
+            must_copy = true;
+        } 
+
+        if(children_found == node.children.size()) {
+            VertexData aux = gm[vctr.at(node_index)];
+
+            if(aux.parent == node.parent) {
+                finished = true;
+            } else if(node_index == vctr.size()-1) {
+                finished = true;
+                must_copy = true;
+            } else {
+                must_copy = true;
+            }
+        }
+        
+        if(must_copy) {
+            to_copy.push_back(vctr.at(node_index));
+        }
+
+        node_index++;
+    }
+
+    for(int factor = 1; factor < generated_instances; factor++) {
+        vctr.insert(vctr.begin()+(factor*to_copy.size()), to_copy.begin(), to_copy.end());
+    }
+}
+
+void AnnotManager::expand_forall_annot(general_annot* node_annot, int generated_instances, string iterated_var, string iteration_var, vector<int>& vctr, int current, pt::ptree worlddb, map<int,AchieveCondition> valid_forAll_conditions, bool is_root) {
+    vector<general_annot*> new_annots;
+    for(int i = 0; i < generated_instances; i++) {
+        general_annot* aux = new general_annot();
+
+        aux->content = node_annot->content;
+        aux->type = node_annot->type;
+        aux->related_goal = node_annot->related_goal;
+        aux->parent = node_annot;
+        if(!is_root) {
+            aux->non_coop = node_annot->non_coop;
+            aux->group = node_annot->group;
+            aux->divisible = node_annot->divisible;
+        }
+        recursive_child_replacement(aux, node_annot);
+
+        new_annots.push_back(aux);
+    }
+
+    node_annot->content = parallel_op;
+    node_annot->type = OPERATOR;
+    node_annot->related_goal = "";
+    node_annot->children.clear();
+    if(!is_root) {
+        node_annot->group = true;
+        node_annot->divisible = true;
+    }
+    for(general_annot* annot : new_annots) {
+        node_annot->children.push_back(annot);
+    }
+
+    int index = 0;
+    for(general_annot* node_ch : node_annot->children) {
+        string var_type = valid_variables[iterated_var].first;
+        vector<pt::ptree> iteration_var_value;
+        iteration_var_value.push_back(valid_variables[iterated_var].second.at(index));
+
+        valid_variables[iteration_var] = make_pair(var_type, iteration_var_value);
+
+        for(general_annot* child : node_ch->children) {
+            child->parent = node_ch;
+            int c_node = current;
+            if(!is_root) {
+                c_node = vctr.at(0);
+            }
+
+            recursive_gm_annot_generation(child, vctr, worlddb, c_node, valid_forAll_conditions);
+        }
+
+        index++;
+    }
 }
 
 /*
@@ -92,8 +187,7 @@ general_annot* FileKnowledgeAnnotManager::retrieve_gm_annot() {
     @ Input 7: The map of node depths
     @ Output: Void. The runtime goal model annotation is generated
 */ 
-void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* node_annot, vector<int> &vctr,  pt::ptree worlddb, int current_node, map<string,pair<string,vector<pt::ptree>>>& valid_variables, 
-                                                                map<int,AchieveCondition> valid_forAll_conditions, map<int,int>& node_depths) {    
+void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* node_annot, vector<int> &vctr,  pt::ptree worlddb, int current_node, std::map<int,AchieveCondition> valid_forAll_conditions) {    
     set<string> operators {sequential_op,parallel_op,"FALLBACK","OPT","|"};
 
     set<string>::iterator op_it;
@@ -162,57 +256,9 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
             if(generated_instances > 1) {
                 int c_node = vctr.at(0);
 
-                vector<general_annot*> new_annots;
-                for(int i = 0; i < generated_instances; i++) {
-                    general_annot* aux = new general_annot();
-
-                    aux->content = node_annot->content;
-                    aux->type = node_annot->type;
-                    aux->related_goal = node_annot->related_goal;
-                    aux->parent = node_annot;
-                    recursive_child_replacement(aux, node_annot);
-
-                    new_annots.push_back(aux);
-                }
-
-                node_annot->content = parallel_op;
-                node_annot->type = OPERATOR;
-                node_annot->related_goal = "";
-                node_annot->children.clear();
-                for(general_annot* annot : new_annots) {
-                    node_annot->children.push_back(annot);
-                }
-
-                int index = 0;
-                unsigned int child_index = 0;
-                for(general_annot* node_ch : node_annot->children) {
-                    string var_type = valid_variables[iterated_var].first;
-                    vector<pt::ptree> iteration_var_value;
-                    iteration_var_value.push_back(valid_variables[iterated_var].second.at(index));
-
-                    valid_variables[iteration_var] = make_pair(var_type, iteration_var_value);
-
-                    for(general_annot* child : node_ch->children) {
-                        child->parent = node_ch;
-                        vector<int> vctr_aux;
-                        recursive_gm_annot_generation(child, vctr, worlddb, c_node, valid_variables, valid_forAll_conditions, node_depths);
-
-                        if(child_index < node_annot->children.size()-1) {
-                            unsigned int nodes_diff = vctr_aux.size() - vctr.size();
-                                
-                            vector<int> to_insert(vctr_aux.begin(),vctr_aux.begin() + nodes_diff);
-                            std::reverse(to_insert.begin(),to_insert.end());
-
-                            for(int elem : to_insert) {
-                                vctr.insert(vctr.begin(),elem);
-                            }   
-                        }
-
-                        child_index++;
-                    }
-
-                    index++;
-                }
+                expand_node_vector(vctr, c_node, generated_instances);
+                
+                expand_forall_annot(node_annot, generated_instances, iterated_var, iteration_var, vctr, c_node, worlddb, valid_forAll_conditions, true);
 
                 expanded_in_forAll = true;
             } else {
@@ -228,7 +274,7 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
             for(general_annot* child : node_annot->children) {
                 child->parent = node_annot;
                 int c_node = vctr.at(0);
-                recursive_gm_annot_generation(child, vctr, worlddb, c_node, valid_variables, valid_forAll_conditions, node_depths);
+                recursive_gm_annot_generation(child, vctr, worlddb, c_node, valid_forAll_conditions);
             }
         }
     } else {
@@ -299,92 +345,9 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
                 int generated_instances = valid_variables[iterated_var].second.size();
 
                 if(generated_instances > 1) {
-                    vector<int> to_copy;
+                    expand_node_vector(vctr, current, generated_instances);
 
-                    bool finished = false;
-                    unsigned int node_index = 0;
-
-                    VertexData node = gm[current];
-
-                    unsigned int children_found = 0;  
-                    while(!finished) {
-                        bool must_copy = false;
-
-                        if(children_found < node.children.size()) {
-                            if(std::find(node.children.begin(), node.children.end(), vctr.at(node_index)) != node.children.end()) {
-                                children_found++;
-                            }
-
-                            must_copy = true;
-                        } 
-
-                        if(children_found == node.children.size()) {
-                            VertexData aux = gm[vctr.at(node_index)];
-
-                            if(aux.parent == node.parent) {
-                                finished = true;
-                            } else if(node_index == vctr.size()-1) {
-                                finished = true;
-                                must_copy = true;
-                            } else {
-                                must_copy = true;
-                            }
-                        }
-                        
-                        if(must_copy) {
-                            to_copy.push_back(vctr.at(node_index));
-                        }
-
-                        node_index++;
-                    }
-
-                    for(int factor = 1; factor < generated_instances; factor++) {
-                        vctr.insert(vctr.begin()+(factor*to_copy.size()), to_copy.begin(), to_copy.end());
-                    }
-
-                    vector<general_annot*> new_annots;
-                    for(int i = 0; i < generated_instances; i++) {
-                        general_annot* aux = new general_annot();
-
-                        aux->content = node_annot->content;
-                        aux->type = node_annot->type;
-                        aux->related_goal = node_annot->related_goal;
-                        aux->parent = node_annot;
-                        aux->non_coop = node_annot->non_coop;
-                        aux->group = node_annot->group;
-                        aux->divisible = node_annot->divisible;
-                        recursive_child_replacement(aux, node_annot);
-
-                        new_annots.push_back(aux);
-                    }
-
-                    node_annot->content = parallel_op;
-                    node_annot->type = OPERATOR;
-                    node_annot->related_goal = "";
-                    node_annot->children.clear();
-                    node_annot->group = true;
-                    node_annot->divisible = true;
-                    for(general_annot* annot : new_annots) {
-                        node_annot->children.push_back(annot);
-                    }
-
-                    int index = 0;
-                    for(general_annot* node_ch : node_annot->children) {
-                        string var_type = valid_variables[iterated_var].first;
-                        vector<pt::ptree> iteration_var_value;
-                        iteration_var_value.push_back(valid_variables[iterated_var].second.at(index));
-
-                        valid_variables[iteration_var] = make_pair(var_type, iteration_var_value);
-
-                        for(general_annot* child : node_ch->children) {
-                            int c_node = vctr.at(0);
-                            child->parent = node_ch;
-
-                            recursive_gm_annot_generation(child, vctr, worlddb, c_node, valid_variables, valid_forAll_conditions, node_depths);
-                        }
-
-                        index++;
-                    } 
+                    expand_forall_annot(node_annot, generated_instances, iterated_var, iteration_var, vctr, current, worlddb, valid_forAll_conditions, false);
 
                     expanded_in_forAll = true;
                 } else {
@@ -404,7 +367,7 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
                 for(general_annot* child : node_annot->children) {            
                     int c_node = vctr.at(0);
                     child->parent = node_annot;
-                    recursive_gm_annot_generation(child, vctr, worlddb, c_node, valid_variables, valid_forAll_conditions, node_depths);
+                    recursive_gm_annot_generation(child, vctr, worlddb, c_node, valid_forAll_conditions);
                 }
             }
         }
