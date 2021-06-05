@@ -103,8 +103,97 @@ expr-seq: expr KEY_SEQ expr {
 
     $$->content = ";";
 
-    $$->children.push_back($1);
-    $$->children.push_back($3);
+    std::vector<general_annot*> children;
+
+    if($1->children.size() > 0) {
+        general_annot* current;
+        general_annot* last;
+        std::set<general_annot*> visited;
+
+        bool finished = false;
+        current = $1;
+        last = $1;
+        while(!finished) {
+            bool found_child = false;
+
+            general_annot* to_check;
+            if(current->children.size() > 0) {
+                for(auto child : current->children) {
+                    if(visited.find(child) == visited.end()) {
+                        to_check = child;
+                        found_child = true;
+                        break;
+                    }
+                }
+
+                if(found_child) {
+                    last = current;
+                    current = to_check;
+                } else {
+                    visited.insert(current);
+
+                    if(current == $1) {
+                        finished = true;
+                    } else {
+                        current = current->parent;
+                        last = current;
+                    }
+                }
+            } else {
+                children.push_back(current);
+                visited.insert(current);
+                current = last;
+            }
+        }
+    } else {
+        children.push_back($1);
+    }
+
+    if($3->children.size() > 0) {
+        general_annot* current;
+        general_annot* last;
+        std::set<general_annot*> visited;
+
+        bool finished = false;
+        current = $3;
+        last = $3;
+        while(!finished) {
+            bool found_child = false;
+
+            general_annot* to_check;
+            if(current->children.size() > 0) {
+                for(auto child : current->children) {
+                    if(visited.find(child) == visited.end()) {
+                        to_check = child;
+                        found_child = true;
+                        break;
+                    }
+                }
+
+                if(found_child) {
+                    last = current;
+                    current = to_check;
+                } else {
+                    visited.insert(current);
+
+                    if(current == $3) {
+                        finished = true;
+                    } else {
+                        current = current->parent;
+                        last = current;
+                    }
+                }
+            } else {
+                children.push_back(current);
+                visited.insert(current);
+                current = last;
+            }
+        }
+    } else {
+        children.push_back($3);
+    }
+
+    $$->children = children;
 }
 
 expr-par: expr KEY_PAR expr {
@@ -114,8 +203,97 @@ expr-par: expr KEY_PAR expr {
 
     $$->content = "#";
 
-    $$->children.push_back($1);
-    $$->children.push_back($3);
+    std::vector<general_annot*> children;
+
+    if($1->children.size() > 0) {
+        general_annot* current;
+        general_annot* last;
+        std::set<general_annot*> visited;
+
+        bool finished = false;
+        current = $1;
+        last = $1;
+        while(!finished) {
+            bool found_child = false;
+
+            general_annot* to_check;
+            if(current->children.size() > 0) {
+                for(auto child : current->children) {
+                    if(visited.find(child) == visited.end()) {
+                        to_check = child;
+                        found_child = true;
+                        break;
+                    }
+                }
+
+                if(found_child) {
+                    last = current;
+                    current = to_check;
+                } else {
+                    visited.insert(current);
+
+                    if(current == $1) {
+                        finished = true;
+                    } else {
+                        current = current->parent;
+                        last = current;
+                    }
+                }
+            } else {
+                children.push_back(current);
+                visited.insert(current);
+                current = last;
+            }
+        }
+    } else {
+        children.push_back($1);
+    }
+
+    if($3->children.size() > 0) {
+        general_annot* current;
+        general_annot* last;
+        std::set<general_annot*> visited;
+
+        bool finished = false;
+        current = $3;
+        last = $3;
+        while(!finished) {
+            bool found_child = false;
+
+            general_annot* to_check;
+            if(current->children.size() > 0) {
+                for(auto child : current->children) {
+                    if(visited.find(child) == visited.end()) {
+                        to_check = child;
+                        found_child = true;
+                        break;
+                    }
+                }
+
+                if(found_child) {
+                    last = current;
+                    current = to_check;
+                } else {
+                    visited.insert(current);
+
+                    if(current == $3) {
+                        finished = true;
+                    } else {
+                        current = current->parent;
+                        last = current;
+                    }
+                }
+            } else {
+                children.push_back(current);
+                visited.insert(current);
+                current = last;
+            }
+        }
+    } else {
+        children.push_back($3);
+    }
+
+    $$->children = children;
 }
 
 expr-fallback: KEY_FALLBACK '(' expr ',' expr ')' {

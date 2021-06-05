@@ -19,13 +19,15 @@ class AnnotManager {
     public:
         virtual general_annot* retrieve_gm_annot() = 0;
         
-        virtual void recursive_gm_annot_generation(general_annot* node_annot, std::vector<int> &vctr,  pt::ptree worlddb, int current_node, std::map<std::string,pair<std::string,std::vector<pt::ptree>>>& valid_variables, 
-                                                    std::map<int,AchieveCondition> valid_forAll_conditions, std::map<int,int>& node_depths) = 0;
+        virtual void recursive_gm_annot_generation(general_annot* node_annot, std::vector<int> &vctr,  pt::ptree worlddb, int current_node, std::map<int,AchieveCondition> valid_forAll_conditions) = 0;
 
         void set_annot_manager_type(annot_manager_type amt);
         void set_gm(GMGraph g);
         void set_high_level_loc_types(std::vector<std::string> hllt);
         void set_at_instances(std::map<std::string,std::vector<AbstractTask>> atinst);
+
+        void expand_node_vector(std::vector<int>& vctr, int current, int generated_instances);
+        void expand_forall_annot(general_annot* node_annot, int generated_instances, std::string iterated_var, std::string iteration_var, std::vector<int>& vctr, int current, pt::ptree worlddb, std::map<int,AchieveCondition> valid_forAll_conditions);
 
         annot_manager_type get_annot_manager_type();
     
@@ -34,6 +36,8 @@ class AnnotManager {
         GMGraph gm;
         std::vector<std::string> high_level_loc_types;
         std::map<std::string,std::vector<AbstractTask>> at_instances;
+        std::map<int,int> node_depths;
+        std::map<std::string,pair<std::string,std::vector<pt::ptree>>> valid_variables;
 
     private:
         annot_manager_type am_type;
@@ -43,8 +47,7 @@ class FileKnowledgeAnnotManager : public AnnotManager {
     public:
         general_annot* retrieve_gm_annot();
 
-        void recursive_gm_annot_generation(general_annot* node_annot, std::vector<int> &vctr,  pt::ptree worlddb, int current_node, std::map<std::string,pair<std::string,std::vector<pt::ptree>>>& valid_variables, 
-                                                    std::map<int,AchieveCondition> valid_forAll_conditions, std::map<int,int>& node_depths);
+        void recursive_gm_annot_generation(general_annot* node_annot, std::vector<int> &vctr,  pt::ptree worlddb, int current_node, std::map<int,AchieveCondition> valid_forAll_conditions);
         void set_fk_manager(FileKnowledgeManager* manager);
 
     private:
