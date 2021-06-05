@@ -10,6 +10,8 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include "../utils/atmanagerutils.hpp"
+#include "../knowledgemanager/knowledgemanager.hpp"
+#include "../knowledgemanager/fileknowledgemanager.hpp"
 
 namespace pt = boost::property_tree;
 
