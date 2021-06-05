@@ -29,8 +29,6 @@
 #include "hddl/hddl.hpp"
 #include "tdg/tdg.hpp"
 #include "knowledgemanager/knowledgemanager.hpp"
-#include "knowledgemanager/fileknowledgemanager.hpp"
-#include "knowledgemanager/knowledgemanagerfactory.hpp"
 #include "config/config.hpp"
 #include "atmanager/at_manager.hpp"
 #include "annotmanager/annotmanager.hpp"

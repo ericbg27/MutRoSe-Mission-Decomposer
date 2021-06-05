@@ -7,7 +7,6 @@
 
 #include "../utils/annotmanagerutils.hpp"
 #include "../knowledgemanager/knowledgemanager.hpp"
-#include "../knowledgemanager/fileknowledgemanager.hpp"
 
 enum annot_manager_type {FILEANNOTMANAGER};
 
