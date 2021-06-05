@@ -52,8 +52,6 @@ general_annot* FileKnowledgeAnnotManager::retrieve_gm_annot() {
 
     int current_node = vctr.at(0);
 
-    vctr.erase(vctr.begin());
-
     general_annot* empty_annot = new general_annot();
     empty_annot->content = "";
     empty_annot->related_goal = "";
@@ -121,7 +119,7 @@ void AnnotManager::expand_node_vector(std::vector<int>& vctr, int current, int g
     }
 }
 
-void AnnotManager::expand_forall_annot(general_annot* node_annot, int generated_instances, string iterated_var, string iteration_var, vector<int>& vctr, int current, pt::ptree worlddb, map<int,AchieveCondition> valid_forAll_conditions, bool is_root) {
+void AnnotManager::expand_forall_annot(general_annot* node_annot, int generated_instances, string iterated_var, string iteration_var, vector<int>& vctr, int current, pt::ptree worlddb, map<int,AchieveCondition> valid_forAll_conditions) {
     vector<general_annot*> new_annots;
     for(int i = 0; i < generated_instances; i++) {
         general_annot* aux = new general_annot();
@@ -130,11 +128,9 @@ void AnnotManager::expand_forall_annot(general_annot* node_annot, int generated_
         aux->type = node_annot->type;
         aux->related_goal = node_annot->related_goal;
         aux->parent = node_annot;
-        if(!is_root) {
-            aux->non_coop = node_annot->non_coop;
-            aux->group = node_annot->group;
-            aux->divisible = node_annot->divisible;
-        }
+        aux->non_coop = node_annot->non_coop;
+        aux->group = node_annot->group;
+        aux->divisible = node_annot->divisible;
         recursive_child_replacement(aux, node_annot);
 
         new_annots.push_back(aux);
@@ -144,10 +140,8 @@ void AnnotManager::expand_forall_annot(general_annot* node_annot, int generated_
     node_annot->type = OPERATOR;
     node_annot->related_goal = "";
     node_annot->children.clear();
-    if(!is_root) {
-        node_annot->group = true;
-        node_annot->divisible = true;
-    }
+    node_annot->group = true;
+    node_annot->divisible = true;
     for(general_annot* annot : new_annots) {
         node_annot->children.push_back(annot);
     }
@@ -162,10 +156,7 @@ void AnnotManager::expand_forall_annot(general_annot* node_annot, int generated_
 
         for(general_annot* child : node_ch->children) {
             child->parent = node_ch;
-            int c_node = current;
-            if(!is_root) {
-                c_node = vctr.at(0);
-            }
+            int c_node = vctr.at(0);
 
             recursive_gm_annot_generation(child, vctr, worlddb, c_node, valid_forAll_conditions);
         }
@@ -244,7 +235,7 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
             - We may be dealing with a leaf node, in which case we simply finish the execution or
             - We may be dealing with a non-leaf node, in which case we expand it and substitute it for its extension in the parent's children
     */
-    if(op_it != operators.end()) { //GM root goal  
+    if(op_it != operators.end()) { //GM root goal 
         bool expanded_in_forAll = false;
 
         if(is_forAll_goal) {
@@ -258,7 +249,7 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
 
                 expand_node_vector(vctr, c_node, generated_instances);
                 
-                expand_forall_annot(node_annot, generated_instances, iterated_var, iteration_var, vctr, c_node, worlddb, valid_forAll_conditions, true);
+                expand_forall_annot(node_annot, generated_instances, iterated_var, iteration_var, vctr, c_node, worlddb, valid_forAll_conditions);
 
                 expanded_in_forAll = true;
             } else {
@@ -268,7 +259,9 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
 
                 valid_variables[iteration_var] = make_pair(var_type, iteration_var_value);
             }
-        } 
+        }
+
+        vctr.erase(vctr.begin()); 
 
         if(!expanded_in_forAll) {
             for(general_annot* child : node_annot->children) {
@@ -347,7 +340,7 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
                 if(generated_instances > 1) {
                     expand_node_vector(vctr, current, generated_instances);
 
-                    expand_forall_annot(node_annot, generated_instances, iterated_var, iteration_var, vctr, current, worlddb, valid_forAll_conditions, false);
+                    expand_forall_annot(node_annot, generated_instances, iterated_var, iteration_var, vctr, current, worlddb, valid_forAll_conditions);
 
                     expanded_in_forAll = true;
                 } else {
