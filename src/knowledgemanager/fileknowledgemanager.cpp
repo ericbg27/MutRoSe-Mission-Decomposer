@@ -53,7 +53,7 @@ void FileKnowledgeManager::construct_knowledge_base(string db_name, map<string, 
     @ Input 4: The mapping between HDDL types and OCL types
     @ Output: Void. The sorts are initialized
 */ 
-void FileKnowledgeManager::initialize_objects(map<string,set<string>>& sorts, vector<string> high_level_loc_types, map<string,vector<AbstractTask>>& at_instances, map<string,string> type_mapping) {
+void FileKnowledgeManager::initialize_objects(map<string,set<string>>& sorts, vector<string> high_level_loc_types, map<string,vector<AbstractTask>>& at_instances) {
     pt::ptree worlddb_root;
 
     if(world_knowledge->get_root_key() == "") {
@@ -131,7 +131,7 @@ void FileKnowledgeManager::initialize_objects(map<string,set<string>>& sorts, ve
     }
 }
 
-void FileKnowledgeManager::initialize_attribute_mapping(SemanticMapping sm, pt::ptree worlddb_root, map<string,string> type_mapping, vector<ground_literal>& init, vector<pair<ground_literal,int>>& init_functions) {
+void FileKnowledgeManager::initialize_attribute_mapping(SemanticMapping sm, pt::ptree worlddb_root, vector<ground_literal>& init, vector<pair<ground_literal,int>>& init_functions) {
     string attr_name = std::get<string>(sm.get_prop(name_key));
     string relation_type = std::get<string>(sm.get_prop(relatesto_key));
     if(relation_type != "robot") {
@@ -290,7 +290,7 @@ void FileKnowledgeManager::initialize_attribute_mapping(SemanticMapping sm, pt::
     }
 }
 
-void FileKnowledgeManager::initialize_ownership_mapping(SemanticMapping sm, pt::ptree worlddb_root, map<string,string> type_mapping, vector<ground_literal>& init) {
+void FileKnowledgeManager::initialize_ownership_mapping(SemanticMapping sm, pt::ptree worlddb_root, vector<ground_literal>& init) {
     string owner_type = std::get<string>(sm.get_prop(owner_key));
     string owned_type = std::get<string>(sm.get_prop(owned_key));
 
@@ -397,7 +397,7 @@ void FileKnowledgeManager::initialize_ownership_mapping(SemanticMapping sm, pt::
     }
 }
 
-void FileKnowledgeManager::initialize_relationship_mapping(SemanticMapping sm, pt::ptree worlddb_root, std::map<std::string,std::string> type_mapping, std::vector<ground_literal>& init) {
+void FileKnowledgeManager::initialize_relationship_mapping(SemanticMapping sm, pt::ptree worlddb_root, std::vector<ground_literal>& init) {
     string main_entity_type = std::get<string>(sm.get_prop(mainentity_key));
     string related_entity_type = std::get<string>(sm.get_prop(relatedentity_key));
 
@@ -497,7 +497,7 @@ void FileKnowledgeManager::initialize_relationship_mapping(SemanticMapping sm, p
     @ Input 5: The sorts map with the existing objects
     @ Output: Void. The reference to the initial world state vector is initialized
 */ 
-void FileKnowledgeManager::initialize_world_state(vector<ground_literal>& init, vector<pair<ground_literal,int>>& init_functions, vector<SemanticMapping> semantic_mapping, map<string,string> type_mapping, map<string,set<string>> sorts) {
+void FileKnowledgeManager::initialize_world_state(vector<ground_literal>& init, vector<pair<ground_literal,int>>& init_functions, vector<SemanticMapping> semantic_mapping, map<string,set<string>> sorts) {
     pt::ptree worlddb_root;
     if(world_knowledge->get_root_key() == "") {
         worlddb_root = world_knowledge->get_knowledge();
@@ -513,11 +513,11 @@ void FileKnowledgeManager::initialize_world_state(vector<ground_literal>& init, 
     for(SemanticMapping sm : semantic_mapping) {
         //For now we are only mapping attributes
         if(sm.get_mapping_type() == attribute_mapping_type) {
-            initialize_attribute_mapping(sm, worlddb_root, type_mapping, init, init_functions);
+            initialize_attribute_mapping(sm, worlddb_root, init, init_functions);
         } else if(sm.get_mapping_type() == ownership_mapping_type) {
-            initialize_ownership_mapping(sm, worlddb_root, type_mapping, init);
+            initialize_ownership_mapping(sm, worlddb_root, init);
         } else if(sm.get_mapping_type() == relationship_mapping_type) {
-            initialize_relationship_mapping(sm, worlddb_root, type_mapping, init);
+            initialize_relationship_mapping(sm, worlddb_root, init);
         }
     }
 }

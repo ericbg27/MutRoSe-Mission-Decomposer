@@ -165,7 +165,7 @@ int main(int argc, char** argv) {
 
 	//Generate Knowledge Bases and Knowledge Manager
 	KnowledgeManagerFactory k_manager_factory;
-	shared_ptr<KnowledgeManager> knowledge_manager = k_manager_factory.create_knowledge_manager(cfg);
+	shared_ptr<KnowledgeManager> knowledge_manager = k_manager_factory.create_knowledge_manager(cfg, type_mapping);
 	knowledge_manager->construct_knowledge_base("world_db", cfg);
 
 	vector<string> output = std::get<vector<string>>(cfg["output"]);
@@ -359,8 +359,8 @@ int main(int argc, char** argv) {
 		print_at_paths_info(at_decomposition_paths);
 	}
 
-	knowledge_manager->initialize_objects(sorts, high_level_loc_types, at_instances, type_mapping);
-	knowledge_manager->initialize_world_state(init, init_functions, semantic_mapping, type_mapping, sorts);
+	knowledge_manager->initialize_objects(sorts, high_level_loc_types, at_instances);
+	knowledge_manager->initialize_world_state(init, init_functions, semantic_mapping, sorts);
 
 	if(verbose) {
 		print_world_state(init,init_functions);
