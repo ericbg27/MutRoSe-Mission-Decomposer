@@ -154,7 +154,7 @@ int main(int argc, char** argv) {
 	pt::read_json(argv[jsonfile], json_root);
 
 	map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> cfg;
-	cfg = parse_configuration_file(argv[configfile]);
+	cfg = parse_xml_configuration_file(argv[configfile]);
 
 	map<string,string> type_mapping = std::get<map<string,string>>(cfg["type_mapping"]);
 

@@ -12,6 +12,6 @@
 namespace pt = boost::property_tree;
 
 // Afterwards we can use a variant here, depending on what we want to give to the main file
-std::map<std::string, std::variant<std::map<std::string,std::string>, std::vector<std::string>, std::vector<SemanticMapping>, std::vector<VariableMapping>, std::pair<std::string,std::string>>> parse_configuration_file(std::string filename);
+std::map<std::string, std::variant<std::map<std::string,std::string>, std::vector<std::string>, std::vector<SemanticMapping>, std::vector<VariableMapping>, std::pair<std::string,std::string>>> parse_xml_configuration_file(std::string filename);
 
 #endif

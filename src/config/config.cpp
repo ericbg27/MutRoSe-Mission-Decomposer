@@ -11,7 +11,7 @@ using namespace std;
 
 set<string> accepted_output_file_types = {"XML"};
 
-map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> parse_configuration_file(string filename) {
+map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> parse_xml_configuration_file(string filename) {
     map<string,variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> config_info;
     
     pt::ptree config_root;
