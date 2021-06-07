@@ -2,13 +2,13 @@
     <world_db>
         <type>file</type>
         <file_type>xml</file_type>
-        <path>xml/Room Preparation/World_db.xml</path>
+        <path>knowledge/Room Preparation/Default/World_db.xml</path>
         <xml_root>world_db</xml_root>
     </world_db>
 
     <output>
         <output_type>file</output_type>
-        <file_path>xml/Room Preparation/task_output.xml</file_path>
+        <file_path>output/Room Preparation/Default/task_output.xml</file_path>
         <file_type>xml</file_type>
     </output>
 

@@ -1,0 +1,1 @@
+./pandaPIparser hddl/Room\ Cleaning/OR/Room\ Cleaning\ OR.hddl gm/Room\ Cleaning/OR/Room\ Cleaning\ OR.txt configs/Room\ Cleaning/OR/configuration.xml -v

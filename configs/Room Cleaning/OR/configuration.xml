@@ -2,13 +2,13 @@
     <world_db>
         <type>file</type>
         <file_type>xml</file_type>
-        <path>xml/Room Cleaning OR/World_db.xml</path>
+        <path>knowledge/Room Cleaning/OR/World_db.xml</path>
         <xml_root>world_db</xml_root>
     </world_db>
 
     <output>
         <output_type>file</output_type>
-        <file_path>xml/Room Cleaning OR/task_output.xml</file_path>
+        <file_path>output/Room Cleaning/OR/task_output.xml</file_path>
         <file_type>xml</file_type>
     </output>
 

@@ -2,13 +2,13 @@
     <world_db>
         <type>file</type>
         <file_type>xml</file_type>
-        <path>xml/Object Picking/World_db.xml</path>
+        <path>knowledge/Object Picking/Default/World_db.xml</path>
         <xml_root>world_db</xml_root>
     </world_db>
 
     <output>
         <output_type>file</output_type>
-        <file_path>xml/Object Picking/task_output.xml</file_path>
+        <file_path>output/Object Picking/Default/task_output.xml</file_path>
         <file_type>xml</file_type>
     </output>
 
