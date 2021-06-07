@@ -2,17 +2,15 @@
     <Room>
         <name>RoomA</name>
         <objects>
-            <obj>obj1</obj>
-            <obj>obj2</obj>
+            <Object>
+                <name>obj1</name>
+                <is_picked>False</is_picked>
+            </Object>
+            <Object>
+                <name>obj2</name>
+                <is_picked>False</is_picked>
+            </Object>
         </objects>
         <is_organized>False</is_organized>
     </Room>
-    <Object>
-        <name>obj1</name>
-        <is_picked>False</is_picked>
-    </Object>
-    <Object>
-        <name>obj2</name>
-        <is_picked>False</is_picked>
-    </Object>
 </world_db>
