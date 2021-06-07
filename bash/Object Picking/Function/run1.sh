@@ -1,1 +1,0 @@
-./pandaPIparser hddl/Object\ Picking/Function/Object\ Picking\ v1.hddl gm/Object\ Picking/Function/Object\ Picking.txt configs/Object\ Picking/Function/configuration.xml -v
