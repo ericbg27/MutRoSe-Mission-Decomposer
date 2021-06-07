@@ -1,0 +1,21 @@
+(define (problem room-preparation)
+    (:domain hospital)
+    (:objects
+        r1 - CleanerRobot
+        r3 - MoveRobot
+        r4 - MoveRobot
+        c3 - robotlocation
+        c2 - robotlocation
+        c4 - robotlocation
+    )
+    (:init
+        (at r1 c3)
+        (at r3 c2)
+        (at r4 c4)
+        (hascapability r1 cleaning)
+        (hascapability r1 sanitize)
+        (hascapability r3 moveobject)
+        (hascapability r4 moveobject)
+        ()
+    )
+)

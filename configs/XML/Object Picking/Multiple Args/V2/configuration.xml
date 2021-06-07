@@ -1,0 +1,64 @@
+<configuration>
+    <world_db>
+        <type>file</type>
+        <file_type>xml</file_type>
+        <path>knowledge/Object Picking/Multiple Args/V2/World_db2.xml</path>
+        <xml_root>world_db</xml_root>
+    </world_db>
+
+    <output>
+        <output_type>file</output_type>
+        <file_path>output/Object Picking/Multiple Args/V2/task_output.xml</file_path>
+        <file_type>xml</file_type>
+    </output>
+
+    <location_types>
+        <type>Room</type>
+    </location_type>
+
+    <type_mapping>
+        <mapping>
+            <hddl_type>room</hddl_type>
+            <ocl_type>Room</ocl_type>
+        </mapping>
+        <mapping>
+            <hddl_type>obj</hddl_type>
+            <ocl_type>Object</ocl_type>
+        </mapping>
+    </type_mapping>
+
+    <var_mapping>
+        <mapping>
+            <task_id>AT1</task_id>
+            <map gm_var="current_room" hddl_var="?rm"/>
+            <map gm_var="obj" hddl_var="?o"/>
+        </mapping>
+    </var_mapping>
+
+    <semantic_mapping>
+        <mapping>
+            <type>attribute</type>
+            <name>is_picked</name>
+            <relates_to>Object</relates_to>
+            <belongs_to>world_db</belongs_to>
+            <mapped_type>predicate</mapped_type>
+            <map>
+                <pred>picked</pred> 
+                <arg_sorts number="1">obj</arg_sorts>
+            </map>
+        </mapping>
+        <mapping>
+            <type>relationship</type>
+            <main_entity>Room</main_entity>
+            <related_entity>Object</related_entity>
+            <relationship_type>attribute</relationship_type>
+            <attribute_name>objects</attribute_name>
+            <belongs_to>world_db</belongs_to>
+            <mapped_type>predicate</predicate>
+            <map>
+                <pred>at</pred>
+                <arg_sorts number="2">obj room</arg_sorts>
+            </map>
+        </mapping>
+    </semantic_mapping>
+</configuration>

@@ -1,0 +1,79 @@
+(define (domain park)
+	(:types location robot bin gripper)
+	(:predicates
+		(at ?r - robot ?l - location)
+		(general ?b - bin)
+		(recyclable ?b - bin)
+		(empty ?b - bin)
+		(attr ?r -robot ?g - gripper)
+		(hasgripper ?r - robot)
+	)
+	(:functions
+		(energy-calc-move ?r - robot ?l1 ?l2 - location)
+		(energy-calc-grip ?r - robot ?g - gripper ?b - bin)
+	)
+	(:rewards energy)
+
+	(:task CollectWasteFromBin :parameters (?r - robot ?bloc ?rloc - location ?b - bin ?g - gripper))
+	(:task CollectWaste :parameters (?r - robot ?bloc - robot ?b - bin ?g - gripper))
+
+	(:method collect-general-waste-bin
+		:parameters (?r - robot ?rloc ?bloc - location ?b - bin ?g - gripper)
+		:task (CollectWasteFromBin ?r ?bloc ?rloc ?b ?g)
+		:precondition (and
+			(general ?b)
+		)
+		:ordered-subtasks (and
+			(move ?r ?rloc ?bloc)
+			(CollectWaste ?r ?bloc ?b ?g)
+		)
+	)
+
+	(:method collect-general-waste-bin
+		:parameters (?r - robot ?rloc ?bloc - location ?b - bin ?g - gripper)
+		:task (CollectWasteFromBin ?r ?bloc ?rloc ?b ?g)
+		:precondition (and
+			(recyclable ?b)
+		)
+		:ordered-subtasks (and
+			(move ?r ?rloc ?bloc)
+			(CollectWaste ?r ?bloc ?b ?g)
+		)
+	)
+
+	(:method collect-waste
+		:parameters (?r - robot ?bloc - location ?b - bin ?g - gripper)
+		:task (CollectWaste ?r ?bloc ?b ?g)
+		:precondition (and
+			(at ?r ?bloc)
+			(not (empty ?b))
+		)
+		:ordered-subtasks (and
+			(grab-waste ?r ?b ?g)
+		)
+	)
+
+	(:action move
+		:parameters (?r - robot ?l1 ?l2 - location)
+		:precondition (at ?r ?l1)
+		:effect (and
+			(not (at ?r ?l1))
+			(at ?l2)
+			(rewardchange increase (energy) (calc-energy-move ?r ?l1 ?l2))
+		) 
+		:reliability (relMove 0.95)
+	)
+
+	(:action grab-waste
+		:parameters (?r - robot ?b - bin ?g - gripper)
+		:precondition (and
+			(hasgripper ?r)
+			(attr ?r ?g)
+		)
+		:effect(and
+			(empty ?b)
+			(rewardchange increase (energy) (calc-energy-grip ?r ?g ?b))
+		)
+		:reliability (relGrab 0.9)
+	)
+)
