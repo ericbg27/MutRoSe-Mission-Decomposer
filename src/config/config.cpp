@@ -12,9 +12,27 @@ using namespace std;
 
 set<string> accepted_output_file_types = {"XML"};
 
-map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> parse_xml_configuration_file(string filename) {
-    map<string,variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> config_info;
-    
+map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> ConfigManager::parse_configuration_file(string filename) {
+    string cfg_filetype = "XML";
+	if(filename.rfind(".") != std::string::npos) {
+		string aux = filename.substr(filename.rfind(".")+1);
+		std::transform(aux.begin(), aux.end(), aux.begin(), ::toupper);
+
+		if(accepted_file_types.find(aux) != accepted_file_types.end()) {
+			cfg_filetype = aux;
+		}
+	}
+
+	if(cfg_filetype == "XML") {
+		parse_xml_configuration_file(filename);
+	} else if(cfg_filetype == "JSON") {
+		parse_json_configuration_file(filename);
+	}
+
+    return config_info;
+}
+
+void ConfigManager::parse_xml_configuration_file(string filename) {    
     pt::ptree config_root;
     pt::read_xml(filename, config_root);
 
@@ -274,13 +292,9 @@ map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>,
             config_info["semantic_mapping"] = mappings;
         }
     }
-
-    return config_info;
 }
 
-std::map<std::string, std::variant<std::map<std::string,std::string>, std::vector<std::string>, std::vector<SemanticMapping>, std::vector<VariableMapping>, std::pair<std::string,std::string>>> parse_json_configuration_file(std::string filename) {
-    map<string,variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> config_info;
-    
+void ConfigManager::parse_json_configuration_file(std::string filename) {
     pt::ptree config_root;
     pt::read_json(filename, config_root);
 
@@ -536,6 +550,4 @@ std::map<std::string, std::variant<std::map<std::string,std::string>, std::vecto
             config_info["semantic_mapping"] = mappings;
         }
     }
-
-    return config_info;
 }
