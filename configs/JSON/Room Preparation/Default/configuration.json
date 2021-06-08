@@ -8,8 +8,8 @@
 
     "output": {
         "output_type": "file",
-        "file_path": "output/Room Preparation/Default/task_output.xml",
-        "file_type": "xml"
+        "file_path": "output/Room Preparation/Default/task_output.json",
+        "file_type": "json"
     },
 
     "location_types": ["Room"],

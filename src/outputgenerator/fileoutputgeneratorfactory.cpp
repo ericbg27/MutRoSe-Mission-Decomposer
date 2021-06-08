@@ -8,6 +8,9 @@ shared_ptr<FileOutputGenerator> FileOutputGeneratorFactory::create_file_output_g
     if(output.second == "XML") {
         file_output_gen = std::make_shared<XMLOutputGenerator>();
         file_output_gen->set_file_output_generator_type(XMLFILEOUTGEN);
+    } else if(output.second == "JSON") {
+        file_output_gen = std::make_shared<JSONOutputGenerator>();
+        file_output_gen->set_file_output_generator_type(JSONFILEOUTGEN);
     }
     
     file_output_gen->set_gm(gm);

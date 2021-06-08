@@ -10,7 +10,7 @@
 
 using namespace std;
 
-set<string> accepted_output_file_types = {"XML"};
+set<string> accepted_output_file_types = {"XML", "JSON"};
 
 map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> ConfigManager::parse_configuration_file(string filename) {
     string cfg_filetype = "XML";
@@ -149,7 +149,7 @@ void ConfigManager::parse_xml_configuration_file(string filename) {
                 std::transform(file_type.begin(),file_type.end(),file_type.begin(),::toupper);
 
                 if(accepted_output_file_types.find(file_type) == accepted_output_file_types.end()) {
-                    string unsupported_file_type_error = "File type [" + output_type + "] is not supported";
+                    string unsupported_file_type_error = "File type [" + file_type + "] is not supported";
 
                     throw std::runtime_error(unsupported_file_type_error);
                 }

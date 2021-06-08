@@ -433,6 +433,10 @@ int main(int argc, char** argv) {
 			XMLOutputGenerator* output_generator = dynamic_cast<XMLOutputGenerator*>(output_generator_ptr.get());
 
 			output_generator->generate_instances_output(semantic_mapping, sorts, sort_definitions, predicate_definitions, gm_var_map);
+		} else if(output_generator_ptr->get_file_output_generator_type() == JSONFILEOUTGEN) {
+			JSONOutputGenerator* output_generator = dynamic_cast<JSONOutputGenerator*>(output_generator_ptr.get());
+
+			output_generator->generate_instances_output(semantic_mapping, sorts, sort_definitions, predicate_definitions, gm_var_map);
 		}
 	}
 }

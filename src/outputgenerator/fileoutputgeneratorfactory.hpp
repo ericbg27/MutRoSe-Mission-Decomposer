@@ -2,6 +2,7 @@
 #define __FILEOUTPUTGENERATORFACTORY
 
 #include "xmloutputgenerator.hpp"
+#include "jsonoutputgenerator.hpp"
 #include "outputgenerator.hpp"
 
 class FileOutputGeneratorFactory {
