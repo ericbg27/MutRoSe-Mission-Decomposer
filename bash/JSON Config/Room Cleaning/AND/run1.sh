@@ -1,0 +1,1 @@
+./pandaPIparser hddl/Room\ Cleaning/AND/Room\ Cleaning\ Fail.hddl gm/Room\ Cleaning/AND/RoomCleaningFail.txt configs/JSON/Room\ Cleaning/AND/configuration.json -v
