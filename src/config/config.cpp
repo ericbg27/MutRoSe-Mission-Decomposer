@@ -460,7 +460,9 @@ void ConfigManager::parse_json_configuration_file(std::string filename) {
             vector<VariableMapping> var_mappings;
             BOOST_FOREACH(pt::ptree::value_type& mapping, config.second) { 
                 string task_id = mapping.second.get<string>("task_id");
-                BOOST_FOREACH(pt::ptree::value_type& child, mapping.second.get_child("map")) {
+                pt::ptree map_ptree = mapping.second.get_child("map");
+ 
+                BOOST_FOREACH(pt::ptree::value_type& child, map_ptree) {
                     string hddl_var, gm_var;
 
                     gm_var = child.second.get<string>("gm_var");
