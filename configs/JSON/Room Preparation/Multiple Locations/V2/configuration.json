@@ -28,31 +28,39 @@
     "var_mapping": [
         {
             "task_id": "AT1",
-            "map": {
-                "gm_var": "current_room",
-                "hddl_var": "?rm"
-            }
+            "map": [
+                {
+                    "gm_var": "current_room",
+                    "hddl_var": "?rm"
+                }
+            ]
         },
         {
             "task_id": "AT2",
-            "map": {
-                "gm_var": "sanitization_room",
-                "hddl_var": "?srm"
-            }
+            "map": [
+                {
+                    "gm_var": "sanitization_room",
+                    "hddl_var": "?srm"
+                }
+            ]
         },
         {
             "task_id": "AT3",
-            "map": {
-                "gm_var": "current_room",
-                "hddl_var": "?rm"
-            }
+            "map": [
+                {
+                    "gm_var": "current_room",
+                    "hddl_var": "?rm"
+                }
+            ]
         },
         {
             "task_id": "AT4",
-            "map": {
-                "gm_var": "rooms",
-                "hddl_var": "?rms"
-            }
+            "map": [
+                {
+                    "gm_var": "rooms",
+                    "hddl_var": "?rms"
+                }
+            ]
         }
     ],
 

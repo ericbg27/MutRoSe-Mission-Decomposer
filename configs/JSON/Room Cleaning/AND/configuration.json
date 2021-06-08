@@ -24,10 +24,12 @@
     "var_mapping": [
         {
             "task_id": "AT1",
-            "map": {
-                "gm_var": "current_room",
-                "hddl_var": "?rm"
-            }
+            "map": [
+                {
+                    "gm_var": "current_room",
+                    "hddl_var": "?rm"
+                }
+            ]
         },
         {
             "task_id": "AT2",
