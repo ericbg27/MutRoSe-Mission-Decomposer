@@ -37,7 +37,7 @@ class OutputGenerator {
         std::vector<std::pair<ground_literal,int>> world_state_functions;
 };
 
-enum file_output_generator_type {XMLFILEOUTGEN};
+enum file_output_generator_type {XMLFILEOUTGEN, JSONFILEOUTGEN};
 
 class FileOutputGenerator : public OutputGenerator {
     public:
