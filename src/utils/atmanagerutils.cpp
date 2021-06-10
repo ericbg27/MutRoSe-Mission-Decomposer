@@ -317,7 +317,9 @@ void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm
 									aux.push_back(child.second);
 								}
 							} else {
-								assert(false);
+								string query_statement_non_collection_var_error = "Wrong query statement in Goal " + get_node_name(gm[node_id].text) + ". Usage of in statement in non-collection variable.";
+
+								throw std::runtime_error(query_statement_non_collection_var_error);
 							}
 						} else if(split_attr.size() == 2) {
 							// Here we need to get the query ptree for the second attribute
@@ -346,10 +348,14 @@ void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm
 									}
 								}
 							} else {
-								assert(false);
+								string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
+
+								throw std::runtime_error(bad_condition);
 							}
 						} else {
-							assert(false);
+							string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
+
+							throw std::runtime_error(bad_condition);
 						}
 					}
 				}

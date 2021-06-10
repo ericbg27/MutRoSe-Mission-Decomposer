@@ -21,8 +21,9 @@ void expand_decomposition(Decomposition& d, vector<pair<ground_literal,int>> wor
                         if(holds_alternative<string>(var_map.first.first)) {
                             arguments.push_back(std::get<string>(var_map.first.first));
                         } else {
-                            // Shouldn't happen at this point! (Check)
-                            assert(false);
+                            string collection_variable_in_function_predicate_error = "Function predicate in task " + d.at.id + " cannot contain collection-related variables";
+
+                            throw std::runtime_error(collection_variable_in_function_predicate_error);
                         }
                     }
                 }

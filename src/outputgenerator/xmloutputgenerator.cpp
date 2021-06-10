@@ -28,7 +28,10 @@ void XMLOutputGenerator::generate_instances_output(vector<SemanticMapping> seman
     pt::ptree output_file;
 
     ValidMissionGenerator valid_missions_generator(mission_decomposition, gm, mission_constraints, world_state, world_state_functions, semantic_mapping, gm_var_map, verbose);
-    vector<vector<pair<int,ATNode>>> valid_mission_decompositions = valid_missions_generator.generate_valid_mission_decompositions();
+    pair<vector<vector<pair<int,ATNode>>>,set<Decomposition>> valid_mission_decompositions_and_expanded_decompositions = valid_missions_generator.generate_valid_mission_decompositions();
+
+    vector<vector<pair<int,ATNode>>> valid_mission_decompositions = valid_mission_decompositions_and_expanded_decompositions.first;
+    set<Decomposition> expanded_decompositions = valid_mission_decompositions_and_expanded_decompositions.second;
 
     vector<Decomposition> task_instances;
     map<string,task> actions;
@@ -40,6 +43,11 @@ void XMLOutputGenerator::generate_instances_output(vector<SemanticMapping> seman
     for(int index = 0;index < graph_size;index++) {
         if(mission_decomposition[index].node_type == DECOMPOSITION) {
             Decomposition d = std::get<Decomposition>(mission_decomposition[index].content);
+
+            set<Decomposition>::iterator d_it = expanded_decompositions.find(d);
+            if(d_it != expanded_decompositions.end()) {
+                d = *d_it;
+            }
 
             for(task a : d.path.decomposition) {
                 if(actions.find(a.name) == actions.end() && a.name.find(method_precondition_action_name) == string::npos) {

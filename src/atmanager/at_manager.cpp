@@ -280,10 +280,11 @@ void FileKnowledgeATManager::recursive_at_instances_generation(int current, int 
 			for(string param : params) {
 				if(gm_var_map.find(param) != gm_var_map.end()) {
 					if(holds_alternative<pair<string,string>>(gm_var_map[param])) {
-						at.params.push_back(std::get<pair<string,string>>(gm_var_map[param]).first);
+						string parameter = std::get<pair<string,string>>(gm_var_map[param]).first;
+						at.params.push_back(parameter);
 					} else {
-						//TODO
-						assert(false);
+						vector<string> parameter = std::get<pair<vector<string>,string>>(gm_var_map[param]).first;
+						at.params.push_back(parameter);
 					}
 				} else {
 					string param_not_found_error = "Could not find value for parameter [" + param + "] for task [" + at.name + "]"; 
@@ -304,8 +305,10 @@ void FileKnowledgeATManager::recursive_at_instances_generation(int current, int 
 							var_value = var_value_and_type.first;
 							var_type = var_value_and_type.second;
 						} else {
-							//TODO
-							assert(false);
+							pair<vector<string>,string> var_value_and_type = std::get<pair<vector<string>,string>>(gm_var_map[*param_it]);
+
+							var_value = var_value_and_type.first;
+							var_type = var_value_and_type.second;
 						}
 
 						at.variable_mapping.push_back(make_pair(make_pair(var_value,var_type),var.get_hddl_var()));
