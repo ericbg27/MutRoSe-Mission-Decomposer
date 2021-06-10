@@ -125,6 +125,7 @@ map<string,string> JSONOutputGenerator::output_tasks(pt::ptree& output_file, vec
         pt::ptree preconditions_node;
         for(auto prec : instance.prec) {
             pt::ptree precondition_node;
+            bool output_prec = true;
             
             map<string,string> task_vars;
             for(pair<string,string> args : instance.at.at.vars) {
@@ -164,54 +165,62 @@ map<string,string> JSONOutputGenerator::output_tasks(pt::ptree& output_file, vec
             } else {
                 string prec_output;
 
-                if(prec_mapping.first.get_mapping_type() == attribute_mapping_type) {  
-                    vector<string> arguments;
-                    string prec_name;
-                    if(holds_alternative<ground_literal>(prec)) {
-                        ground_literal p = get<ground_literal>(prec);
+                if(prec_mapping.first.get_mapping_type() == attribute_mapping_type) {
+                    if(prec_mapping.first.get_mapped_type() == predicate_mapped_type) {
+                        vector<string> arguments;
+                        string prec_name;
+                        if(holds_alternative<ground_literal>(prec)) {
+                            ground_literal p = get<ground_literal>(prec);
 
-                        if(!p.positive) prec_output += "not ";
-                        prec_output += p.args.at(0) + ".";
-                        arguments = p.args;
-                        prec_name = p.predicate;
-                    } else {
-                        literal p = get<literal>(prec);
+                            if(!p.positive) prec_output += "not ";
+                            prec_output += p.args.at(0) + ".";
+                            arguments = p.args;
+                            prec_name = p.predicate;
+                        } else {
+                            literal p = get<literal>(prec);
 
-                        if(!p.positive) prec_output += "not ";
-                        prec_output += p.arguments.at(0) + ".";
-                        arguments = p.arguments;
-                        prec_name = p.predicate;
-                    }
-                    prec_output += get<string>(prec_mapping.first.get_prop("name"));
-
-                    vector<string> arg_sorts;
-                    for(predicate_definition pred : predicate_definitions) {
-                        if(pred.name == prec_name) {
-                            arg_sorts = pred.argument_sorts;
-                            break;
+                            if(!p.positive) prec_output += "not ";
+                            prec_output += p.arguments.at(0) + ".";
+                            arguments = p.arguments;
+                            prec_name = p.predicate;
                         }
-                    }
+                        prec_output += get<string>(prec_mapping.first.get_prop("name"));
 
-                    precondition_node.put("predicate", prec_output);
-                    
-                    pt::ptree vars_node;
-                    for(string arg : arguments) {
-                        vars_node.put("", arg);
-                    }
-                    precondition_node.push_back(std::make_pair("vars", vars_node));
+                        vector<string> arg_sorts;
+                        for(predicate_definition pred : predicate_definitions) {
+                            if(pred.name == prec_name) {
+                                arg_sorts = pred.argument_sorts;
+                                break;
+                            }
+                        }
 
-                    pt::ptree vartypes_node;
-                    for(string type : arg_sorts) {
-                        vartypes_node.put("", type);
+                        precondition_node.put("predicate", prec_output);
+                        
+                        pt::ptree vars_node;
+                        for(string arg : arguments) {
+                            vars_node.put("", arg);
+                        }
+                        precondition_node.push_back(std::make_pair("vars", vars_node));
+
+                        pt::ptree vartypes_node;
+                        for(string type : arg_sorts) {
+                            vartypes_node.put("", type);
+                        }
+                        precondition_node.push_back(std::make_pair("var_types", vartypes_node));
+                    } else if(prec_mapping.first.get_mapped_type() == function_mapped_type) {
+                        // TODO
+                        output_prec = false;
                     }
-                    precondition_node.push_back(std::make_pair("var_types", vartypes_node));
                 } else if(prec_mapping.first.get_mapping_type() == ownership_mapping_type) {
                     /*
                         Do we need to output preconditions related to ownership type semantic mappings?
                     */
+                    output_prec = false;
                 }
 
-                preconditions_node.push_back(std::make_pair("",precondition_node));
+                if(output_prec) {
+                    preconditions_node.push_back(std::make_pair("",precondition_node));
+                }
             }
         }
         task_node.add_child("preconditions", preconditions_node);

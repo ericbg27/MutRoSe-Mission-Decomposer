@@ -235,60 +235,64 @@ map<string,string> XMLOutputGenerator::output_tasks(pt::ptree& output_file, vect
                 */
                 string prec_output;
 
-                if(prec_mapping.first.get_mapping_type() == attribute_mapping_type) {  
-                    vector<string> arguments;
-                    string prec_name;
-                    if(holds_alternative<ground_literal>(prec)) {
-                        ground_literal p = get<ground_literal>(prec);
+                if(prec_mapping.first.get_mapping_type() == attribute_mapping_type) {
+                    if(prec_mapping.first.get_mapped_type() == predicate_mapped_type) {
+                        vector<string> arguments;
+                        string prec_name;
+                        if(holds_alternative<ground_literal>(prec)) {
+                            ground_literal p = get<ground_literal>(prec);
 
-                        if(!p.positive) prec_output += "not ";
-                        prec_output += p.args.at(0) + ".";
-                        arguments = p.args;
-                        prec_name = p.predicate;
-                    } else {
-                        literal p = get<literal>(prec);
-
-                        if(!p.positive) prec_output += "not ";
-                        prec_output += p.arguments.at(0) + ".";
-                        arguments = p.arguments;
-                        prec_name = p.predicate;
-                    }
-                    prec_output += get<string>(prec_mapping.first.get_prop("name"));
-
-                    vector<string> arg_sorts;
-                    for(predicate_definition pred : predicate_definitions) {
-                        if(pred.name == prec_name) {
-                            arg_sorts = pred.argument_sorts;
-                            break;
-                        }
-                    }
-
-
-                    string prec_name_xml = task_attr + ".prec" + to_string(prec_index);
-
-                    string prec_attr_xml = prec_name_xml + ".<xmlattr>.vars";
-                    string vars_list;
-                    for(unsigned int i = 0;i < arguments.size();i++) {
-                        if(i == arguments.size()-1) {
-                            vars_list += arguments.at(i);
+                            if(!p.positive) prec_output += "not ";
+                            prec_output += p.args.at(0) + ".";
+                            arguments = p.args;
+                            prec_name = p.predicate;
                         } else {
-                            vars_list += arguments.at(i) + ",";
-                        }
-                    }
-                    output_file.put(prec_attr_xml,vars_list);
+                            literal p = get<literal>(prec);
 
-                    prec_attr_xml = prec_name_xml + ".<xmlattr>.var_types";
-                    string var_types_list;
-                    for(unsigned int i = 0;i < arg_sorts.size();i++) {
-                        if(i == arg_sorts.size()-1) {
-                            var_types_list += arg_sorts.at(i);
-                        } else {
-                            var_types_list += arg_sorts.at(i) + ",";
+                            if(!p.positive) prec_output += "not ";
+                            prec_output += p.arguments.at(0) + ".";
+                            arguments = p.arguments;
+                            prec_name = p.predicate;
                         }
-                    }
-                    output_file.put(prec_attr_xml,var_types_list);
+                        prec_output += get<string>(prec_mapping.first.get_prop("name"));
 
-                    output_file.put(prec_name_xml,prec_output);
+                        vector<string> arg_sorts;
+                        for(predicate_definition pred : predicate_definitions) {
+                            if(pred.name == prec_name) {
+                                arg_sorts = pred.argument_sorts;
+                                break;
+                            }
+                        }
+
+
+                        string prec_name_xml = task_attr + ".prec" + to_string(prec_index);
+
+                        string prec_attr_xml = prec_name_xml + ".<xmlattr>.vars";
+                        string vars_list;
+                        for(unsigned int i = 0;i < arguments.size();i++) {
+                            if(i == arguments.size()-1) {
+                                vars_list += arguments.at(i);
+                            } else {
+                                vars_list += arguments.at(i) + ",";
+                            }
+                        }
+                        output_file.put(prec_attr_xml,vars_list);
+
+                        prec_attr_xml = prec_name_xml + ".<xmlattr>.var_types";
+                        string var_types_list;
+                        for(unsigned int i = 0;i < arg_sorts.size();i++) {
+                            if(i == arg_sorts.size()-1) {
+                                var_types_list += arg_sorts.at(i);
+                            } else {
+                                var_types_list += arg_sorts.at(i) + ",";
+                            }
+                        }
+                        output_file.put(prec_attr_xml,var_types_list);
+
+                        output_file.put(prec_name_xml,prec_output);
+                    } else if(prec_mapping.first.get_mapped_type() == function_mapped_type) {
+                        // TODO
+                    }
                 } else if(prec_mapping.first.get_mapping_type() == ownership_mapping_type) {
                     /*
                         Do we need to output preconditions related to ownership type semantic mappings?
