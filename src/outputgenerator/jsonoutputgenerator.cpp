@@ -271,47 +271,51 @@ map<string,string> JSONOutputGenerator::output_tasks(pt::ptree& output_file, vec
                 */
                 string eff_output;
 
-                if(eff_mapping.first.get_mapping_type() == "attribute") {   
-                    vector<string> arguments;
-                    string eff_name;
-                    if(holds_alternative<ground_literal>(eff)) {
-                        ground_literal e = get<ground_literal>(eff);
+                if(eff_mapping.first.get_mapping_type() == attribute_mapping_type) {
+                    if(eff_mapping.first.get_mapped_type() == predicate_mapped_type) {   
+                        vector<string> arguments;
+                        string eff_name;
+                        if(holds_alternative<ground_literal>(eff)) {
+                            ground_literal e = get<ground_literal>(eff);
 
-                        if(!e.positive) eff_output += "not ";
-                        eff_output += e.args.at(0) + ".";
-                        arguments = e.args;
-                        eff_name = e.predicate;
-                    } else {
-                        literal e = get<literal>(eff);
+                            if(!e.positive) eff_output += "not ";
+                            eff_output += e.args.at(0) + ".";
+                            arguments = e.args;
+                            eff_name = e.predicate;
+                        } else {
+                            literal e = get<literal>(eff);
 
-                        if(!e.positive) eff_output += "not ";
-                        eff_output += e.arguments.at(0) + ".";
-                        arguments = e.arguments;
-                        eff_name = e.predicate;
-                    }
-                    eff_output += get<string>(eff_mapping.first.get_prop("name"));
-
-                    vector<string> arg_sorts;
-                    for(predicate_definition pred : predicate_definitions) {
-                        if(pred.name == eff_name) {
-                            arg_sorts = pred.argument_sorts;
-                            break;
+                            if(!e.positive) eff_output += "not ";
+                            eff_output += e.arguments.at(0) + ".";
+                            arguments = e.arguments;
+                            eff_name = e.predicate;
                         }
-                    }
+                        eff_output += get<string>(eff_mapping.first.get_prop("name"));
 
-                    effect_node.put("predicate", eff_output);
-                    
-                    pt::ptree vars_node;
-                    for(string arg : arguments) {
-                        vars_node.put("", arg);
-                    }
-                    effect_node.push_back(std::make_pair("vars", vars_node));
+                        vector<string> arg_sorts;
+                        for(predicate_definition pred : predicate_definitions) {
+                            if(pred.name == eff_name) {
+                                arg_sorts = pred.argument_sorts;
+                                break;
+                            }
+                        }
 
-                    pt::ptree vartypes_node;
-                    for(string type : arg_sorts) {
-                        vartypes_node.put("", type);
+                        effect_node.put("predicate", eff_output);
+                        
+                        pt::ptree vars_node;
+                        for(string arg : arguments) {
+                            vars_node.put("", arg);
+                        }
+                        effect_node.push_back(std::make_pair("vars", vars_node));
+
+                        pt::ptree vartypes_node;
+                        for(string type : arg_sorts) {
+                            vartypes_node.put("", type);
+                        }
+                        effect_node.push_back(std::make_pair("var_types", vartypes_node));
+                    } else if(eff_mapping.first.get_mapped_type() == function_mapped_type) {
+                        // TODO
                     }
-                    effect_node.push_back(std::make_pair("var_types", vartypes_node));
                 }
 
                 effects_node.push_back(std::make_pair("", effect_node));
