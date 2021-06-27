@@ -186,6 +186,10 @@ void FileKnowledgeATManager::recursive_at_instances_generation(int current, int 
 					}
 					forAll_inst_id[depth] += 1;
 				}
+			} else {
+				for(int child : gm[current].children) {
+					recursive_at_instances_generation(child, depth, node_depths, world_tree, var_mapping, gm_var_map, insert_events);
+				}
 			}
 		} else {
 			for(int child : gm[current].children) {
