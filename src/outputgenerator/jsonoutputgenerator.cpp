@@ -15,7 +15,10 @@ void JSONOutputGenerator::generate_instances_output(vector<SemanticMapping> sema
     pt::ptree output_file;
 
     ValidMissionGenerator valid_missions_generator(mission_decomposition, gm, mission_constraints, world_state, world_state_functions, semantic_mapping, gm_var_map, verbose);
-    vector<vector<pair<int,ATNode>>> valid_mission_decompositions = valid_missions_generator.generate_valid_mission_decompositions();
+    pair<vector<vector<pair<int,ATNode>>>,set<Decomposition>> valid_mission_decompositions_and_expanded_decompositions = valid_missions_generator.generate_valid_mission_decompositions();
+
+    vector<vector<pair<int,ATNode>>> valid_mission_decompositions = valid_mission_decompositions_and_expanded_decompositions.first;
+    set<Decomposition> expanded_decompositions = valid_mission_decompositions_and_expanded_decompositions.second;
 
     vector<Decomposition> task_instances;
     map<string,task> actions;
@@ -27,6 +30,11 @@ void JSONOutputGenerator::generate_instances_output(vector<SemanticMapping> sema
     for(int index = 0;index < graph_size;index++) {
         if(mission_decomposition[index].node_type == DECOMPOSITION) {
             Decomposition d = std::get<Decomposition>(mission_decomposition[index].content);
+
+            set<Decomposition>::iterator d_it = expanded_decompositions.find(d);
+            if(d_it != expanded_decompositions.end()) {
+                d = *d_it;
+            }
 
             for(task a : d.path.decomposition) {
                 if(actions.find(a.name) == actions.end() && a.name.find(method_precondition_action_name) == string::npos) {
@@ -117,6 +125,7 @@ map<string,string> JSONOutputGenerator::output_tasks(pt::ptree& output_file, vec
         pt::ptree preconditions_node;
         for(auto prec : instance.prec) {
             pt::ptree precondition_node;
+            bool output_prec = true;
             
             map<string,string> task_vars;
             for(pair<string,string> args : instance.at.at.vars) {
@@ -156,54 +165,62 @@ map<string,string> JSONOutputGenerator::output_tasks(pt::ptree& output_file, vec
             } else {
                 string prec_output;
 
-                if(prec_mapping.first.get_mapping_type() == attribute_mapping_type) {  
-                    vector<string> arguments;
-                    string prec_name;
-                    if(holds_alternative<ground_literal>(prec)) {
-                        ground_literal p = get<ground_literal>(prec);
+                if(prec_mapping.first.get_mapping_type() == attribute_mapping_type) {
+                    if(prec_mapping.first.get_mapped_type() == predicate_mapped_type) {
+                        vector<string> arguments;
+                        string prec_name;
+                        if(holds_alternative<ground_literal>(prec)) {
+                            ground_literal p = get<ground_literal>(prec);
 
-                        if(!p.positive) prec_output += "not ";
-                        prec_output += p.args.at(0) + ".";
-                        arguments = p.args;
-                        prec_name = p.predicate;
-                    } else {
-                        literal p = get<literal>(prec);
+                            if(!p.positive) prec_output += "not ";
+                            prec_output += p.args.at(0) + ".";
+                            arguments = p.args;
+                            prec_name = p.predicate;
+                        } else {
+                            literal p = get<literal>(prec);
 
-                        if(!p.positive) prec_output += "not ";
-                        prec_output += p.arguments.at(0) + ".";
-                        arguments = p.arguments;
-                        prec_name = p.predicate;
-                    }
-                    prec_output += get<string>(prec_mapping.first.get_prop("name"));
-
-                    vector<string> arg_sorts;
-                    for(predicate_definition pred : predicate_definitions) {
-                        if(pred.name == prec_name) {
-                            arg_sorts = pred.argument_sorts;
-                            break;
+                            if(!p.positive) prec_output += "not ";
+                            prec_output += p.arguments.at(0) + ".";
+                            arguments = p.arguments;
+                            prec_name = p.predicate;
                         }
-                    }
+                        prec_output += get<string>(prec_mapping.first.get_prop("name"));
 
-                    precondition_node.put("predicate", prec_output);
-                    
-                    pt::ptree vars_node;
-                    for(string arg : arguments) {
-                        vars_node.put("", arg);
-                    }
-                    precondition_node.push_back(std::make_pair("vars", vars_node));
+                        vector<string> arg_sorts;
+                        for(predicate_definition pred : predicate_definitions) {
+                            if(pred.name == prec_name) {
+                                arg_sorts = pred.argument_sorts;
+                                break;
+                            }
+                        }
 
-                    pt::ptree vartypes_node;
-                    for(string type : arg_sorts) {
-                        vartypes_node.put("", type);
+                        precondition_node.put("predicate", prec_output);
+                        
+                        pt::ptree vars_node;
+                        for(string arg : arguments) {
+                            vars_node.put("", arg);
+                        }
+                        precondition_node.push_back(std::make_pair("vars", vars_node));
+
+                        pt::ptree vartypes_node;
+                        for(string type : arg_sorts) {
+                            vartypes_node.put("", type);
+                        }
+                        precondition_node.push_back(std::make_pair("var_types", vartypes_node));
+                    } else if(prec_mapping.first.get_mapped_type() == function_mapped_type) {
+                        // TODO
+                        output_prec = false;
                     }
-                    precondition_node.push_back(std::make_pair("var_types", vartypes_node));
                 } else if(prec_mapping.first.get_mapping_type() == ownership_mapping_type) {
                     /*
                         Do we need to output preconditions related to ownership type semantic mappings?
                     */
+                    output_prec = false;
                 }
 
-                preconditions_node.push_back(std::make_pair("",precondition_node));
+                if(output_prec) {
+                    preconditions_node.push_back(std::make_pair("",precondition_node));
+                }
             }
         }
         task_node.add_child("preconditions", preconditions_node);
@@ -254,47 +271,51 @@ map<string,string> JSONOutputGenerator::output_tasks(pt::ptree& output_file, vec
                 */
                 string eff_output;
 
-                if(eff_mapping.first.get_mapping_type() == "attribute") {   
-                    vector<string> arguments;
-                    string eff_name;
-                    if(holds_alternative<ground_literal>(eff)) {
-                        ground_literal e = get<ground_literal>(eff);
+                if(eff_mapping.first.get_mapping_type() == attribute_mapping_type) {
+                    if(eff_mapping.first.get_mapped_type() == predicate_mapped_type) {   
+                        vector<string> arguments;
+                        string eff_name;
+                        if(holds_alternative<ground_literal>(eff)) {
+                            ground_literal e = get<ground_literal>(eff);
 
-                        if(!e.positive) eff_output += "not ";
-                        eff_output += e.args.at(0) + ".";
-                        arguments = e.args;
-                        eff_name = e.predicate;
-                    } else {
-                        literal e = get<literal>(eff);
+                            if(!e.positive) eff_output += "not ";
+                            eff_output += e.args.at(0) + ".";
+                            arguments = e.args;
+                            eff_name = e.predicate;
+                        } else {
+                            literal e = get<literal>(eff);
 
-                        if(!e.positive) eff_output += "not ";
-                        eff_output += e.arguments.at(0) + ".";
-                        arguments = e.arguments;
-                        eff_name = e.predicate;
-                    }
-                    eff_output += get<string>(eff_mapping.first.get_prop("name"));
-
-                    vector<string> arg_sorts;
-                    for(predicate_definition pred : predicate_definitions) {
-                        if(pred.name == eff_name) {
-                            arg_sorts = pred.argument_sorts;
-                            break;
+                            if(!e.positive) eff_output += "not ";
+                            eff_output += e.arguments.at(0) + ".";
+                            arguments = e.arguments;
+                            eff_name = e.predicate;
                         }
-                    }
+                        eff_output += get<string>(eff_mapping.first.get_prop("name"));
 
-                    effect_node.put("predicate", eff_output);
-                    
-                    pt::ptree vars_node;
-                    for(string arg : arguments) {
-                        vars_node.put("", arg);
-                    }
-                    effect_node.push_back(std::make_pair("vars", vars_node));
+                        vector<string> arg_sorts;
+                        for(predicate_definition pred : predicate_definitions) {
+                            if(pred.name == eff_name) {
+                                arg_sorts = pred.argument_sorts;
+                                break;
+                            }
+                        }
 
-                    pt::ptree vartypes_node;
-                    for(string type : arg_sorts) {
-                        vartypes_node.put("", type);
+                        effect_node.put("predicate", eff_output);
+                        
+                        pt::ptree vars_node;
+                        for(string arg : arguments) {
+                            vars_node.put("", arg);
+                        }
+                        effect_node.push_back(std::make_pair("vars", vars_node));
+
+                        pt::ptree vartypes_node;
+                        for(string type : arg_sorts) {
+                            vartypes_node.put("", type);
+                        }
+                        effect_node.push_back(std::make_pair("var_types", vartypes_node));
+                    } else if(eff_mapping.first.get_mapped_type() == function_mapped_type) {
+                        // TODO
                     }
-                    effect_node.push_back(std::make_pair("var_types", vartypes_node));
                 }
 
                 effects_node.push_back(std::make_pair("", effect_node));

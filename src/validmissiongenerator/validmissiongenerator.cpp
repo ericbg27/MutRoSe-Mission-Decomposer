@@ -36,7 +36,7 @@ ValidMissionGenerator::ValidMissionGenerator(ATGraph md, GMGraph g, vector<Const
     @ Output: The valid mission decompositions vector. A mission decomposition is a vector of pairs of the 
     form ([task_id],[task_node])
 */
-vector<vector<pair<int,ATNode>>> ValidMissionGenerator::generate_valid_mission_decompositions() {
+pair<vector<vector<pair<int,ATNode>>>,set<Decomposition>> ValidMissionGenerator::generate_valid_mission_decompositions() {
     queue<pair<int,ATNode>> mission_queue = generate_mission_queue();
 
     /*
@@ -75,7 +75,7 @@ vector<vector<pair<int,ATNode>>> ValidMissionGenerator::generate_valid_mission_d
         }
     }
 
-    return final_valid_mission_decompositions;
+    return make_pair(final_valid_mission_decompositions,expanded_decompositions);
 }
 
 /*
@@ -165,7 +165,11 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
                         involved in this kind of dependency, preconditions do not hold.
                     */
                     if(preconditions_hold) {
+                        Decomposition aux = d;
                         expand_decomposition(d, wsf, verbose);
+                        if(aux.path.decomposition.size() != d.path.decomposition.size()) {
+                            expanded_decompositions.insert(d);
+                        }
 
                         ATGraph::in_edge_iterator iei, ied;
 
@@ -260,7 +264,11 @@ map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> ValidMissionGe
                     /*
                         If preconditions hold we create a new valid mission decomposition
                     */
+                    Decomposition aux = d;
                     expand_decomposition(d, world_state_functions, verbose);
+                    if(aux.path.decomposition.size() != d.path.decomposition.size()) {
+                        expanded_decompositions.insert(d);
+                    }
 
                     AbstractTask at1 = get<AbstractTask>(current_node.second.content);
                     pair<vector<pair<int,ATNode>>,set<int>> new_valid_mission;

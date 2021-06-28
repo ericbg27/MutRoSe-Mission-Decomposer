@@ -28,7 +28,10 @@ void XMLOutputGenerator::generate_instances_output(vector<SemanticMapping> seman
     pt::ptree output_file;
 
     ValidMissionGenerator valid_missions_generator(mission_decomposition, gm, mission_constraints, world_state, world_state_functions, semantic_mapping, gm_var_map, verbose);
-    vector<vector<pair<int,ATNode>>> valid_mission_decompositions = valid_missions_generator.generate_valid_mission_decompositions();
+    pair<vector<vector<pair<int,ATNode>>>,set<Decomposition>> valid_mission_decompositions_and_expanded_decompositions = valid_missions_generator.generate_valid_mission_decompositions();
+
+    vector<vector<pair<int,ATNode>>> valid_mission_decompositions = valid_mission_decompositions_and_expanded_decompositions.first;
+    set<Decomposition> expanded_decompositions = valid_mission_decompositions_and_expanded_decompositions.second;
 
     vector<Decomposition> task_instances;
     map<string,task> actions;
@@ -40,6 +43,11 @@ void XMLOutputGenerator::generate_instances_output(vector<SemanticMapping> seman
     for(int index = 0;index < graph_size;index++) {
         if(mission_decomposition[index].node_type == DECOMPOSITION) {
             Decomposition d = std::get<Decomposition>(mission_decomposition[index].content);
+
+            set<Decomposition>::iterator d_it = expanded_decompositions.find(d);
+            if(d_it != expanded_decompositions.end()) {
+                d = *d_it;
+            }
 
             for(task a : d.path.decomposition) {
                 if(actions.find(a.name) == actions.end() && a.name.find(method_precondition_action_name) == string::npos) {
@@ -227,60 +235,64 @@ map<string,string> XMLOutputGenerator::output_tasks(pt::ptree& output_file, vect
                 */
                 string prec_output;
 
-                if(prec_mapping.first.get_mapping_type() == attribute_mapping_type) {  
-                    vector<string> arguments;
-                    string prec_name;
-                    if(holds_alternative<ground_literal>(prec)) {
-                        ground_literal p = get<ground_literal>(prec);
+                if(prec_mapping.first.get_mapping_type() == attribute_mapping_type) {
+                    if(prec_mapping.first.get_mapped_type() == predicate_mapped_type) {
+                        vector<string> arguments;
+                        string prec_name;
+                        if(holds_alternative<ground_literal>(prec)) {
+                            ground_literal p = get<ground_literal>(prec);
 
-                        if(!p.positive) prec_output += "not ";
-                        prec_output += p.args.at(0) + ".";
-                        arguments = p.args;
-                        prec_name = p.predicate;
-                    } else {
-                        literal p = get<literal>(prec);
-
-                        if(!p.positive) prec_output += "not ";
-                        prec_output += p.arguments.at(0) + ".";
-                        arguments = p.arguments;
-                        prec_name = p.predicate;
-                    }
-                    prec_output += get<string>(prec_mapping.first.get_prop("name"));
-
-                    vector<string> arg_sorts;
-                    for(predicate_definition pred : predicate_definitions) {
-                        if(pred.name == prec_name) {
-                            arg_sorts = pred.argument_sorts;
-                            break;
-                        }
-                    }
-
-
-                    string prec_name_xml = task_attr + ".prec" + to_string(prec_index);
-
-                    string prec_attr_xml = prec_name_xml + ".<xmlattr>.vars";
-                    string vars_list;
-                    for(unsigned int i = 0;i < arguments.size();i++) {
-                        if(i == arguments.size()-1) {
-                            vars_list += arguments.at(i);
+                            if(!p.positive) prec_output += "not ";
+                            prec_output += p.args.at(0) + ".";
+                            arguments = p.args;
+                            prec_name = p.predicate;
                         } else {
-                            vars_list += arguments.at(i) + ",";
-                        }
-                    }
-                    output_file.put(prec_attr_xml,vars_list);
+                            literal p = get<literal>(prec);
 
-                    prec_attr_xml = prec_name_xml + ".<xmlattr>.var_types";
-                    string var_types_list;
-                    for(unsigned int i = 0;i < arg_sorts.size();i++) {
-                        if(i == arg_sorts.size()-1) {
-                            var_types_list += arg_sorts.at(i);
-                        } else {
-                            var_types_list += arg_sorts.at(i) + ",";
+                            if(!p.positive) prec_output += "not ";
+                            prec_output += p.arguments.at(0) + ".";
+                            arguments = p.arguments;
+                            prec_name = p.predicate;
                         }
-                    }
-                    output_file.put(prec_attr_xml,var_types_list);
+                        prec_output += get<string>(prec_mapping.first.get_prop("name"));
 
-                    output_file.put(prec_name_xml,prec_output);
+                        vector<string> arg_sorts;
+                        for(predicate_definition pred : predicate_definitions) {
+                            if(pred.name == prec_name) {
+                                arg_sorts = pred.argument_sorts;
+                                break;
+                            }
+                        }
+
+
+                        string prec_name_xml = task_attr + ".prec" + to_string(prec_index);
+
+                        string prec_attr_xml = prec_name_xml + ".<xmlattr>.vars";
+                        string vars_list;
+                        for(unsigned int i = 0;i < arguments.size();i++) {
+                            if(i == arguments.size()-1) {
+                                vars_list += arguments.at(i);
+                            } else {
+                                vars_list += arguments.at(i) + ",";
+                            }
+                        }
+                        output_file.put(prec_attr_xml,vars_list);
+
+                        prec_attr_xml = prec_name_xml + ".<xmlattr>.var_types";
+                        string var_types_list;
+                        for(unsigned int i = 0;i < arg_sorts.size();i++) {
+                            if(i == arg_sorts.size()-1) {
+                                var_types_list += arg_sorts.at(i);
+                            } else {
+                                var_types_list += arg_sorts.at(i) + ",";
+                            }
+                        }
+                        output_file.put(prec_attr_xml,var_types_list);
+
+                        output_file.put(prec_name_xml,prec_output);
+                    } else if(prec_mapping.first.get_mapped_type() == function_mapped_type) {
+                        // TODO
+                    }
                 } else if(prec_mapping.first.get_mapping_type() == ownership_mapping_type) {
                     /*
                         Do we need to output preconditions related to ownership type semantic mappings?
@@ -341,62 +353,66 @@ map<string,string> XMLOutputGenerator::output_tasks(pt::ptree& output_file, vect
                 */
                 string eff_output;
 
-                if(eff_mapping.first.get_mapping_type() == "attribute") {   
-                    vector<string> arguments;
-                    string eff_name;
-                    if(holds_alternative<ground_literal>(eff)) {
-                        ground_literal e = get<ground_literal>(eff);
+                if(eff_mapping.first.get_mapping_type() == attribute_mapping_type) {
+                    if(eff_mapping.first.get_mapped_type() == predicate_mapped_type) {
+                        vector<string> arguments;
+                        string eff_name;
+                        if(holds_alternative<ground_literal>(eff)) {
+                            ground_literal e = get<ground_literal>(eff);
 
-                        if(!e.positive) eff_output += "not ";
-                        eff_output += e.args.at(0) + ".";
-                        arguments = e.args;
-                        eff_name = e.predicate;
-                    } else {
-                        literal e = get<literal>(eff);
-
-                        if(!e.positive) eff_output += "not ";
-                        eff_output += e.arguments.at(0) + ".";
-                        arguments = e.arguments;
-                        eff_name = e.predicate;
-                    }
-                    eff_output += get<string>(eff_mapping.first.get_prop("name"));
-
-                    vector<string> arg_sorts;
-                    for(predicate_definition pred : predicate_definitions) {
-                        if(pred.name == eff_name) {
-                            arg_sorts = pred.argument_sorts;
-                            break;
-                        }
-                    }
-
-                    string eff_name_xml = task_attr + ".eff" + to_string(eff_index);
-
-                    string eff_attr_xml = eff_name_xml + ".<xmlattr>.vars";
-                    string vars_list;
-                    for(unsigned int i = 0;i < arguments.size();i++) {
-                        if(i == arguments.size()-1) {
-                            vars_list += arguments.at(i);
+                            if(!e.positive) eff_output += "not ";
+                            eff_output += e.args.at(0) + ".";
+                            arguments = e.args;
+                            eff_name = e.predicate;
                         } else {
-                            vars_list += arguments.at(i) + ",";
-                        }
-                    }
-                    output_file.put(eff_attr_xml,vars_list);
+                            literal e = get<literal>(eff);
 
-                    eff_attr_xml = eff_name_xml + ".<xmlattr>.var_types";
-                    string var_types_list;
-                    for(unsigned int i = 0;i < arg_sorts.size();i++) {
-                        if(i == arg_sorts.size()-1) {
-                            var_types_list += arg_sorts.at(i);
-                        } else {
-                            var_types_list += arg_sorts.at(i) + ",";
+                            if(!e.positive) eff_output += "not ";
+                            eff_output += e.arguments.at(0) + ".";
+                            arguments = e.arguments;
+                            eff_name = e.predicate;
                         }
-                    }
-                    output_file.put(eff_attr_xml,var_types_list);
+                        eff_output += get<string>(eff_mapping.first.get_prop("name"));
 
-                    output_file.put(eff_name_xml,eff_output);
+                        vector<string> arg_sorts;
+                        for(predicate_definition pred : predicate_definitions) {
+                            if(pred.name == eff_name) {
+                                arg_sorts = pred.argument_sorts;
+                                break;
+                            }
+                        }
+
+                        string eff_name_xml = task_attr + ".eff" + to_string(eff_index);
+
+                        string eff_attr_xml = eff_name_xml + ".<xmlattr>.vars";
+                        string vars_list;
+                        for(unsigned int i = 0;i < arguments.size();i++) {
+                            if(i == arguments.size()-1) {
+                                vars_list += arguments.at(i);
+                            } else {
+                                vars_list += arguments.at(i) + ",";
+                            }
+                        }
+                        output_file.put(eff_attr_xml,vars_list);
+
+                        eff_attr_xml = eff_name_xml + ".<xmlattr>.var_types";
+                        string var_types_list;
+                        for(unsigned int i = 0;i < arg_sorts.size();i++) {
+                            if(i == arg_sorts.size()-1) {
+                                var_types_list += arg_sorts.at(i);
+                            } else {
+                                var_types_list += arg_sorts.at(i) + ",";
+                            }
+                        }
+                        output_file.put(eff_attr_xml,var_types_list);
+
+                        output_file.put(eff_name_xml,eff_output);
+
+                        eff_index++;
+                    } else if(eff_mapping.first.get_mapped_type() == function_mapped_type) {
+                        // TODO
+                    }
                 }
-
-                eff_index++;
             }
         }
         

@@ -22,6 +22,14 @@ struct Decomposition {
     std::vector<std::variant<std::pair<ground_literal,int>,literal>> func_eff;
 };
 
+inline bool operator==(const Decomposition& lhs, const Decomposition& rhs) {
+    return lhs.id == rhs.id;
+}
+
+inline bool operator<(const Decomposition& lhs, const Decomposition& rhs) {
+    return lhs.id < rhs.id;
+}
+
 enum at_node_type {ATASK,OP,DECOMPOSITION,GOALNODE};
 
 struct ATNode {
