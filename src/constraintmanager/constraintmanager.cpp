@@ -21,6 +21,9 @@ vector<Constraint> ConstraintManager::generate_mission_constraints() {
         pair<ATGraph,map<int,int>> trimmed_mission_decomposition_data = generate_trimmed_at_graph(mission_decomposition);
 
         ATGraph trimmed_mission_decomposition = trimmed_mission_decomposition_data.first;
+
+        //print_mission_decomposition(trimmed_mission_decomposition);
+
         generate_at_constraints(trimmed_mission_decomposition);
 
         map<int,int> id_map = trimmed_mission_decomposition_data.second;
@@ -381,11 +384,25 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
     */
     generate_constraints_from_stacks(operators_stack, nodes_stack, existing_constraints);
 
+    /*stack<variant<pair<int,ATNode>,Constraint>> nodes_stack_cpy = nodes_stack;
+    while(!nodes_stack_cpy.empty()) {
+        if(holds_alternative<Constraint>(nodes_stack_cpy.top())) {
+            Constraint c = std::get<Constraint>(nodes_stack_cpy.top());
+            std::cout << "Constraint between nodes " << c.nodes_involved.first.first << " and " << c.nodes_involved.second.first << std::endl;
+        } else {
+            pair<int,ATNode> node = std::get<pair<int,ATNode>>(nodes_stack_cpy.top());
+            std::cout << "NODE ID: " << node.first << std::endl;
+        }
+
+        nodes_stack_cpy.pop();
+    }*/
+
     while(!nodes_stack.empty()) {
         if(holds_alternative<Constraint>(nodes_stack.top())) {
             mission_constraints.push_back(std::get<Constraint>(nodes_stack.top()));
         } else {
             pair<int,ATNode> node = std::get<pair<int,ATNode>>(nodes_stack.top());
+
             string constraint_error = "Could not generate constraint with node " + std::get<AbstractTask>(node.second.content).id;
 
             throw std::runtime_error(constraint_error);

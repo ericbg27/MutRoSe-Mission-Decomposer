@@ -1,0 +1,344 @@
+{
+  "actors": [
+    {
+      "id": "5b151192-adb2-4899-8217-823355fafb2b",
+      "text": "M1: Keeping Clean",
+      "type": "istar.Actor",
+      "x": 216,
+      "y": 209,
+      "customProperties": {
+        "Description": ""
+      },
+      "nodes": [
+        {
+          "id": "ed8526d2-66df-4191-a078-b0b67f736b55",
+          "text": "G1: Keep Rooms Clean [G2;G3]",
+          "type": "istar.Goal",
+          "x": 440,
+          "y": 260,
+          "customProperties": {
+            "Description": "",
+            "Divisible": "true",
+            "Group": "true"
+          }
+        },
+        {
+          "id": "b16344b4-cd23-42bb-bd3c-5d3500ce5964",
+          "text": "G2: Fetch Rooms That Need Cleaning",
+          "type": "istar.Goal",
+          "x": 237,
+          "y": 376,
+          "customProperties": {
+            "Description": "",
+            "GoalType": "Query",
+            "QueriedProperty": "location_db->select(r:Room | r.staphylococcus > 1)",
+            "Controls": "rooms : Sequence(Rooms)"
+          }
+        },
+        {
+          "id": "b3784b77-aa81-481c-ac90-f319b64b8fd7",
+          "text": "G3: Clean Rooms That Need Cleaning [G4;G7]",
+          "type": "istar.Goal",
+          "x": 661,
+          "y": 375,
+          "customProperties": {
+            "Description": "",
+            "Group": "true",
+            "Divisible": "true",
+            "Monitors": "rooms",
+            "Controls": "current_room : Room",
+            "GoalType": "Achieve",
+            "AchieveCondition": "rooms->forAll(current_room | current_room.staphylococcus <= 1)"
+          }
+        },
+        {
+          "id": "b4ab6e59-d3ce-40c3-b7f7-a747307d206a",
+          "text": "G4: Find Missing Equipment [G5;G6]",
+          "type": "istar.Goal",
+          "x": 430,
+          "y": 479,
+          "customProperties": {
+            "Description": ""
+          }
+        },
+        {
+          "id": "bd6f0e4f-0ca1-4017-b890-0ea136203b64",
+          "text": "G7: Organize Room [G8;G9;G10;G11]",
+          "type": "istar.Goal",
+          "x": 882,
+          "y": 460,
+          "customProperties": {
+            "Description": ""
+          }
+        },
+        {
+          "id": "bf04210c-84a4-4eeb-8b95-7f3a9f30a5ed",
+          "text": "G8: Replace Covers",
+          "type": "istar.Goal",
+          "x": 684,
+          "y": 576,
+          "customProperties": {
+            "Description": "",
+            "Monitors": "current_room"
+          }
+        },
+        {
+          "id": "e0d60534-2106-480d-a172-62fb3cb7d9ab",
+          "text": "AT2: ChangeCovers",
+          "type": "istar.Task",
+          "x": 673,
+          "y": 660,
+          "customProperties": {
+            "Description": "",
+            "Location": "current_room"
+          }
+        },
+        {
+          "id": "ed973d69-eb2b-41db-94f9-e9c941a97de7",
+          "text": "G9: Vacuum The Floor",
+          "type": "istar.Goal",
+          "x": 823,
+          "y": 579,
+          "customProperties": {
+            "Description": "",
+            "Monitors": "current_room"
+          }
+        },
+        {
+          "id": "bb65ed5c-dea4-4a47-9034-192565379c3f",
+          "text": "AT3: VacuumFloor",
+          "type": "istar.Task",
+          "x": 823,
+          "y": 660,
+          "customProperties": {
+            "Description": "",
+            "Location": "current_room"
+          }
+        },
+        {
+          "id": "33fb14e0-b699-49ac-9700-c1c74c570c47",
+          "text": "G10: Wipe The Floor",
+          "type": "istar.Goal",
+          "x": 980,
+          "y": 578,
+          "customProperties": {
+            "Description": "",
+            "Monitors": "current_room"
+          }
+        },
+        {
+          "id": "9e1b9a44-d23b-4516-abc8-19fec34e1a9f",
+          "text": "AT4: WipeFloor",
+          "type": "istar.Task",
+          "x": 984,
+          "y": 658,
+          "customProperties": {
+            "Description": "",
+            "Location": "current_room"
+          }
+        },
+        {
+          "id": "567eade7-759d-4439-8b1f-76f439e9b699",
+          "text": "G11: Sterilize Furniture And Equipment",
+          "type": "istar.Goal",
+          "x": 1126,
+          "y": 576,
+          "customProperties": {
+            "Description": "",
+            "Monitors": "current_room"
+          }
+        },
+        {
+          "id": "7fc7c593-1aca-4009-b9d5-e7c701ca921b",
+          "text": "AT5: SterilizeRoom",
+          "type": "istar.Task",
+          "x": 1135,
+          "y": 662,
+          "customProperties": {
+            "Description": "",
+            "Location": "current_room"
+          }
+        },
+        {
+          "id": "d3a4552e-5465-438d-b9b7-e9bb8b181bb4",
+          "text": "G5: Fetch Equipment Room",
+          "type": "istar.Goal",
+          "x": 336,
+          "y": 576,
+          "customProperties": {
+            "Description": "",
+            "GoalType": "Query",
+            "QueriedProperty": "location_db->select(r:Room | r.name = \"EquipmentRoom\")",
+            "Controls": "equipment_room : Room"
+          }
+        },
+        {
+          "id": "f66ca432-702d-45ef-a0b4-faace5b52084",
+          "text": "G6: Get Equipment",
+          "type": "istar.Goal",
+          "x": 512,
+          "y": 580,
+          "customProperties": {
+            "Description": "",
+            "Monitors": "equipment_room"
+          }
+        },
+        {
+          "id": "5f2160c8-e366-4f7d-9dfd-05c364a955d6",
+          "text": "AT1: FindEquipment",
+          "type": "istar.Task",
+          "x": 503,
+          "y": 660,
+          "customProperties": {
+            "Description": "",
+            "Location": "equipment_room"
+          }
+        }
+      ]
+    }
+  ],
+  "orphans": [],
+  "dependencies": [],
+  "links": [
+    {
+      "id": "44a6c65f-c589-449c-b5da-4632280799e1",
+      "type": "istar.AndRefinementLink",
+      "source": "b16344b4-cd23-42bb-bd3c-5d3500ce5964",
+      "target": "ed8526d2-66df-4191-a078-b0b67f736b55"
+    },
+    {
+      "id": "6aa5b6ff-c0bf-43ab-bcbc-bba46dfe22aa",
+      "type": "istar.AndRefinementLink",
+      "source": "b3784b77-aa81-481c-ac90-f319b64b8fd7",
+      "target": "ed8526d2-66df-4191-a078-b0b67f736b55"
+    },
+    {
+      "id": "465866cd-2e39-4afa-be03-553cb12c43af",
+      "type": "istar.AndRefinementLink",
+      "source": "b4ab6e59-d3ce-40c3-b7f7-a747307d206a",
+      "target": "b3784b77-aa81-481c-ac90-f319b64b8fd7"
+    },
+    {
+      "id": "bac9f6e2-d5a9-46f5-811c-30f451e2e85b",
+      "type": "istar.AndRefinementLink",
+      "source": "bd6f0e4f-0ca1-4017-b890-0ea136203b64",
+      "target": "b3784b77-aa81-481c-ac90-f319b64b8fd7"
+    },
+    {
+      "id": "5c066e04-5299-4bc8-bb3d-96d82cba5863",
+      "type": "istar.AndRefinementLink",
+      "source": "bf04210c-84a4-4eeb-8b95-7f3a9f30a5ed",
+      "target": "bd6f0e4f-0ca1-4017-b890-0ea136203b64"
+    },
+    {
+      "id": "a4ffd319-72e8-4e59-a314-04e72cd162d5",
+      "type": "istar.AndRefinementLink",
+      "source": "e0d60534-2106-480d-a172-62fb3cb7d9ab",
+      "target": "bf04210c-84a4-4eeb-8b95-7f3a9f30a5ed"
+    },
+    {
+      "id": "18fc2211-1621-4017-a4ea-7bfe8dc8f78f",
+      "type": "istar.AndRefinementLink",
+      "source": "ed973d69-eb2b-41db-94f9-e9c941a97de7",
+      "target": "bd6f0e4f-0ca1-4017-b890-0ea136203b64"
+    },
+    {
+      "id": "c8a37edc-9203-4c59-8fc5-374e84837d98",
+      "type": "istar.AndRefinementLink",
+      "source": "bb65ed5c-dea4-4a47-9034-192565379c3f",
+      "target": "ed973d69-eb2b-41db-94f9-e9c941a97de7"
+    },
+    {
+      "id": "a6a37b54-4081-4e86-8453-68e737cd4e7c",
+      "type": "istar.AndRefinementLink",
+      "source": "33fb14e0-b699-49ac-9700-c1c74c570c47",
+      "target": "bd6f0e4f-0ca1-4017-b890-0ea136203b64"
+    },
+    {
+      "id": "4e85a3c0-bcdc-4293-b50e-34b7d44f1f35",
+      "type": "istar.AndRefinementLink",
+      "source": "9e1b9a44-d23b-4516-abc8-19fec34e1a9f",
+      "target": "33fb14e0-b699-49ac-9700-c1c74c570c47"
+    },
+    {
+      "id": "967da952-2798-4988-947b-81ca1daa7207",
+      "type": "istar.AndRefinementLink",
+      "source": "567eade7-759d-4439-8b1f-76f439e9b699",
+      "target": "bd6f0e4f-0ca1-4017-b890-0ea136203b64"
+    },
+    {
+      "id": "c8f63847-2414-4105-b22a-284eb9a223e0",
+      "type": "istar.AndRefinementLink",
+      "source": "7fc7c593-1aca-4009-b9d5-e7c701ca921b",
+      "target": "567eade7-759d-4439-8b1f-76f439e9b699"
+    },
+    {
+      "id": "78da4be9-9405-4ff7-88f3-41a080aeebea",
+      "type": "istar.AndRefinementLink",
+      "source": "d3a4552e-5465-438d-b9b7-e9bb8b181bb4",
+      "target": "b4ab6e59-d3ce-40c3-b7f7-a747307d206a"
+    },
+    {
+      "id": "ed5365db-9550-4ce3-80ec-4f27ba511f66",
+      "type": "istar.AndRefinementLink",
+      "source": "f66ca432-702d-45ef-a0b4-faace5b52084",
+      "target": "b4ab6e59-d3ce-40c3-b7f7-a747307d206a"
+    },
+    {
+      "id": "27bb064f-334d-4f67-a1f4-661af21a8b85",
+      "type": "istar.AndRefinementLink",
+      "source": "5f2160c8-e366-4f7d-9dfd-05c364a955d6",
+      "target": "f66ca432-702d-45ef-a0b4-faace5b52084"
+    }
+  ],
+  "display": {
+    "ed8526d2-66df-4191-a078-b0b67f736b55": {
+      "width": 98.88748168945312,
+      "height": 40.79999542236328
+    },
+    "b16344b4-cd23-42bb-bd3c-5d3500ce5964": {
+      "width": 103.88748168945312,
+      "height": 56.79999542236328
+    },
+    "b3784b77-aa81-481c-ac90-f319b64b8fd7": {
+      "width": 100.88748168945312,
+      "height": 53.79999542236328
+    },
+    "b4ab6e59-d3ce-40c3-b7f7-a747307d206a": {
+      "width": 114.88748168945312,
+      "height": 50.79999542236328
+    },
+    "bd6f0e4f-0ca1-4017-b890-0ea136203b64": {
+      "width": 109.88748168945312,
+      "height": 46.79999542236328
+    },
+    "e0d60534-2106-480d-a172-62fb3cb7d9ab": {
+      "width": 107.88748168945312,
+      "height": 40.599998474121094
+    },
+    "567eade7-759d-4439-8b1f-76f439e9b699": {
+      "width": 102.88748168945312,
+      "height": 41.79999542236328
+    },
+    "d3a4552e-5465-438d-b9b7-e9bb8b181bb4": {
+      "width": 100.88748168945312,
+      "height": 43.79999542236328
+    },
+    "5f2160c8-e366-4f7d-9dfd-05c364a955d6": {
+      "width": 106.88748168945312,
+      "height": 44.79999542236328
+    }
+  },
+  "tool": "pistar.2.0.0",
+  "istar": "2.0",
+  "saveDate": "Tue, 29 Jun 2021 12:19:45 GMT",
+  "diagram": {
+    "width": 2000,
+    "height": 1300,
+    "name": "AT1: FindEquipment",
+    "customProperties": {
+      "Description": "Welcome to the piStar tool! This model describe some of the recent improvements in the tool.\n\nFor help using this tool, please check the Help menu above",
+      "Location": "current_room"
+    }
+  }
+}

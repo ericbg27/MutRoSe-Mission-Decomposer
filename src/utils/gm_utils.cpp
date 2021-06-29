@@ -161,8 +161,9 @@ IterationRule parse_iterate_expr(string expr) {
 QueriedProperty parse_select_expr(string expr) {
     bool error = false;
 
-    std::regex select_reg("[a-zA-Z]{1}[a-zA-z_.0-9]*(->select)[(][a-zA-Z]{1}[a-zA-z_.0-9]*[:][a-zA-z]+[a-zA-Z0-9]+[ ]*[|][ ]*(([!]?[a-zA-Z]+[a-zA-z_.0-9]*)?|[a-zA-Z]+[a-zA-z_.0-9]*[ ]*((=)|(<>))?[ ]*([a-zA-z]+[a-zA-Z0-9]+|\"[a-zA-z]+[a-zA-Z0-9]+\"?)|[a-zA-Z]+[a-zA-z_.0-9]*[ ]*(in)[ ]*[a-zA-Z]+[a-zA-z_.0-9]*)[)]");
-    
+    //std::regex select_reg("[a-zA-Z]{1}[a-zA-z_.0-9]*(->select)[(][a-zA-Z]{1}[a-zA-z_.0-9]*[:][a-zA-z]+[a-zA-Z0-9]+[ ]+[|][ ]+(([!]?[a-zA-Z]+[a-zA-z_.0-9]*)?|[a-zA-Z]+[a-zA-z_.0-9]*[ ]+((=)|(<>))?[ ]+([a-zA-z]+[a-zA-Z0-9]+|\"[a-zA-z]+[a-zA-Z0-9]+\"?)|[a-zA-Z]+[a-zA-z_.0-9]*[ ]+(in)[ ]+[a-zA-Z]+[a-zA-z_.0-9]*)[)]");
+    std::regex select_reg("[a-zA-Z]{1}[a-zA-z_.0-9]*(->select)[(][a-zA-Z]{1}[a-zA-z_.0-9]*[:][a-zA-z]+[a-zA-Z0-9]+[ ]*[|][ ]*(([!]?[a-zA-Z]+[a-zA-z_.0-9]*)?|[a-zA-Z]+[a-zA-z_.0-9]*[ ]+((=)|(<>)){1}[ ]+([a-zA-z]+[a-zA-Z0-9]+|\"[a-zA-z]+[a-zA-Z0-9]+\"?)|[a-zA-Z]+[a-zA-z_.0-9]*[ ]+(in)[ ]+[a-zA-Z]+[a-zA-z_.0-9]*|[a-zA-Z]+[a-zA-z_.0-9]*[ ]+((>)|(<)|(>=)|(<=)){1}[ ]+[0-9]+)[)]");
+
     if(!std::regex_match(expr, select_reg)) {
         error = true;
     }
@@ -193,7 +194,9 @@ QueriedProperty parse_select_expr(string expr) {
 
     regex e2("[!a-zA-Z]{1}[a-zA-Z_.0-9]*");
     regex e3("[a-zA-Z]{1}[a-zA-Z_.0-9]*");
-    if((ss.str().find(ocl_equal) == string::npos) && (ss.str().find(ocl_different) == string::npos) && ss.str().find(spaced_ocl_in) == string::npos) {
+    regex num("[0-9]+");
+    if((ss.str().find(ocl_equal) == string::npos) && (ss.str().find(ocl_different) == string::npos) && (ss.str().find(spaced_ocl_in) == string::npos) && 
+        (ss.str().substr(ss.str().find("(")).find(ocl_gt) == string::npos) && (ss.str().find(ocl_lt) == string::npos) && (ss.str().find(ocl_geq) == string::npos) && (ss.str().find(ocl_leq) == string::npos)) {
         getline(ss, aux, ')');
         if(regex_search(aux,m,e2)) {
             q.query.push_back(m[0]);
@@ -230,6 +233,30 @@ QueriedProperty parse_select_expr(string expr) {
             q.query.push_back(split_query.at(1));
 
             regex_search(split_query.at(2),m,e3);
+            q.query.push_back(m[0]);
+        } else {
+            getline(ss,aux,'(');
+            char op;
+
+            if(ss.str().substr(ss.str().find("(")).find(ocl_gt) != string::npos) {
+                op = ocl_gt[0];
+            } else if(ss.str().find(ocl_lt) != string::npos) {
+                op = ocl_lt[0];
+            } else if(ss.str().find(ocl_geq) != string::npos) {
+                op = ocl_geq[0];
+            } else if(ss.str().find(ocl_leq) != string::npos) {
+                op = ocl_leq[0];
+            }
+
+            getline(ss,aux,op);
+            regex_search(aux,m,e3);
+            q.query.push_back(m[0]);
+
+            string op_str(1, op);
+            q.query.push_back(op_str);
+            
+            getline(ss,aux,')');
+            regex_search(aux,m,num);
             q.query.push_back(m[0]);
         }
     }
@@ -335,10 +362,11 @@ vector<string> parse_forAll_expr(string expr) {
 
     vector<string> res;
 
-    std::regex forall_reg1("[a-zA-Z]+[a-zA-z_.0-9]*(->forAll)[(][a-zA-Z]+[a-zA-z_.0-9]*[ ]?[|][ ]?([a-zA-Z]+[a-zA-z_.0-9]*)?[)]");
-    std::regex forall_reg2("[a-zA-Z]+[a-zA-z_.0-9]*(->forAll)[(][a-zA-Z]+[a-zA-z_.0-9]*[ ]?[|][ ]?([A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+[0-9]+))[)]");
-
-    if(!std::regex_match(expr, forall_reg1) && !std::regex_match(expr, forall_reg2)) {
+    std::regex forall_reg1("[a-zA-Z]+[a-zA-Z_.0-9]*(->forAll)[(][a-zA-Z]+[a-zA-z_.0-9]*[ ]*[|][ ]*([a-zA-Z]+[a-zA-z_.0-9]*)?[)]");
+    std::regex forall_reg2("[a-zA-Z]+[a-zA-Z_.0-9]*(->forAll)[(][a-zA-Z]+[a-zA-z_.0-9]*[ ]*[|][ ]*([A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+[0-9]+))[)]");
+    std::regex forall_reg3("[a-zA-Z]+[a-zA-Z_.0-9]*(->forAll)[(][a-zA-Z]+[a-zA-z_.0-9]*[ ]*[|][ ]*([a-zA-Z]+[a-zA-z_.0-9]*[ ]+((>)|(<)|(>=)|(<=)){1}[ ]+[0-9]+)[)]");
+    
+    if(!std::regex_match(expr, forall_reg1) && !std::regex_match(expr, forall_reg2) && !std::regex_match(expr, forall_reg3)) {
         error = true;
     }
 
@@ -347,7 +375,7 @@ vector<string> parse_forAll_expr(string expr) {
             stringstream ss(expr);
             string aux;
 
-            regex e1("[a-zA-Z]+[a-zA-z_.0-9]*([ ]+((=)|(<>)){1}[ ]+[0-9]+)?");
+            regex e1("[a-zA-Z]+[a-zA-z_.0-9]*(([ ]+((=)|(<>)){1}[ ]+[0-9]+)|([ ]+((>)|(<)|(>=)|(<=)){1}[ ]+[0-9]+))?");
             smatch m;
 
             getline(ss, aux, '>');
