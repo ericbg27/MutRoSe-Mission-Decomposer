@@ -40,6 +40,10 @@ const std::string ocl_equal = "=";
 const std::string ocl_different = "<>";
 const std::string ocl_in = "in";
 const std::string spaced_ocl_in = " in ";
+const std::string ocl_gt = ">";
+const std::string ocl_lt = "<";
+const std::string ocl_geq = ">=";
+const std::string ocl_leq = "<=";
 //**********************************************************************************************************************************
 
 class AchieveCondition : public Condition {
@@ -55,7 +59,7 @@ class AchieveCondition : public Condition {
         void set_iteration_var(std::string itvar);
         void set_forAll_condition(std::string f_cond);
 
-        std::variant<std::pair<std::pair<predicate_definition,std::vector<std::string>>,bool>,std::pair<std::pair<predicate_definition,std::vector<std::string>>,std::pair<int,bool>>,bool> evaluate_condition(std::vector<SemanticMapping> semantic_mapping, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_var_map);
+        std::variant<std::pair<std::pair<predicate_definition,std::vector<std::string>>,bool>,std::pair<std::pair<predicate_definition,std::vector<std::string>>,std::pair<int,std::variant<bool,std::string>>>,bool> evaluate_condition(std::vector<SemanticMapping> semantic_mapping, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_var_map);
 
     private:
         std::string iterated_var;

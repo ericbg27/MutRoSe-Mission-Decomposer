@@ -21,6 +21,9 @@ vector<Constraint> ConstraintManager::generate_mission_constraints() {
         pair<ATGraph,map<int,int>> trimmed_mission_decomposition_data = generate_trimmed_at_graph(mission_decomposition);
 
         ATGraph trimmed_mission_decomposition = trimmed_mission_decomposition_data.first;
+
+        print_mission_decomposition(trimmed_mission_decomposition);
+
         generate_at_constraints(trimmed_mission_decomposition);
 
         map<int,int> id_map = trimmed_mission_decomposition_data.second;
@@ -100,7 +103,7 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
 
             current_root_node.first = current_node.first;
             current_root_node.second = dfs_node_index+1;
-        } else if(current_node.second.parent == current_root_node.first && current_node_index != depth_first_nodes.at(current_root_node.second)) {
+        } else if(current_node.second.parent == current_root_node.first && current_node_index != depth_first_nodes.at(current_root_node.second) && !holds_alternative<AbstractTask>(current_node.second.content)) {
             pair<int,ATNode> artificial_node;
             artificial_node.first = -1;
 
@@ -108,6 +111,8 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
 
             current_root_node.first = current_node.first;
             current_root_node.second = dfs_node_index+1;
+        } else if(current_node.second.parent == current_root_node.first && current_node_index != depth_first_nodes.at(current_root_node.second) && holds_alternative<AbstractTask>(current_node.second.content)) {
+            current_branch_operators_stack.push(make_pair(current_root_node.first,trimmed_mission_decomposition[current_root_node.first]));
         }
 
         if(current_node.second.node_type == ATASK) {
@@ -386,6 +391,7 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
             mission_constraints.push_back(std::get<Constraint>(nodes_stack.top()));
         } else {
             pair<int,ATNode> node = std::get<pair<int,ATNode>>(nodes_stack.top());
+
             string constraint_error = "Could not generate constraint with node " + std::get<AbstractTask>(node.second.content).id;
 
             throw std::runtime_error(constraint_error);

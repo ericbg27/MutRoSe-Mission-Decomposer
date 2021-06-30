@@ -33,10 +33,12 @@
         },
         {
             "task_id": "AT2",
-            "map": {
-                "gm_var": "current_room",
-                "hddl_var": "?rm"
-            }
+            "map": [
+                {
+                    "gm_var": "current_room",
+                    "hddl_var": "?rm"
+                }
+            ]
         }
     ],
 

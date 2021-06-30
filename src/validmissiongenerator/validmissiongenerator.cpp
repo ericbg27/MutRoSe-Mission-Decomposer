@@ -690,9 +690,9 @@ void ValidMissionGenerator::check_conditions(std::map<int, std::vector<std::vari
         AchieveCondition achieve_condition = get<AchieveCondition>(gm[gm_node_id].custom_props[achieve_condition_prop]);
 
         vector<ground_literal> achieve_condition_predicates;
-        vector<pair<ground_literal,int>> achieve_condition_func_predicates;
+        vector<pair<ground_literal,variant<pair<bool,int>,pair<string,int>>>> achieve_condition_func_predicates;
 
-        variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<int,bool>>,bool> evaluation = achieve_condition.evaluate_condition(semantic_mapping, gm_var_map);
+        variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<int,variant<bool,string>>>,bool> evaluation = achieve_condition.evaluate_condition(semantic_mapping, gm_var_map);
 
         bool need_predicate_checking = false;
         bool need_function_predicate_checking = false;
@@ -710,8 +710,8 @@ void ValidMissionGenerator::check_conditions(std::map<int, std::vector<std::vari
             } 
 
             need_predicate_checking = true;
-        } else if(holds_alternative<pair<pair<predicate_definition,vector<string>>,pair<int,bool>>>(evaluation)) {
-            pair<pair<predicate_definition,vector<string>>,pair<int,bool>> eval = std::get<pair<pair<predicate_definition,vector<string>>,pair<int,bool>>>(evaluation);
+        } else if(holds_alternative<pair<pair<predicate_definition,vector<string>>,pair<int,variant<bool,string>>>>(evaluation)) {
+            pair<pair<predicate_definition,vector<string>>,pair<int,variant<bool,string>>> eval = std::get<pair<pair<predicate_definition,vector<string>>,pair<int,variant<bool,string>>>>(evaluation);
 
             for(string value : eval.first.second) {
                 ground_literal aux;
@@ -719,7 +719,15 @@ void ValidMissionGenerator::check_conditions(std::map<int, std::vector<std::vari
                 aux.predicate = eval.first.first.name;
                 aux.args.push_back(value);
 
-                achieve_condition_func_predicates.push_back(make_pair(aux,eval.second.first));
+                if(holds_alternative<bool>(eval.second.second)) {
+                    pair<bool,int> val_and_flag = make_pair(std::get<bool>(eval.second.second), eval.second.first);
+
+                    achieve_condition_func_predicates.push_back(make_pair(aux,val_and_flag));
+                } else {
+                    pair<string,int> op_and_val = make_pair(std::get<string>(eval.second.second), eval.second.first);
+
+                    achieve_condition_func_predicates.push_back(make_pair(aux,op_and_val));
+                }
             }
 
             need_function_predicate_checking = true;
@@ -785,7 +793,7 @@ void ValidMissionGenerator::check_conditions(std::map<int, std::vector<std::vari
                 vector<pair<ground_literal,int>> wsf = apply_func_effects(func_effs, decomposition.second);
 
                 bool valid_achieve_condition = true;
-                for(pair<ground_literal,int> forAll_pred : achieve_condition_func_predicates) {
+                for(pair<ground_literal,variant<pair<bool,int>,pair<string,int>>> forAll_pred : achieve_condition_func_predicates) {
                     for(pair<ground_literal,int> state : wsf) {
                         bool same_predicate = is_same_predicate(state.first, forAll_pred.first);
                                         
@@ -793,9 +801,43 @@ void ValidMissionGenerator::check_conditions(std::map<int, std::vector<std::vari
                             break;
                         }
 
-                        if(state.second != forAll_pred.second) {
-                            valid_achieve_condition = false;
-                            break;
+                        if(holds_alternative<pair<bool,int>>(forAll_pred.second)) {
+                            pair<bool,int> val_and_flag = std::get<pair<bool,int>>(forAll_pred.second);
+                            if(val_and_flag.first) {
+                                if(state.second == val_and_flag.second) {
+                                    valid_achieve_condition = false;
+                                    break;
+                                }
+                            } else {
+                                if(state.second != val_and_flag.second) {
+                                    valid_achieve_condition = false;
+                                    break;
+                                }
+                            }
+                        } else {
+                            pair<string,int> op_and_val = std::get<pair<string,int>>(forAll_pred.second);
+
+                            if(op_and_val.first == ocl_gt) {
+                                if(state.second <= op_and_val.second) {
+                                    valid_achieve_condition = false;
+                                    break;
+                                }
+                            } else if(op_and_val.first == ocl_lt) {
+                                if(state.second >= op_and_val.second) {
+                                    valid_achieve_condition = false;
+                                    break;
+                                }
+                            } else if(op_and_val.first == ocl_geq) {
+                                if(state.second < op_and_val.second) {
+                                    valid_achieve_condition = false;
+                                    break;
+                                }
+                            } else if(op_and_val.first == ocl_leq) {
+                                if(state.second > op_and_val.second) {
+                                    valid_achieve_condition = false;
+                                    break;
+                                }
+                            }
                         }
                     }
 

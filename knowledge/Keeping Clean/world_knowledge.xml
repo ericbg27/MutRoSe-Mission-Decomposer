@@ -1,0 +1,17 @@
+<world_db>
+    <Room>
+        <name>RoomA</name>
+        <staphylococcus>3</staphylococcus>
+        <occupied>False</occupied>
+    </Room>
+    <Room>
+        <name>RoomB</name>
+        <staphylococcus>2</staphylococcus>
+        <occupied>False</occupied>
+    </Room>
+    <Room>
+        <name>EquipmentRoom</name>
+        <staphylococcus>0</staphylococcus>
+        <occupied>False</occupied>
+    </Room>
+</world_db>
