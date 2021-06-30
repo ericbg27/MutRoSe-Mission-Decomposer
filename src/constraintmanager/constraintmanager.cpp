@@ -1,5 +1,7 @@
 #include "constraintmanager.hpp"
 
+#include <algorithm>
+
 using namespace std;
 
 ConstraintManager::ConstraintManager(GMGraph g, ATGraph md, bool verb) {
@@ -43,6 +45,41 @@ vector<Constraint> ConstraintManager::generate_mission_constraints() {
 
     transform_at_constraints();
     generate_execution_constraints();
+    trim_mission_constraints();
+
+    if(verbose) {
+        vector<Constraint> sequential_constraints, execution_constraints;
+        for(Constraint c : mission_constraints) {
+            if(c.type == SEQ) {
+                sequential_constraints.push_back(c);
+            } else {
+                execution_constraints.push_back(c);
+            }
+        }
+
+        std::cout << std::endl;
+        std::cout << "Number of Sequential Mission Constraints: " << sequential_constraints.size() << std::endl;
+        std::cout << "Sequential Constraints:" << std::endl; 
+        for(Constraint c : sequential_constraints) {
+            std::cout << std::get<Decomposition>(c.nodes_involved.first.second.content).id;
+            
+            std::cout << " ; ";
+
+            std::cout << std::get<Decomposition>(c.nodes_involved.second.second.content).id;
+            std::cout << std::endl;
+        }
+
+        std::cout << std::endl;
+        std::cout << "Number of execution constraints: " << execution_constraints.size() << std::endl;
+        std::cout << "Execution Constraints:" << std::endl; 
+        for(Constraint c : execution_constraints) {
+            std::cout << get<Decomposition>(c.nodes_involved.first.second.content).id;
+            std::cout << " EC ";
+            std::cout << get<Decomposition>(c.nodes_involved.second.second.content).id;
+            std::cout << std::endl;
+        }
+        std::cout << std::endl;
+    }
 
     return mission_constraints;
 }
@@ -80,7 +117,7 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
     pair<int,int> current_root_node = make_pair(depth_first_nodes.at(0),1);
 
     unsigned int dfs_node_index;
-    for(dfs_node_index = 1;dfs_node_index < depth_first_nodes.size();dfs_node_index++) {  
+    for(dfs_node_index = 1;dfs_node_index < depth_first_nodes.size();dfs_node_index++) { 
         int current_node_index = dfs_node_index;
 
         pair<int,ATNode> current_node = make_pair(current_node_index, trimmed_mission_decomposition[current_node_index]);
@@ -865,29 +902,12 @@ void ConstraintManager::transform_at_constraints() {
         }
     }
 
-    if(verbose) {
-        std::cout << std::endl;
-        std::cout << "Number of Sequential Mission Constraints: " << transformed_constraints.size() << std::endl;
-        std::cout << "Sequential Constraints:" << std::endl; 
-        for(Constraint c : transformed_constraints) {
-            std::cout << std::get<Decomposition>(c.nodes_involved.first.second.content).id;
-            if(c.type == PAR) {
-                string parallel_constraint_error = "Parallel constraints should not exist in final constraints";
+    
+    for(Constraint c : transformed_constraints) {
+        if(c.type == PAR) {
+            string parallel_constraint_error = "Parallel constraints should not exist in final constraints";
 
-                throw std::runtime_error(parallel_constraint_error);
-            } else {
-                std::cout << " ; ";
-            }
-            std::cout << std::get<Decomposition>(c.nodes_involved.second.second.content).id;
-            std::cout << std::endl;
-        }
-    } else {
-        for(Constraint c : transformed_constraints) {
-            if(c.type == PAR) {
-                string parallel_constraint_error = "Parallel constraints should not exist in final constraints";
-
-                throw std::runtime_error(parallel_constraint_error);
-            }
+            throw std::runtime_error(parallel_constraint_error);
         }
     }
 
@@ -963,18 +983,45 @@ void ConstraintManager::generate_execution_constraints() {
             }
         }
     }
+}
 
-    if(verbose) {
-        std::cout << std::endl;
-        std::cout << "Number of execution constraints: " << non_coop_constraints.size() << std::endl;
-        std::cout << "Execution Constraints:" << std::endl; 
-        for(Constraint c : non_coop_constraints) {
-            std::cout << get<Decomposition>(c.nodes_involved.first.second.content).id;
-            std::cout << " EC ";
-            std::cout << get<Decomposition>(c.nodes_involved.second.second.content).id;
-            std::cout << std::endl;
+void ConstraintManager::trim_mission_constraints() {
+    // 1st walk-through
+    map<int,set<int>> first_nodes, second_nodes;
+
+    for(Constraint c : mission_constraints) {
+        if(c.type == SEQ) {
+            int first_node = c.nodes_involved.first.first;
+            int second_node = c.nodes_involved.second.first;
+
+            first_nodes[second_node].insert(first_node);
+            second_nodes[first_node].insert(second_node);
         }
-        std::cout << std::endl;
+    }
+
+    // 2nd walk-through
+    vector<Constraint>::iterator constraint_it = mission_constraints.begin();
+    while(constraint_it != mission_constraints.end()) {
+        if(constraint_it->type == SEQ) {
+            int first_node = constraint_it->nodes_involved.first.first;
+            int second_node = constraint_it->nodes_involved.second.first;
+
+            vector<int> v = {-1};
+            if(second_nodes.find(first_node) != second_nodes.end() && first_nodes.find(second_node) != first_nodes.end()) {
+                set<int> first_node_set = second_nodes[first_node];
+                set<int> second_node_set = first_nodes[second_node];
+
+                std::set_intersection(first_node_set.begin(), first_node_set.end(), second_node_set.begin(), second_node_set.end(), v.begin());
+            }
+
+            if(v.at(0) != -1) {
+                mission_constraints.erase(constraint_it);
+            } else {
+                constraint_it++;
+            }
+        } else {
+            constraint_it++;
+        }
     }
 }
 
