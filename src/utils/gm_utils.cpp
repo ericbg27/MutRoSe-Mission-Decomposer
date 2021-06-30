@@ -161,10 +161,12 @@ IterationRule parse_iterate_expr(string expr) {
 QueriedProperty parse_select_expr(string expr) {
     bool error = false;
 
-    //std::regex select_reg("[a-zA-Z]{1}[a-zA-z_.0-9]*(->select)[(][a-zA-Z]{1}[a-zA-z_.0-9]*[:][a-zA-z]+[a-zA-Z0-9]+[ ]+[|][ ]+(([!]?[a-zA-Z]+[a-zA-z_.0-9]*)?|[a-zA-Z]+[a-zA-z_.0-9]*[ ]+((=)|(<>))?[ ]+([a-zA-z]+[a-zA-Z0-9]+|\"[a-zA-z]+[a-zA-Z0-9]+\"?)|[a-zA-Z]+[a-zA-z_.0-9]*[ ]+(in)[ ]+[a-zA-Z]+[a-zA-z_.0-9]*)[)]");
-    std::regex select_reg("[a-zA-Z]{1}[a-zA-z_.0-9]*(->select)[(][a-zA-Z]{1}[a-zA-z_.0-9]*[:][a-zA-z]+[a-zA-Z0-9]+[ ]*[|][ ]*(([!]?[a-zA-Z]+[a-zA-z_.0-9]*)?|[a-zA-Z]+[a-zA-z_.0-9]*[ ]+((=)|(<>)){1}[ ]+([a-zA-z]+[a-zA-Z0-9]+|\"[a-zA-z]+[a-zA-Z0-9]+\"?)|[a-zA-Z]+[a-zA-z_.0-9]*[ ]+(in)[ ]+[a-zA-Z]+[a-zA-z_.0-9]*|[a-zA-Z]+[a-zA-z_.0-9]*[ ]+((>)|(<)|(>=)|(<=)){1}[ ]+[0-9]+)[)]");
+    std::regex select_reg1("[a-zA-Z]{1}[a-zA-z_.0-9]*(->select)[(][a-zA-Z]{1}[a-zA-z_.0-9]*[:][a-zA-z]+[a-zA-Z0-9]+[ ]*[|][ ]*([!]?[a-zA-Z]+[a-zA-z_.0-9]*)[)]");
+    std::regex select_reg2("[a-zA-Z]{1}[a-zA-z_.0-9]*(->select)[(][a-zA-Z]{1}[a-zA-z_.0-9]*[:][a-zA-z]+[a-zA-Z0-9]+[ ]*[|][ ]*([a-zA-Z]+[a-zA-z_.0-9]*[ ]+((=)|(<>)){1}[ ]+([a-zA-z]+[a-zA-Z0-9]+|\"[a-zA-z]+[a-zA-Z0-9]+\"|[0-9]+))[)]");
+    std::regex select_reg3("[a-zA-Z]{1}[a-zA-z_.0-9]*(->select)[(][a-zA-Z]{1}[a-zA-z_.0-9]*[:][a-zA-z]+[a-zA-Z0-9]+[ ]*[|][ ]*([a-zA-Z]+[a-zA-z_.0-9]*[ ]+((>)|(<)|(>=)|(<=)){1}[ ]+[0-9]+)[)]");
+    std::regex select_reg4("[a-zA-Z]{1}[a-zA-z_.0-9]*(->select)[(][a-zA-Z]{1}[a-zA-z_.0-9]*[:][a-zA-z]+[a-zA-Z0-9]+[ ]*[|][ ]*([a-zA-Z]+[a-zA-z_.0-9]*[ ]+(in)[ ]+[a-zA-Z]+[a-zA-z_.0-9]*)[)]");
 
-    if(!std::regex_match(expr, select_reg)) {
+    if(!std::regex_match(expr, select_reg1) && !std::regex_match(expr, select_reg2) && !std::regex_match(expr, select_reg3) && !std::regex_match(expr, select_reg4)) {
         error = true;
     }
 
