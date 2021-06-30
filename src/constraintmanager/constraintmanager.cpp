@@ -22,7 +22,7 @@ vector<Constraint> ConstraintManager::generate_mission_constraints() {
 
         ATGraph trimmed_mission_decomposition = trimmed_mission_decomposition_data.first;
 
-        //print_mission_decomposition(trimmed_mission_decomposition);
+        print_mission_decomposition(trimmed_mission_decomposition);
 
         generate_at_constraints(trimmed_mission_decomposition);
 
@@ -103,7 +103,7 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
 
             current_root_node.first = current_node.first;
             current_root_node.second = dfs_node_index+1;
-        } else if(current_node.second.parent == current_root_node.first && current_node_index != depth_first_nodes.at(current_root_node.second)) {
+        } else if(current_node.second.parent == current_root_node.first && current_node_index != depth_first_nodes.at(current_root_node.second) && !holds_alternative<AbstractTask>(current_node.second.content)) {
             pair<int,ATNode> artificial_node;
             artificial_node.first = -1;
 
@@ -111,6 +111,8 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
 
             current_root_node.first = current_node.first;
             current_root_node.second = dfs_node_index+1;
+        } else if(current_node.second.parent == current_root_node.first && current_node_index != depth_first_nodes.at(current_root_node.second) && holds_alternative<AbstractTask>(current_node.second.content)) {
+            current_branch_operators_stack.push(make_pair(current_root_node.first,trimmed_mission_decomposition[current_root_node.first]));
         }
 
         if(current_node.second.node_type == ATASK) {
@@ -383,19 +385,6 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
         Here we will have the final operators and several constraints and possibly tasks, which we must combine to have all of the constraints of the mission
     */
     generate_constraints_from_stacks(operators_stack, nodes_stack, existing_constraints);
-
-    /*stack<variant<pair<int,ATNode>,Constraint>> nodes_stack_cpy = nodes_stack;
-    while(!nodes_stack_cpy.empty()) {
-        if(holds_alternative<Constraint>(nodes_stack_cpy.top())) {
-            Constraint c = std::get<Constraint>(nodes_stack_cpy.top());
-            std::cout << "Constraint between nodes " << c.nodes_involved.first.first << " and " << c.nodes_involved.second.first << std::endl;
-        } else {
-            pair<int,ATNode> node = std::get<pair<int,ATNode>>(nodes_stack_cpy.top());
-            std::cout << "NODE ID: " << node.first << std::endl;
-        }
-
-        nodes_stack_cpy.pop();
-    }*/
 
     while(!nodes_stack.empty()) {
         if(holds_alternative<Constraint>(nodes_stack.top())) {

@@ -99,7 +99,7 @@
             "belongs_to": "world_db",
             "mapped_type": "predicate",
             "map": {
-                "pred": "equipment_ok",
+                "pred": "equipmentok",
                 "arg_sorts": ["robot"]
             }
         }

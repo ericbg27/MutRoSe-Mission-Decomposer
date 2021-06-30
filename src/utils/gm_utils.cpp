@@ -30,7 +30,7 @@ void AchieveCondition::set_iteration_var(std::string itvar) {
     iteration_var = itvar;
 }
 
-variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<int,bool>>,bool> AchieveCondition::evaluate_condition(vector<SemanticMapping> semantic_mapping, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
+variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<int,variant<bool,string>>>,bool> AchieveCondition::evaluate_condition(vector<SemanticMapping> semantic_mapping, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
     if(has_forAll_expr) {
         string iteration_var_type;
         if(holds_alternative<pair<string,string>>(gm_var_map[iteration_var])) { // For now, the only valid condition
@@ -39,7 +39,7 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate
 
         vector<string> iterated_var_values = std::get<pair<vector<string>,string>>(gm_var_map[iterated_var]).first;
 
-        variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<int,bool>>,bool> evaluation = Condition::evaluate_condition(make_pair(iterated_var_values,iteration_var_type), semantic_mapping);
+        variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<int,variant<bool,string>>>,bool> evaluation = Condition::evaluate_condition(make_pair(iterated_var_values,iteration_var_type), semantic_mapping);
 
         return evaluation;
     } else {
@@ -64,7 +64,7 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate
 
         variant<pair<string,string>,pair<vector<string>,string>> var_value_and_type = get_var_value_and_type(gm_var_map, variable);
 
-        variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<int,bool>>,bool> evaluation = Condition::evaluate_condition(var_value_and_type,semantic_mapping);
+        variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<int,variant<bool,string>>>,bool> evaluation = Condition::evaluate_condition(var_value_and_type,semantic_mapping);
 
         return evaluation;
     }
