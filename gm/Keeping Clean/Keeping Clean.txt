@@ -4,8 +4,8 @@
       "id": "5b151192-adb2-4899-8217-823355fafb2b",
       "text": "M1: Keeping Clean",
       "type": "istar.Actor",
-      "x": 216,
-      "y": 209,
+      "x": 181,
+      "y": 94,
       "customProperties": {
         "Description": ""
       },
@@ -14,8 +14,8 @@
           "id": "ed8526d2-66df-4191-a078-b0b67f736b55",
           "text": "G1: Keep Rooms Clean [G2;G3]",
           "type": "istar.Goal",
-          "x": 440,
-          "y": 260,
+          "x": 405,
+          "y": 145,
           "customProperties": {
             "Description": "",
             "Divisible": "true",
@@ -26,8 +26,8 @@
           "id": "b16344b4-cd23-42bb-bd3c-5d3500ce5964",
           "text": "G2: Fetch Rooms That Need Cleaning",
           "type": "istar.Goal",
-          "x": 237,
-          "y": 376,
+          "x": 202,
+          "y": 261,
           "customProperties": {
             "Description": "",
             "GoalType": "Query",
@@ -39,8 +39,8 @@
           "id": "b3784b77-aa81-481c-ac90-f319b64b8fd7",
           "text": "G3: Clean Rooms That Need Cleaning [G4;G7]",
           "type": "istar.Goal",
-          "x": 661,
-          "y": 375,
+          "x": 627,
+          "y": 259,
           "customProperties": {
             "Description": "",
             "Group": "true",
@@ -55,28 +55,32 @@
           "id": "b4ab6e59-d3ce-40c3-b7f7-a747307d206a",
           "text": "G4: Find Missing Equipment [G5;G6]",
           "type": "istar.Goal",
-          "x": 430,
-          "y": 479,
+          "x": 395,
+          "y": 364,
           "customProperties": {
-            "Description": ""
+            "Description": "",
+            "Group": "False",
+            "Divisible": "False"
           }
         },
         {
           "id": "bd6f0e4f-0ca1-4017-b890-0ea136203b64",
           "text": "G7: Organize Room [G8;G9;G10;G11]",
           "type": "istar.Goal",
-          "x": 882,
-          "y": 460,
+          "x": 847,
+          "y": 345,
           "customProperties": {
-            "Description": ""
+            "Description": "",
+            "Group": "False",
+            "Divisible": "False"
           }
         },
         {
           "id": "bf04210c-84a4-4eeb-8b95-7f3a9f30a5ed",
           "text": "G8: Replace Covers",
           "type": "istar.Goal",
-          "x": 684,
-          "y": 576,
+          "x": 649,
+          "y": 461,
           "customProperties": {
             "Description": "",
             "Monitors": "current_room"
@@ -86,8 +90,8 @@
           "id": "e0d60534-2106-480d-a172-62fb3cb7d9ab",
           "text": "AT2: ChangeCovers",
           "type": "istar.Task",
-          "x": 673,
-          "y": 660,
+          "x": 638,
+          "y": 545,
           "customProperties": {
             "Description": "",
             "Location": "current_room"
@@ -97,8 +101,8 @@
           "id": "ed973d69-eb2b-41db-94f9-e9c941a97de7",
           "text": "G9: Vacuum The Floor",
           "type": "istar.Goal",
-          "x": 823,
-          "y": 579,
+          "x": 788,
+          "y": 464,
           "customProperties": {
             "Description": "",
             "Monitors": "current_room"
@@ -108,8 +112,8 @@
           "id": "bb65ed5c-dea4-4a47-9034-192565379c3f",
           "text": "AT3: VacuumFloor",
           "type": "istar.Task",
-          "x": 823,
-          "y": 660,
+          "x": 788,
+          "y": 545,
           "customProperties": {
             "Description": "",
             "Location": "current_room"
@@ -119,8 +123,8 @@
           "id": "33fb14e0-b699-49ac-9700-c1c74c570c47",
           "text": "G10: Wipe The Floor",
           "type": "istar.Goal",
-          "x": 980,
-          "y": 578,
+          "x": 945,
+          "y": 463,
           "customProperties": {
             "Description": "",
             "Monitors": "current_room"
@@ -130,8 +134,8 @@
           "id": "9e1b9a44-d23b-4516-abc8-19fec34e1a9f",
           "text": "AT4: WipeFloor",
           "type": "istar.Task",
-          "x": 984,
-          "y": 658,
+          "x": 949,
+          "y": 543,
           "customProperties": {
             "Description": "",
             "Location": "current_room"
@@ -141,8 +145,8 @@
           "id": "567eade7-759d-4439-8b1f-76f439e9b699",
           "text": "G11: Sterilize Furniture And Equipment",
           "type": "istar.Goal",
-          "x": 1126,
-          "y": 576,
+          "x": 1091,
+          "y": 461,
           "customProperties": {
             "Description": "",
             "Monitors": "current_room"
@@ -152,8 +156,8 @@
           "id": "7fc7c593-1aca-4009-b9d5-e7c701ca921b",
           "text": "AT5: SterilizeRoom",
           "type": "istar.Task",
-          "x": 1135,
-          "y": 662,
+          "x": 1100,
+          "y": 547,
           "customProperties": {
             "Description": "",
             "Location": "current_room"
@@ -163,8 +167,8 @@
           "id": "d3a4552e-5465-438d-b9b7-e9bb8b181bb4",
           "text": "G5: Fetch Equipment Room",
           "type": "istar.Goal",
-          "x": 336,
-          "y": 576,
+          "x": 301,
+          "y": 461,
           "customProperties": {
             "Description": "",
             "GoalType": "Query",
@@ -176,8 +180,8 @@
           "id": "f66ca432-702d-45ef-a0b4-faace5b52084",
           "text": "G6: Get Equipment",
           "type": "istar.Goal",
-          "x": 512,
-          "y": 580,
+          "x": 477,
+          "y": 465,
           "customProperties": {
             "Description": "",
             "Monitors": "equipment_room"
@@ -187,8 +191,8 @@
           "id": "5f2160c8-e366-4f7d-9dfd-05c364a955d6",
           "text": "AT1: FindEquipment",
           "type": "istar.Task",
-          "x": 503,
-          "y": 660,
+          "x": 468,
+          "y": 545,
           "customProperties": {
             "Description": "",
             "Location": "equipment_room"
@@ -331,7 +335,7 @@
   },
   "tool": "pistar.2.0.0",
   "istar": "2.0",
-  "saveDate": "Tue, 29 Jun 2021 12:19:45 GMT",
+  "saveDate": "Thu, 01 Jul 2021 12:01:29 GMT",
   "diagram": {
     "width": 2000,
     "height": 1300,

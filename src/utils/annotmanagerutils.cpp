@@ -1,6 +1,7 @@
 #include "annotmanagerutils.hpp"
 
 #include <iostream>
+#include <regex>
 
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>
@@ -300,7 +301,7 @@ void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm
                         }
 
                         bool result;
-                        if(q.query.at(1) == "==") {
+                        if(q.query.at(1) == ocl_equal) {
                             result = (prop_val == q.query.at(2));
                         } else {
                             result = (prop_val != q.query.at(2));
@@ -318,19 +319,37 @@ void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm
 							throw std::runtime_error(bad_condition);
 						}
 
-						bool result = false;
-						int val = stoi(prop_val);
-						int q_val = stoi(q.query.at(2));
+                        std::regex integer("[0-9]+");
 
-						if(q.query.at(1) == ocl_gt) {
-							result = (val > q_val);
-						} else if(q.query.at(1) == ocl_lt) {
-							result = (val < q_val);
-						} else if(q.query.at(1) == ocl_geq) {
-							result = (val >= q_val);
-						} else if(q.query.at(1) == ocl_leq) {
-							result = (val <= q_val);
-						}
+						bool result = false;
+
+                        if(std::regex_match(q.query.at(2), integer)) {
+                            int val = stoi(prop_val);
+                            int q_val = stoi(q.query.at(2));
+
+                            if(q.query.at(1) == ocl_gt) {
+                                result = (val > q_val);
+                            } else if(q.query.at(1) == ocl_lt) {
+                                result = (val < q_val);
+                            } else if(q.query.at(1) == ocl_geq) {
+                                result = (val >= q_val);
+                            } else if(q.query.at(1) == ocl_leq) {
+                                result = (val <= q_val);
+                            }
+                        } else {
+                            double val = ::atof(prop_val.c_str());
+							double q_val = ::atof(q.query.at(2).c_str());
+
+							if(q.query.at(1) == ocl_gt) {
+								result = (val > q_val);
+							} else if(q.query.at(1) == ocl_lt) {
+								result = (val < q_val);
+							} else if(q.query.at(1) == ocl_geq) {
+								result = (val >= q_val);
+							} else if(q.query.at(1) == ocl_leq) {
+								result = (val <= q_val);
+							}
+                        }
 
 						if(result) aux.push_back(child.second);
                     }
