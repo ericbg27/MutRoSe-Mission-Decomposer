@@ -42,7 +42,7 @@ enum file_output_generator_type {XMLFILEOUTGEN, JSONFILEOUTGEN};
 class FileOutputGenerator : public OutputGenerator {
     public:
         virtual void output_actions(pt::ptree& output_file, std::map<std::string,task> actions) = 0;
-        virtual std::map<std::string,std::string> output_tasks(pt::ptree& output_file, std::vector<Decomposition> task_instances, std::vector<SemanticMapping> semantic_mapping) = 0;
+        virtual std::map<std::string,std::string> output_tasks(pt::ptree& output_file, std::vector<std::pair<Decomposition,std::pair<bool,bool>>> task_instances, std::vector<SemanticMapping> semantic_mapping) = 0;
         virtual void output_constraints(pt::ptree& output_file, std::vector<Constraint> final_mission_constraints, std::map<std::string,std::string> task_id_map) = 0;
         virtual void output_mission_decompositions(pt::ptree& output_file, std::vector<std::vector<std::pair<int,ATNode>>> valid_mission_decompositions, std::map<std::string,std::string> task_id_map) = 0;
 

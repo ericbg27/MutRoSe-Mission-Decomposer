@@ -778,6 +778,10 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 		node.non_coop = true;
 		node.node_type = ATASK;
 		node.parent = parent;
+		node.group = mission_decomposition[parent].group;
+		node.divisible = mission_decomposition[parent].divisible;
+
+		std::cout << "Task " << rannot->content << " is group? " << node.group << std::endl;
 		
 		//Find AT instance that corresponds to this node and put it in the content
 		bool found_at = false;

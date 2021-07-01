@@ -236,6 +236,9 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
             - We may be dealing with a non-leaf node, in which case we expand it and substitute it for its extension in the parent's children
     */
     if(op_it != operators.end()) { //GM root goal 
+        node_annot->group = gm[current_node].group;
+        node_annot->divisible = gm[current_node].divisible;
+
         bool expanded_in_forAll = false;
 
         if(is_forAll_goal) {
@@ -271,6 +274,16 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
             }
         }
     } else {
+        int parent_id = gm[current_node].parent;
+
+        if((!gm[current_node].group) || (gm[current_node].group && !gm[current_node].divisible)) { // Group and divisible are not in the default values
+            node_annot->group = gm[current_node].group;
+            node_annot->divisible = gm[current_node].divisible;
+        } else {
+            node_annot->group = gm[parent_id].group;
+            node_annot->divisible = gm[parent_id].divisible;
+        }
+
         recursive_fill_up_runtime_annot(node_annot, gm[vctr.at(0)]);
 
         if(gm[vctr.at(0)].children.size() == 0) { //Leaf Node
