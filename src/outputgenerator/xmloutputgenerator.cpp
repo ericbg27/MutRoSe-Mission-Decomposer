@@ -33,7 +33,7 @@ void XMLOutputGenerator::generate_instances_output(vector<SemanticMapping> seman
     vector<vector<pair<int,ATNode>>> valid_mission_decompositions = valid_mission_decompositions_and_expanded_decompositions.first;
     set<Decomposition> expanded_decompositions = valid_mission_decompositions_and_expanded_decompositions.second;
 
-    vector<Decomposition> task_instances;
+    vector<pair<Decomposition,pair<bool,bool>>> task_instances;
     map<string,task> actions;
 
     auto nodes = vertices(mission_decomposition);
@@ -53,9 +53,14 @@ void XMLOutputGenerator::generate_instances_output(vector<SemanticMapping> seman
                 if(actions.find(a.name) == actions.end() && a.name.find(method_precondition_action_name) == string::npos) {
                     actions[a.name] = a;
                 }
-            }
+            }   
 
-            task_instances.push_back(d);
+            int parent_index = mission_decomposition[index].parent;
+
+            bool group = mission_decomposition[parent_index].group;
+            bool divisible = mission_decomposition[parent_index].divisible;
+
+            task_instances.push_back(make_pair(d,make_pair(group,divisible)));
         }
     }
 
@@ -136,13 +141,15 @@ void XMLOutputGenerator::output_actions(pt::ptree& output_file, map<string,task>
             - Decomposition (Into actions)
            -> Each instance corresponds to a decomposition of an AT
 */
-map<string,string> XMLOutputGenerator::output_tasks(pt::ptree& output_file, vector<Decomposition> task_instances, vector<SemanticMapping> semantic_mapping) {
+map<string,string> XMLOutputGenerator::output_tasks(pt::ptree& output_file, vector<pair<Decomposition,pair<bool,bool>>> task_instances, vector<SemanticMapping> semantic_mapping) {
     map<string,string> task_id_map;
 
     output_file.put("tasks","");
 
     int task_counter = 0;
-    for(Decomposition instance : task_instances) {
+    for(pair<Decomposition,pair<bool,bool>> instance_info : task_instances) {
+        Decomposition instance = instance_info.first;
+
         string task_name = "tasks.task" + to_string(task_counter);
         output_file.add(task_name,"");
 
@@ -443,6 +450,14 @@ map<string,string> XMLOutputGenerator::output_tasks(pt::ptree& output_file, vect
                 action_counter++;
             }
         }
+
+        string group = instance_info.second.first ? "True" : "False";
+        task_attr = task_name + ".group";
+        output_file.put(task_attr,group);
+
+        string divisible = instance_info.second.second ? "True" : "False";
+        task_attr = task_name + ".divisible";
+        output_file.put(task_attr,divisible);
 
         size_t id_separator = task_name.find(".");
         task_id_map[instance.id] = task_name.substr(id_separator+1);

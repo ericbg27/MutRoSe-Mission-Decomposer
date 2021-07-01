@@ -20,7 +20,7 @@ void JSONOutputGenerator::generate_instances_output(vector<SemanticMapping> sema
     vector<vector<pair<int,ATNode>>> valid_mission_decompositions = valid_mission_decompositions_and_expanded_decompositions.first;
     set<Decomposition> expanded_decompositions = valid_mission_decompositions_and_expanded_decompositions.second;
 
-    vector<Decomposition> task_instances;
+    vector<pair<Decomposition,pair<bool,bool>>> task_instances;
     map<string,task> actions;
 
     auto nodes = vertices(mission_decomposition);
@@ -42,7 +42,12 @@ void JSONOutputGenerator::generate_instances_output(vector<SemanticMapping> sema
                 }
             }
 
-            task_instances.push_back(d);
+            int parent_index = mission_decomposition[index].parent;
+
+            bool group = mission_decomposition[parent_index].group;
+            bool divisible = mission_decomposition[parent_index].divisible;
+
+            task_instances.push_back(make_pair(d,make_pair(group,divisible)));
         }
     }
 
@@ -80,13 +85,15 @@ void JSONOutputGenerator::output_actions(pt::ptree& output_file, map<string,task
     output_file.add_child("actions", actions_node);
 }
 
-map<string,string> JSONOutputGenerator::output_tasks(pt::ptree& output_file, vector<Decomposition> task_instances, vector<SemanticMapping> semantic_mapping) {
+map<string,string> JSONOutputGenerator::output_tasks(pt::ptree& output_file, vector<pair<Decomposition,pair<bool,bool>>> task_instances, vector<SemanticMapping> semantic_mapping) {
     map<string,string> task_id_map;
 
     pt::ptree tasks_node;
 
-    int task_counter;
-    for(Decomposition instance : task_instances) {
+    int task_counter = 0;
+    for(pair<Decomposition,pair<bool,bool>> instance_info : task_instances) {
+        Decomposition instance = instance_info.first;
+        
         pt::ptree task_node;
 
         task_node.put("id", instance.id);
@@ -343,6 +350,12 @@ map<string,string> JSONOutputGenerator::output_tasks(pt::ptree& output_file, vec
             }
         }
         task_node.add_child("decomposition", decomposition_node);
+
+        string group = instance_info.second.first ? "True" : "False";
+        task_node.put("group", group);
+
+        string divisible = instance_info.second.second ? "True" : "False";
+        task_node.put("divisible", divisible);
 
         string task_name = "t" + to_string(task_counter);;
         tasks_node.push_back(std::make_pair(task_name,task_node));
