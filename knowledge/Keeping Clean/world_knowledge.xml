@@ -6,7 +6,7 @@
     </Room>
     <Room>
         <name>RoomB</name>
-        <staphylococcus>2</staphylococcus>
+        <staphylococcus>1.6</staphylococcus>
         <occupied>False</occupied>
     </Room>
     <Room>
