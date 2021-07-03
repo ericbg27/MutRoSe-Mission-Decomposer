@@ -4,7 +4,7 @@
 #include <iostream>
 
 vector<ground_literal> init;
-vector<pair<ground_literal,int>> init_functions;
+vector<pair<ground_literal,variant<int,float>>> init_functions;
 vector<pair<ground_literal,float>> init_prob;
 vector<vector<pair<ground_literal,float>>> init_prob_vec;
 vector<pair<string,pair<string, float>>> init_rel;

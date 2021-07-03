@@ -83,7 +83,7 @@ set<string> general_formula::occuringUnQuantifiedVariables(){
 
 	if (this->type == EMPTY) return ret;
 
-	if (this->type == AND || this->type == OR || this->type == WHEN || this->type == EQUALPRED || this->type == GREATERPRED){
+	if (this->type == AND || this->type == OR || this->type == WHEN || this->type == EQUALPRED || this->type == GREATERPRED || this->type == EQUALPREDF || this->type == GREATERPREDF){
 		for (general_formula* sub : this->subformulae){
 			set<string> subres = sub->occuringUnQuantifiedVariables();
 			ret.insert(subres.begin(), subres.end());
@@ -284,6 +284,17 @@ vector<pair<pair<vector<variant<literal,conditional_effect>>,vector<literal> >, 
 		l.positive = this->type == ATOM;
 		l.isConstantCostExpression = true;
 		l.costValue = this->value;
+		ls.push_back(l);
+
+		additional_variables vars;
+		vector<literal> empty;
+		ret.push_back(make_pair(make_pair(ls,empty),vars));	
+	} else if(this->type == FVALUE) {
+		vector<variant<literal,conditional_effect>> ls;
+		literal l;
+		l.positive = this->type == ATOM;
+		l.isConstantCostExpression = true;
+		l.costValue = this->fvalue;
 		ls.push_back(l);
 
 		additional_variables vars;
@@ -658,7 +669,11 @@ vector<pair<pair<vector<variant<literal,conditional_effect,reward_change,conditi
 		ce.isAssignCostChangeExpression = false;
 		ce.predicate = p.predicate;
 		ce.arguments = p.arguments;
-		ce.costValue *= -1;
+		if(holds_alternative<int>(ce.costValue)) {
+			ce.costValue = std::get<int>(ce.costValue)*(-1);
+		} else {
+			ce.costValue = std::get<float>(ce.costValue)*(-1);
+		}
 
 		subresults[1][0].first.first[0] = ce;
 		ret.push_back(subresults[1][0]);
@@ -708,6 +723,32 @@ vector<pair<pair<vector<variant<literal,conditional_effect,reward_change,conditi
 
 		l.isComparisonExpression = true;
 		l.comparison_op_and_value = make_pair(greater_comparison_op,this->value);
+
+		subresults[0][0].first.first[0] = l;
+		ret.push_back(subresults[0][0]);
+	} else if(this->type == EQUALPREDF) {
+		assert(subresults.size() == 1);
+		assert(subresults[0].size() == 1);
+		assert(subresults[0][0].first.first.size() == 1);
+		assert(holds_alternative<literal>(subresults[0][0].first.first[0]));
+
+		literal l = std::get<literal>(subresults[0][0].first.first[0]);
+
+		l.isComparisonExpression = true;
+		l.comparison_op_and_value = make_pair(equal_comparison_op,this->fvalue);
+
+		subresults[0][0].first.first[0] = l;
+		ret.push_back(subresults[0][0]);
+	} else if(this->type == GREATERPREDF) {
+		assert(subresults.size() == 1);
+		assert(subresults[0].size() == 1);
+		assert(subresults[0][0].first.first.size() == 1);
+		assert(holds_alternative<literal>(subresults[0][0].first.first[0]));
+
+		literal l = std::get<literal>(subresults[0][0].first.first[0]);
+
+		l.isComparisonExpression = true;
+		l.comparison_op_and_value = make_pair(greater_comparison_op,this->fvalue);
 
 		subresults[0][0].first.first[0] = l;
 		ret.push_back(subresults[0][0]);

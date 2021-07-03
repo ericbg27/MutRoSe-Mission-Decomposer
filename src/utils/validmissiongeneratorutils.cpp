@@ -4,7 +4,7 @@
 
 using namespace std;
 
-void expand_decomposition(Decomposition& d, vector<pair<ground_literal,int>> world_state_func, bool verbose) {
+void expand_decomposition(Decomposition& d, vector<pair<ground_literal,variant<int,float>>> world_state_func, bool verbose) {
     if(d.path.needs_expansion) {
         vector<pair<vector<task>,int>> expansions_to_insert;
 
@@ -31,9 +31,9 @@ void expand_decomposition(Decomposition& d, vector<pair<ground_literal,int>> wor
 
             pred.args = arguments;
             
-            int pred_value;
+            variant<int,float> pred_value;
             bool found_pred = false;
-            for(pair<ground_literal,int> state : world_state_func) {
+            for(pair<ground_literal,variant<int,float>> state : world_state_func) {
                 bool same_predicate = is_same_predicate(state.first, pred);
                 
                 if(same_predicate) {
@@ -49,8 +49,26 @@ void expand_decomposition(Decomposition& d, vector<pair<ground_literal,int>> wor
 
                 throw std::runtime_error(expansion_failed_error);
             }
+            
+            int expansion_number;
 
-            int expansion_number = pred_value - fragment.second.comparison_op_and_value.second - 1;
+            if(holds_alternative<int>(pred_value)) {
+                int p_val = std::get<int>(pred_value);
+
+                if(holds_alternative<int>(fragment.second.comparison_op_and_value.second)) {
+                    expansion_number = p_val - std::get<int>(fragment.second.comparison_op_and_value.second) - 1;
+                } else {
+                    expansion_number = p_val - (static_cast<int>(std::get<float>(fragment.second.comparison_op_and_value.second)) + 1) - 1;
+                }
+            } else {
+                float p_val = std::get<float>(pred_value);
+
+                if(holds_alternative<int>(fragment.second.comparison_op_and_value.second)) {
+                    expansion_number = (static_cast<int>(p_val)+1) - std::get<int>(fragment.second.comparison_op_and_value.second) - 1;
+                } else {
+                    expansion_number = (static_cast<int>(p_val - std::get<float>(fragment.second.comparison_op_and_value.second)) + 1) - 1;
+                }
+            }
 
             pair<int,int> task_indexes = fragment.first;
 

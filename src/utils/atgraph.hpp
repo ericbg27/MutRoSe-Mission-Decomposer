@@ -19,7 +19,7 @@ struct Decomposition {
     DecompositionPath path;
     std::vector<std::variant<ground_literal,literal>> prec;
     std::vector<std::variant<ground_literal,literal>> eff;
-    std::vector<std::variant<std::pair<ground_literal,int>,literal>> func_eff;
+    std::vector<std::variant<std::pair<ground_literal,std::variant<int,float>>,literal>> func_eff;
 };
 
 inline bool operator==(const Decomposition& lhs, const Decomposition& rhs) {

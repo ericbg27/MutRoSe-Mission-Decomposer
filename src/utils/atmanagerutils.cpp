@@ -6,6 +6,8 @@
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>
 
+#include "math_utils.hpp"
+
 using namespace std;
 
 /*
@@ -96,7 +98,11 @@ void print_at_paths_info(map<string,vector<DecompositionPath>> at_decomposition_
 					for(string arg : fragment.second.arguments) {
 						std::cout << arg << " ";
 					}
-					cout << ") - " << fragment.second.comparison_op_and_value.second << endl;
+					if(holds_alternative<int>(fragment.second.comparison_op_and_value.second)) {
+						cout << ") - " << to_string(std::get<int>(fragment.second.comparison_op_and_value.second)) << endl;
+					} else {
+						cout << ") - " << to_string(std::get<float>(fragment.second.comparison_op_and_value.second)) << endl;
+					}
 				}
 			}
 			cout << "#####################################" << endl;
@@ -373,30 +379,60 @@ void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm
 
 						bool result = false;
 						if(std::regex_match(q.query.at(2), integer)) {
-							int val = stoi(prop_val);
 							int q_val = stoi(q.query.at(2));
 
-							if(q.query.at(1) == ocl_gt) {
-								result = (val > q_val);
-							} else if(q.query.at(1) == ocl_lt) {
-								result = (val < q_val);
-							} else if(q.query.at(1) == ocl_geq) {
-								result = (val >= q_val);
-							} else if(q.query.at(1) == ocl_leq) {
-								result = (val <= q_val);
+							if(prop_val.find(".") == string::npos) {
+								int val = stoi(prop_val);
+
+								if(q.query.at(1) == ocl_gt) {
+									result = (val > q_val);
+								} else if(q.query.at(1) == ocl_lt) {
+									result = (val < q_val);
+								} else if(q.query.at(1) == ocl_geq) {
+									result = (val >= q_val);
+								} else if(q.query.at(1) == ocl_leq) {
+									result = (val <= q_val);
+								}
+							} else {
+								float val = static_cast<float>(::atof(prop_val.c_str()));
+
+								if(q.query.at(1) == ocl_gt) {
+									result = greater_than_float_and_int(q_val, val);
+								} else if(q.query.at(1) == ocl_lt) {
+									result = greater_than_int_and_float(q_val, val);
+								} else if(q.query.at(1) == ocl_geq) {
+									result = !greater_than_int_and_float(q_val, val);
+								} else if(q.query.at(1) == ocl_leq) {
+									result = !greater_than_float_and_int(q_val, val);
+								}
 							}
 						} else {
-							double val = ::atof(prop_val.c_str());
-							double q_val = ::atof(q.query.at(2).c_str());
+							float q_val = static_cast<float>(::atof(q.query.at(2).c_str()));
 
-							if(q.query.at(1) == ocl_gt) {
-								result = (val > q_val);
-							} else if(q.query.at(1) == ocl_lt) {
-								result = (val < q_val);
-							} else if(q.query.at(1) == ocl_geq) {
-								result = (val >= q_val);
-							} else if(q.query.at(1) == ocl_leq) {
-								result = (val <= q_val);
+							if(prop_val.find(".") == string::npos) {
+								int val = stoi(prop_val);
+
+								if(q.query.at(1) == ocl_gt) {
+									result = greater_than_int_and_float(val, q_val);
+								} else if(q.query.at(1) == ocl_lt) {
+									result = greater_than_float_and_int(val, q_val);
+								} else if(q.query.at(1) == ocl_geq) {
+									result = !greater_than_float_and_int(val, q_val);
+								} else if(q.query.at(1) == ocl_leq) {
+									result = !greater_than_int_and_float(val, q_val);
+								}
+							} else {
+								float val = static_cast<float>(::atof(prop_val.c_str()));
+
+								if(q.query.at(1) == ocl_gt) {
+									result = greater_than_floats(val, q_val);
+								} else if(q.query.at(1) == ocl_lt) {
+									result = greater_than_floats(q_val, val);
+								} else if(q.query.at(1) == ocl_geq) {
+									result = !greater_than_floats(q_val, val);
+								} else if(q.query.at(1) == ocl_leq) {
+									result = !greater_than_floats(val, q_val);
+								}
 							}
 						}
 

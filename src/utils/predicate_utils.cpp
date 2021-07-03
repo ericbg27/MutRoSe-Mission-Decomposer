@@ -1,5 +1,7 @@
 #include "predicate_utils.hpp"
 
+#include "math_utils.hpp"
+
 using namespace std;
 
 bool is_same_predicate(variant<literal,ground_literal> pred1, variant<literal,ground_literal> pred2) {
@@ -67,7 +69,7 @@ bool is_same_predicate(variant<literal,ground_literal> pred1, variant<literal,gr
     @ Input 3: The decomposition being considered
     @ Output: A boolean flag indicating if preconditions held or not.
 */
-bool check_decomposition_preconditions(vector<ground_literal> world_state, vector<pair<ground_literal,int>> world_state_functions, Decomposition d) {
+bool check_decomposition_preconditions(vector<ground_literal> world_state, vector<pair<ground_literal,variant<int,float>>> world_state_functions, Decomposition d) {
     bool preconditions_hold = true;
     for(auto prec : d.prec) { 
         if(holds_alternative<ground_literal>(prec)) {              
@@ -85,23 +87,53 @@ bool check_decomposition_preconditions(vector<ground_literal> world_state, vecto
                     }
                 }
             } else {
-                for(pair<ground_literal,int> func_state : world_state_functions) {
+                for(pair<ground_literal,variant<int,float>> func_state : world_state_functions) {
                     bool same_predicate = is_same_predicate(func_state.first, p);
                     
                     if(same_predicate) {
                         string comparison_op = p.comparison_op_and_value.first;
-                        int comparison_value = p.comparison_op_and_value.second;
+                        variant<int,float> comparison_value = p.comparison_op_and_value.second;
                             
                         if(comparison_op == equal_comparison_op) {
-                            if(comparison_value != func_state.second) {
-                                preconditions_hold = false;
-                                break;
+                            if(holds_alternative<int>(func_state.second)) {
+                                int state_val = std::get<int>(func_state.second);
+
+                                if(holds_alternative<int>(comparison_value)) {
+                                    preconditions_hold = (state_val == std::get<int>(comparison_value));
+                                } else {
+                                    preconditions_hold = compare_int_and_float(state_val, std::get<float>(comparison_value));
+                                }
+                            } else {
+                                float state_val = std::get<float>(func_state.second);
+
+                                if(holds_alternative<int>(comparison_value)) {
+                                    preconditions_hold = compare_int_and_float(std::get<int>(comparison_value), state_val);
+                                } else {
+                                    preconditions_hold = compare_floats(state_val, std::get<float>(comparison_value));
+                                }
                             }
+                            
+                            if(!preconditions_hold) break;
                         } else if(comparison_op == greater_comparison_op) {
-                            if(comparison_value >= func_state.second) {
-                                preconditions_hold = false;
-                                break;
+                            if(holds_alternative<int>(func_state.second)) {
+                                int state_val = std::get<int>(func_state.second);
+
+                                if(holds_alternative<int>(comparison_value)) {
+                                    preconditions_hold = (state_val > std::get<int>(comparison_value));
+                                } else {
+                                    preconditions_hold = greater_than_int_and_float(state_val, std::get<float>(comparison_value));
+                                }
+                            } else {
+                                float state_val = std::get<float>(func_state.second);
+
+                                if(holds_alternative<int>(comparison_value)) {
+                                    preconditions_hold = greater_than_float_and_int(std::get<int>(comparison_value), state_val);
+                                } else {
+                                    preconditions_hold = greater_than_floats(state_val, std::get<float>(comparison_value));
+                                }
                             }
+                            
+                            if(!preconditions_hold) break;
                         }
                     }
                 }
@@ -126,9 +158,9 @@ bool check_decomposition_preconditions(vector<ground_literal> world_state, vecto
     @ Input 4: The effects that are to be applied
     @ Output: Void. The world state is updated
 */
-void apply_effects_in_valid_decomposition(vector<ground_literal>& world_state, vector<std::pair<ground_literal,int>>& world_state_functions, pair<vector<pair<int,ATNode>>,set<int>> valid_mission_decomposition, 
-                                              map<int,vector<variant<ground_literal,pair<ground_literal,int>>>> effects_to_apply) {
-    map<int,vector<variant<ground_literal,pair<ground_literal,int>>>>::iterator eff_it;
+void apply_effects_in_valid_decomposition(vector<ground_literal>& world_state, vector<pair<ground_literal,variant<int,float>>>& world_state_functions, pair<vector<pair<int,ATNode>>,set<int>> valid_mission_decomposition, 
+                                              map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>> effects_to_apply) {
+    map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>>::iterator eff_it;
     for(eff_it = effects_to_apply.begin(); eff_it != effects_to_apply.end(); ++eff_it) {
         if(valid_mission_decomposition.second.find(eff_it->first) != valid_mission_decomposition.second.end()) {
             for(auto eff : eff_it->second) {
@@ -151,15 +183,32 @@ void apply_effects_in_valid_decomposition(vector<ground_literal>& world_state, v
                         world_state.push_back(e);
                     }
                 } else {
-                    pair<ground_literal,int> e = std::get<pair<ground_literal,int>>(eff);
-                    for(pair<ground_literal,int>& f_state : world_state_functions) {
+                    pair<ground_literal,variant<int,float>> e = std::get<pair<ground_literal,variant<int,float>>>(eff);
+
+                    for(pair<ground_literal,variant<int,float>>& f_state : world_state_functions) {
                         bool same_predicate = is_same_predicate(f_state.first, e.first);
 
                         if(same_predicate) {
                             if(e.first.isAssignCostChange) {
                                 f_state.second = e.second;
                             } else {
-                                f_state.second += e.second;
+                                if(holds_alternative<int>(e.second)) {
+                                    int eff_value = std::get<int>(e.second);
+
+                                    if(holds_alternative<int>(f_state.second)) {
+                                        f_state.second = eff_value + std::get<int>(f_state.second);
+                                    } else {
+                                        f_state.second = eff_value + std::get<float>(f_state.second);
+                                    }
+                                } else {
+                                    float eff_value = std::get<float>(f_state.second);
+
+                                    if(holds_alternative<int>(f_state.second)) {
+                                        f_state.second = eff_value + std::get<int>(f_state.second);
+                                    } else {
+                                        f_state.second = eff_value + std::get<float>(f_state.second);
+                                    }
+                                }
                             }
 
                             found_predicate = true;

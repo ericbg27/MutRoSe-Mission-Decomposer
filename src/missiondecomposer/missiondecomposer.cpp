@@ -18,7 +18,7 @@ void MissionDecomposer::set_world_state(vector<ground_literal> ws) {
 	world_state = ws;
 }
 
-void MissionDecomposer::set_world_state_functions(std::vector<std::pair<ground_literal,int>> wsf) {
+void MissionDecomposer::set_world_state_functions(std::vector<std::pair<ground_literal,variant<int,float>>> wsf) {
 	world_state_functions = wsf;
 }
 
@@ -862,7 +862,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 	}
 }
 
-shared_ptr<MissionDecomposer> MissionDecomposerFactory::create_mission_decomposer(shared_ptr<KnowledgeManager> k_manager, vector<ground_literal> ws, vector<pair<ground_literal,int>> wsf, map<string,vector<DecompositionPath>> atpaths, 
+shared_ptr<MissionDecomposer> MissionDecomposerFactory::create_mission_decomposer(shared_ptr<KnowledgeManager> k_manager, vector<ground_literal> ws, vector<pair<ground_literal,variant<int,float>>> wsf, map<string,vector<DecompositionPath>> atpaths, 
 																							map<string,vector<AbstractTask>> atinst, general_annot* gma, GMGraph g, bool verb) {
 	shared_ptr<MissionDecomposer> mission_decomposer;
 	

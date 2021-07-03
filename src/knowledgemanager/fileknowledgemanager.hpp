@@ -13,8 +13,8 @@ class FileKnowledgeManager : public KnowledgeManager {
         
         void initialize_objects(std::map<std::string,std::set<std::string>>& sorts, std::vector<std::string> high_level_loc_types, std::map<std::string,std::vector<AbstractTask>>& at_instances);
         
-        void initialize_world_state(std::vector<ground_literal>& init, std::vector<pair<ground_literal,int>>& init_functions, std::vector<SemanticMapping> semantic_mapping, std::map<std::string,std::set<std::string>> sorts);
-        void initialize_attribute_mapping(SemanticMapping sm, pt::ptree worlddb_root, std::vector<ground_literal>& init, std::vector<std::pair<ground_literal,int>>& init_functions);
+        void initialize_world_state(std::vector<ground_literal>& init, std::vector<pair<ground_literal,std::variant<int,float>>>& init_functions, std::vector<SemanticMapping> semantic_mapping, std::map<std::string,std::set<std::string>> sorts);
+        void initialize_attribute_mapping(SemanticMapping sm, pt::ptree worlddb_root, std::vector<ground_literal>& init, std::vector<std::pair<ground_literal,std::variant<int,float>>>& init_functions);
         void initialize_ownership_mapping(SemanticMapping sm, pt::ptree worlddb_root, std::vector<ground_literal>& init);
         void initialize_relationship_mapping(SemanticMapping sm, pt::ptree worlddb_root, std::vector<ground_literal>& init);
 
