@@ -16,11 +16,11 @@ void Condition::set_condition(string cond) {
     condition = cond;
 }
 
-variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<int,variant<bool,string>>>,bool> Condition::evaluate_condition(variant<pair<string,string>,pair<vector<string>,string>> var_value_and_type, vector<SemanticMapping> semantic_mapping) {
+variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<variant<int,float>,variant<bool,string>>>,bool> Condition::evaluate_condition(variant<pair<string,string>,pair<vector<string>,string>> var_value_and_type, vector<SemanticMapping> semantic_mapping) {
     regex r1("(((\\bnot\\b)[ ]+)?[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}"); // (not) [VAR].[ATTR]
     regex r2("[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+[\"][A-Za-z0-9]*[\"]){1}"); // [VAR].[ATTR] = "[VALUE]" || [VAR].[ATTR] <> "[VALUE]"
-    regex r3("[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+[0-9]+){1}"); // [VAR].[ATTR] = [INTVALUE] || [VAR].[ATTR] <> [INTVALUE]
-    regex r4("[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((>)|(<)|(>=)|(<=)){1}[ ]+[0-9]+){1}"); // [VAR].[ATTR] > [INTVALUE] || [VAR].[ATTR] < [INTVALUE] || [VAR].[ATTR] >= [INTVALUE] || [VAR].[ATTR] <= [INTVALUE]
+    regex r3("[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+([0-9]*[.])?[0-9]+){1}"); // [VAR].[ATTR] = [INTVALUE | FLOATVALUE] || [VAR].[ATTR] <> [INTVALUE | FLOATVALUE]
+    regex r4("[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((>)|(<)|(>=)|(<=)){1}[ ]+([0-9]*[.])?[0-9]+){1}"); // [VAR].[ATTR] > [INTVALUE | FLOATVALUE] || [VAR].[ATTR] < [INTVALUE | FLOATVALUE] || [VAR].[ATTR] >= [INTVALUE | FLOATVALUE] || [VAR].[ATTR] <= [INTVALUE | FLOATVALUE]
     //TODO: insert expressions using the in operator
     
     bool invalid_condition = false; 
@@ -196,7 +196,13 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate
             pred_args.push_back(value_and_type.first);
         }
 
-        int pred_value = stoi(split_cond.at(3));
+        variant<int,float> pred_value;
+
+        if(split_cond.at(3).find(".") == string::npos) {
+            pred_value = stoi(split_cond.at(3));
+        } else {
+            pred_value = static_cast<float>(::atof(split_cond.at(3).c_str()));
+        }
 
         return make_pair(make_pair(map_pred,pred_args),make_pair(pred_value,negative_condition));
     } else if(regex_match(condition, r4)) {
@@ -266,7 +272,13 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate
         }
 
         string op = split_cond.at(2);
-        int pred_value = stoi(split_cond.at(3));
+        variant<int,float> pred_value;
+
+        if(split_cond.at(3).find(".") == string::npos) {
+            pred_value = stoi(split_cond.at(3));
+        } else {
+            pred_value = static_cast<float>(::atof(split_cond.at(3).c_str()));
+        }
 
         return make_pair(make_pair(map_pred,pred_args),make_pair(pred_value,op));
     } else if(condition == "") {

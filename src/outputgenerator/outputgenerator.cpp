@@ -20,7 +20,7 @@ void OutputGenerator::set_world_state(vector<ground_literal> ws) {
     world_state = ws;
 }
 
-void OutputGenerator::set_world_state_functions(vector<pair<ground_literal,int>> wsf) {
+void OutputGenerator::set_world_state_functions(vector<pair<ground_literal,variant<int,float>>> wsf) {
     world_state_functions = wsf;
 }
 

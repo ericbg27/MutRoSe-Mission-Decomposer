@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <variant>
 #include "parsetree.hpp"
 
 using namespace std;
@@ -19,7 +20,7 @@ void flatten_goal();
 void compute_cwa();
 
 extern vector<ground_literal> init;
-extern vector<pair<ground_literal,int>> init_functions;
+extern vector<pair<ground_literal,variant<int,float>>> init_functions;
 extern vector<pair<ground_literal,float>> init_prob;
 extern vector<vector<pair<ground_literal,float>>> init_prob_vec;
 extern vector<pair<string,pair<string,float>>> init_rel;

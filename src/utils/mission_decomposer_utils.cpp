@@ -212,7 +212,7 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, boo
 	task_number = d.path.decomposition.size();
 
 	vector<variant<ground_literal,literal>> combined_effects;
-	vector<variant<pair<ground_literal,int>,literal>> combined_func_effects; //DEAL WITH LITERALS FOR FUNC EFFECTS
+	vector<variant<pair<ground_literal,variant<int,float>>,literal>> combined_func_effects; //DEAL WITH LITERALS FOR FUNC EFFECTS
 
 	for(task t : d.path.decomposition) {
 		if(task_counter == 1) { //First task defines preconditions
@@ -419,7 +419,7 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, boo
 			}
 		
 			if(can_ground) {
-				vector<pair<ground_literal,int>> inst_func_eff;
+				vector<pair<ground_literal,variant<int,float>>> inst_func_eff;
 
 				// Here is one place where we have to expand collection related predicates
 				for(string arg : func_eff.arguments) {
@@ -451,16 +451,32 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, boo
 
 				bool applied_effect = false;
 				for(unsigned int i = 0;i < combined_func_effects.size();i++) {
-					if(holds_alternative<pair<ground_literal,int>>(combined_func_effects.at(i))) {
-						pair<ground_literal,int> ceff = std::get<pair<ground_literal,int>>(combined_func_effects.at(i));
-						for(pair<ground_literal,int> e : inst_func_eff) {
+					if(holds_alternative<pair<ground_literal,variant<int,float>>>(combined_func_effects.at(i))) {
+						pair<ground_literal,variant<int,float>> ceff = std::get<pair<ground_literal,variant<int,float>>>(combined_func_effects.at(i));
+						for(pair<ground_literal,variant<int,float>> e : inst_func_eff) {
 							bool same_predicate = is_same_predicate(e.first, ceff.first);
 
 							if(same_predicate) {
 								if(e.first.isAssignCostChange) {
 									ceff.second = e.second;
-								} else {	
-									ceff.second += e.second;
+								} else {
+									if(holds_alternative<int>(ceff.second)) {
+										int ceff_value = std::get<int>(ceff.second);
+
+										if(holds_alternative<int>(e.second)) {
+											ceff.second = ceff_value + std::get<int>(e.second);
+										} else {
+											ceff.second = static_cast<float>(ceff_value) + std::get<float>(e.second);
+										}
+									} else {
+										float ceff_value = std::get<float>(ceff.second);
+
+										if(holds_alternative<int>(e.second)) {
+											ceff.second = ceff_value + static_cast<float>(std::get<int>(e.second));
+										} else {
+											ceff.second = ceff_value + std::get<float>(e.second);
+										}
+									}
 								}
 
 								combined_func_effects.at(i) = ceff; 
@@ -473,7 +489,7 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, boo
 				}
 
 				if(!applied_effect) {
-					for(pair<ground_literal,int> e : inst_func_eff) {
+					for(pair<ground_literal,variant<int,float>> e : inst_func_eff) {
 						combined_func_effects.push_back(e);
 					}
 				}
@@ -488,7 +504,24 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, boo
 							if(func_eff.isAssignCostChangeExpression) {
 								combined_func_effects.at(i) = func_eff;
 							} else {
-								ceff.costValue += func_eff.costValue;
+								if(holds_alternative<int>(ceff.costValue)) {
+									int ceff_value = std::get<int>(ceff.costValue);
+
+									if(holds_alternative<int>(func_eff.costValue)) {
+										ceff.costValue = ceff_value + std::get<int>(func_eff.costValue);
+									} else {
+										ceff.costValue = static_cast<float>(ceff_value) + std::get<float>(func_eff.costValue);
+									}
+								} else {
+									float ceff_value = std::get<float>(ceff.costValue);
+
+									if(holds_alternative<int>(func_eff.costValue)) {
+										ceff.costValue = ceff_value + static_cast<float>(std::get<int>(func_eff.costValue));
+									} else {
+										ceff.costValue = ceff_value + std::get<float>(func_eff.costValue);
+									}
+								}
+
 								combined_func_effects.at(i) = ceff;
 							}
 								

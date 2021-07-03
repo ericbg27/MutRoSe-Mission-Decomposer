@@ -275,7 +275,7 @@ void simple_hddl_output(ostream & dout){
 			if (instance_has_action_costs){
 				for (auto c : t.costExpression){
 					if (c.isConstantCostExpression)
-						dout << "const " << c.costValue << endl;
+						dout << "const " << std::get<int>(c.costValue) << endl;
 					else {
 						dout << "var " << function_declarations[c.predicate];
 						for (string v : c.arguments) dout << " " << v_id[v];
@@ -452,7 +452,7 @@ void simple_hddl_output(ostream & dout){
 		}
 		string line = to_string(function_declarations[f.first.predicate]);
 		for (auto c : f.first.args) line += " " + to_string(constants[c]);
-		line += " " + to_string(f.second);
+		line += " " + to_string(std::get<int>(f.second));
 		function_lines.push_back(line);
 	}
 	dout << function_lines.size() << endl;

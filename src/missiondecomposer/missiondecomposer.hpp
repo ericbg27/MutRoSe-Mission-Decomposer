@@ -39,7 +39,7 @@ class MissionDecomposer {
         void set_verbose(bool verb);
         void set_mission_decomposer_type(mission_decomposer_type mdt);
         void set_world_state(std::vector<ground_literal> ws);
-        void set_world_state_functions(std::vector<std::pair<ground_literal,int>> wsf);
+        void set_world_state_functions(std::vector<std::pair<ground_literal,std::variant<int,float>>> wsf);
         void set_at_decomposition_paths(std::map<std::string,std::vector<DecompositionPath>> atpaths);
         void set_at_instances(std::map<std::string,std::vector<AbstractTask>> atinst);
         void set_gm_annot(general_annot* gma);
@@ -51,7 +51,7 @@ class MissionDecomposer {
         bool verbose;
         ATGraph mission_decomposition;
         std::vector<ground_literal> world_state;
-        std::vector<std::pair<ground_literal,int>> world_state_functions;
+        std::vector<std::pair<ground_literal,std::variant<int,float>>> world_state_functions;
         std::map<std::string,std::vector<DecompositionPath>> at_decomposition_paths;
         std::map<std::string,std::vector<AbstractTask>> at_instances;
         general_annot* gmannot;
@@ -76,7 +76,7 @@ class FileKnowledgeMissionDecomposer : public MissionDecomposer {
 
 class MissionDecomposerFactory {
     public:
-        std::shared_ptr<MissionDecomposer> create_mission_decomposer(std::shared_ptr<KnowledgeManager> k_manager, std::vector<ground_literal> ws, std::vector<std::pair<ground_literal,int>> wsf, std::map<std::string,std::vector<DecompositionPath>> atpaths, std::map<std::string,std::vector<AbstractTask>> atinst, general_annot* gma, GMGraph g, bool verb);
+        std::shared_ptr<MissionDecomposer> create_mission_decomposer(std::shared_ptr<KnowledgeManager> k_manager, std::vector<ground_literal> ws, std::vector<std::pair<ground_literal,std::variant<int,float>>> wsf, std::map<std::string,std::vector<DecompositionPath>> atpaths, std::map<std::string,std::vector<AbstractTask>> atinst, general_annot* gma, GMGraph g, bool verb);
 };
 
 #endif

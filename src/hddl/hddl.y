@@ -540,7 +540,9 @@ gd_pred_constraints : gd_pred_equality
 					| gd_pred_greater
 
 gd_pred_equality : '(' '=' atomic_formula INT ')' {$$ = new general_formula(); $$->type = EQUALPRED; $$->subformulae.push_back($3); $$->value = $4;}
+				 | '(' '=' atomic_formula FLOAT ')' {$$ = new general_formula(); $$->type = EQUALPREDF; $$->subformulae.push_back($3); $$->fvalue = $4;} 
 gd_pred_greater : '(' KEY_GREATER atomic_formula INT ')' {$$ = new general_formula(); $$->type = GREATERPRED; $$->subformulae.push_back($3); $$->value = $4;}
+				| '(' KEY_GREATER atomic_formula FLOAT ')' {$$ = new general_formula(); $$->type = GREATERPREDF; $$->subformulae.push_back($3); $$->fvalue = $4;} 
 
 var_or_const-list :   var_or_const-list NAME {
 						$$ = $1;
@@ -596,6 +598,7 @@ p_effect_assign: '(' KEY_ASSIGN f_head f_exp ')' {$$ = new general_formula(); $$
 f_head : NAME { $$ = new general_formula(); $$->type = COST; $$->predicate = $1; }
 f_head : '(' NAME var_or_const-list ')' { $$ = new general_formula(); $$->type = COST; $$->predicate = $2; $$->arguments = *($3); }
 f_exp : INT { $$ = new general_formula(); $$->type = VALUE; $$->value = $1; $$->fvalue = 0.0; $$->predvalue = new literal; }
+	  | FLOAT { $$ = new general_formula(); $$->type = FVALUE; $$->value = 0; $$->fvalue = $1; $$->predvalue = new literal; }
 f_exp : f_head { $$ = $1; }
 
 prob_effect : '(' FLOAT effect ')' {$$ = new general_formula(); $$->type=PROB; $$->subformulae.push_back($3); mdp = true;}

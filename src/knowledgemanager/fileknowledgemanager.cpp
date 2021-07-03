@@ -131,7 +131,7 @@ void FileKnowledgeManager::initialize_objects(map<string,set<string>>& sorts, ve
     }
 }
 
-void FileKnowledgeManager::initialize_attribute_mapping(SemanticMapping sm, pt::ptree worlddb_root, vector<ground_literal>& init, vector<pair<ground_literal,int>>& init_functions) {
+void FileKnowledgeManager::initialize_attribute_mapping(SemanticMapping sm, pt::ptree worlddb_root, vector<ground_literal>& init, vector<pair<ground_literal,variant<int,float>>>& init_functions) {
     string attr_name = std::get<string>(sm.get_prop(name_key));
     string relation_type = std::get<string>(sm.get_prop(relatesto_key));
     if(relation_type != "robot") {
@@ -230,9 +230,21 @@ void FileKnowledgeManager::initialize_attribute_mapping(SemanticMapping sm, pt::
                     //Only insert the predicate if the object exists (was initialized) in the sorts map
                     string hddl_type = type_mapping[relation_type];
                     if(sorts[hddl_type].find(child.second.get<string>("name")) != sorts[hddl_type].end()) {
-                        int val;
+                        variant<int,float> val;
                         try {
-                            istringstream(boost::to_lower_copy(child.second.get<string>(attr_name))) >> val;
+                            string value = boost::to_lower_copy(child.second.get<string>(attr_name));
+
+                            if(value.find(".") != string::npos) {
+                                float v;
+                                istringstream(value) >> v;
+
+                                val = v;
+                            } else {
+                                int v;
+                                istringstream(value) >> v;
+
+                                val = v;
+                            }
                         } catch(...) {
                             string wrong_function_initialization_error = "Function initialization with attribute [" + attr_name + "] is not an integer value";
 
@@ -497,7 +509,7 @@ void FileKnowledgeManager::initialize_relationship_mapping(SemanticMapping sm, p
     @ Input 5: The sorts map with the existing objects
     @ Output: Void. The reference to the initial world state vector is initialized
 */ 
-void FileKnowledgeManager::initialize_world_state(vector<ground_literal>& init, vector<pair<ground_literal,int>>& init_functions, vector<SemanticMapping> semantic_mapping, map<string,set<string>> sorts) {
+void FileKnowledgeManager::initialize_world_state(vector<ground_literal>& init, vector<pair<ground_literal,variant<int,float>>>& init_functions, vector<SemanticMapping> semantic_mapping, map<string,set<string>> sorts) {
     pt::ptree worlddb_root;
     if(world_knowledge->get_root_key() == "") {
         worlddb_root = world_knowledge->get_knowledge();

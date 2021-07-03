@@ -1,10 +1,13 @@
+#include "tdg.hpp"
+
 #include <iostream>
 #include <set>
 #include <variant>
 
-#include "tdg.hpp"
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>
+
+#include "../utils/math_utils.hpp"
 
 using namespace std;
 
@@ -170,6 +173,7 @@ vector<DecompositionPath> TDG::decomposition_recursion(vector<int> dfs_nodes, in
 
                 if(executable) {
                     vector<DecompositionPath> aux = decomposition_recursion(dfs_nodes,c_pos,original_vars,world_state_copy,child_var_mapping);
+
                     child_paths.push_back(aux);
                 } else {
                     ordering_exec = false;
@@ -181,29 +185,31 @@ vector<DecompositionPath> TDG::decomposition_recursion(vector<int> dfs_nodes, in
             vector<DecompositionPath> ordering_paths;
             if(ordering_exec) {
                 for(auto aux : child_paths) {
-                    vector<DecompositionPath> g_paths_temp = ordering_paths;
-                    ordering_paths.clear();
+                    if(aux.size() > 0) {
+                        vector<DecompositionPath> g_paths_temp = ordering_paths;
+                        ordering_paths.clear();
 
-                    for(auto p : aux) {
-                        if(g_paths_temp.size() > 0) {
-                            for(auto g_pt : g_paths_temp) {
-                                DecompositionPath p_temp = p;
-                                p_temp.decomposition.insert(p_temp.decomposition.begin(),g_pt.decomposition.begin(),g_pt.decomposition.end());
+                        for(auto p : aux) {
+                            if(g_paths_temp.size() > 0) {
+                                for(auto g_pt : g_paths_temp) {
+                                    DecompositionPath p_temp = p;
+                                    p_temp.decomposition.insert(p_temp.decomposition.begin(),g_pt.decomposition.begin(),g_pt.decomposition.end());
 
-                                // Adjust indexes of task fragments that will need expansion
-                                if(p_temp.needs_expansion) {
-                                    int index_diff = g_pt.decomposition.size()-1;
+                                    // Adjust indexes of task fragments that will need expansion
+                                    if(p_temp.needs_expansion) {
+                                        int index_diff = g_pt.decomposition.size()-1;
 
-                                    for(auto& fragment : p_temp.fragments_to_expand) {
-                                        fragment.first.first += index_diff;
-                                        fragment.first.second += index_diff;
+                                        for(auto& fragment : p_temp.fragments_to_expand) {
+                                            fragment.first.first += index_diff;
+                                            fragment.first.second += index_diff;
+                                        }
                                     }
-                                }
 
-                                ordering_paths.push_back(p_temp);
+                                    ordering_paths.push_back(p_temp);
+                                }
+                            } else {
+                                ordering_paths.push_back(p);
                             }
-                        } else {
-                            ordering_paths.push_back(p);
                         }
                     }
                 }
@@ -545,15 +551,43 @@ pair<bool,pair<literal,bool>> TDG::check_predicates(task t, vector<pair<string,s
                     found_prec = true;
                     if(prec.isComparisonExpression) {
                         string comparison_op = prec.comparison_op_and_value.first;
-                        int comparison_value = prec.comparison_op_and_value.second;
+                        variant<int,float> comparison_value = prec.comparison_op_and_value.second;
 
                         if(comparison_op == equal_comparison_op) {
-                            if(state.costValue != comparison_value) {
-                                executable = false;
+                            if(holds_alternative<int>(state.costValue)) {
+                                int state_value = std::get<int>(state.costValue);
+
+                                if(holds_alternative<int>(comparison_value)) {
+                                    executable = (state_value == std::get<int>(comparison_value));
+                                } else {
+                                    executable = compare_int_and_float(state_value, std::get<float>(comparison_value));
+                                }
+                            } else {
+                                float state_value = std::get<float>(state.costValue);
+
+                                if(holds_alternative<int>(comparison_value)) {
+                                    executable = compare_int_and_float(std::get<int>(comparison_value), state_value);
+                                } else {
+                                    executable = compare_floats(state_value, std::get<float>(comparison_value));
+                                }
                             }
                         } else if(comparison_op == greater_comparison_op) {
-                            if(state.costValue < comparison_value) {
-                                executable = false;
+                            if(holds_alternative<int>(state.costValue)) {
+                                int state_value = std::get<int>(state.costValue);
+
+                                if(holds_alternative<int>(comparison_value)) {
+                                    executable = (state.costValue > comparison_value);
+                                } else {
+                                    executable = greater_than_int_and_float(state_value, std::get<float>(comparison_value));
+                                }
+                            } else {
+                                float state_value = std::get<float>(state.costValue);
+
+                                if(holds_alternative<int>(comparison_value)) {
+                                    executable = greater_than_float_and_int(std::get<int>(comparison_value), state_value);
+                                } else {
+                                    executable = greater_than_floats(state_value, std::get<float>(comparison_value));
+                                }
                             }
                         }
                     } else {
@@ -571,7 +605,7 @@ pair<bool,pair<literal,bool>> TDG::check_predicates(task t, vector<pair<string,s
                     literal l = prec;
                     
                     string comparison_op = l.comparison_op_and_value.first;
-                    int comparison_value = l.comparison_op_and_value.second;
+                    variant<int,float> comparison_value = l.comparison_op_and_value.second;
                     if(l.isComparisonExpression) {
                         if(comparison_op == equal_comparison_op) {
                             l.costValue = comparison_value;
@@ -579,7 +613,11 @@ pair<bool,pair<literal,bool>> TDG::check_predicates(task t, vector<pair<string,s
                             expansion_needed = true;
                             expansion_pred = l;
 
-                            l.costValue = comparison_value + 1; //This is done since we need to satisfy a greater than value
+                            if(holds_alternative<int>(comparison_value)) {
+                                l.costValue = std::get<int>(comparison_value) + 1; //This is done since we need to satisfy a greater than value
+                            } else {
+                                l.costValue = static_cast<int>(std::get<float>(comparison_value)) + 1;
+                            }
                         }
                     }
 
@@ -672,7 +710,23 @@ void TDG::change_world_state(task t, vector<literal>& world_state, vector<pair<s
                 if(cexp.isAssignCostChangeExpression) {
                     state->costValue = cexp.costValue;
                 } else {
-                    state->costValue += cexp.costValue;
+                    if(holds_alternative<int>(state->costValue)) {
+                        int state_value = std::get<int>(state->costValue);
+
+                        if(holds_alternative<int>(cexp.costValue)) {
+                            state->costValue = state_value + std::get<int>(cexp.costValue);
+                        } else {
+                            state->costValue = static_cast<float>(state_value) + std::get<float>(cexp.costValue);
+                        }
+                    } else {
+                        float state_value = std::get<float>(state->costValue);
+
+                        if(holds_alternative<int>(cexp.costValue)) {
+                            state->costValue = state_value + static_cast<float>(std::get<int>(cexp.costValue));
+                        } else {
+                            state->costValue = state_value + std::get<float>(cexp.costValue);
+                        }
+                    }
                 }
 
                 state->isCostChangeExpression = true;

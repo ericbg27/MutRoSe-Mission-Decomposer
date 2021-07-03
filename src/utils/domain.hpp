@@ -5,6 +5,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <variant>
 #include "sortexpansion.hpp"
 
 using namespace std;
@@ -27,8 +28,8 @@ struct literal{
 	bool isComparisonExpression;
 	string predicate;
 	vector<string> arguments;
-	int costValue;
-	pair<string,int> comparison_op_and_value;
+	variant<int,float> costValue;
+	pair<string,variant<int,float>> comparison_op_and_value;
 };
 
 struct conditional_effect {

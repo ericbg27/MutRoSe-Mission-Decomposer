@@ -22,7 +22,7 @@ class KnowledgeManager {
         
         virtual void initialize_objects(std::map<std::string,std::set<std::string>>& sorts, std::vector<std::string> high_level_loc_types, std::map<std::string,std::vector<AbstractTask>>& at_instances) = 0;
         
-        virtual void initialize_world_state(std::vector<ground_literal>& init, std::vector<pair<ground_literal,int>>& init_functions, std::vector<SemanticMapping> semantic_mapping, std::map<std::string,std::set<std::string>> sorts) = 0;
+        virtual void initialize_world_state(std::vector<ground_literal>& init, std::vector<pair<ground_literal,std::variant<int,float>>>& init_functions, std::vector<SemanticMapping> semantic_mapping, std::map<std::string,std::set<std::string>> sorts) = 0;
 
         void set_knowledge_type(knowledge_type kt);
         void set_type_mapping(std::map<std::string,std::string> tm);
@@ -34,6 +34,6 @@ class KnowledgeManager {
         std::map<std::string,std::string> type_mapping;
 };
 
-void print_world_state(std::vector<ground_literal> world_state, vector<pair<ground_literal,int>> world_functions);
+void print_world_state(std::vector<ground_literal> world_state, std::vector<std::pair<ground_literal,std::variant<int,float>>> world_functions);
 
 #endif

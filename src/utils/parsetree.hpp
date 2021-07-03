@@ -24,7 +24,7 @@ struct ground_literal{
 	vector<string> args;
 	bool isAssignCostChange = false;
 	bool isComparison = false;
-	pair<string,int> comparison_op_and_value;
+	pair<string,variant<int,float>> comparison_op_and_value;
 };
 
 struct sort_definition{
@@ -56,7 +56,7 @@ struct function_expression {
 };
 
 enum formula_type {EMPTY, AND, OR, FORALL, EXISTS, ATOM, NOTATOM,  // formulae
-				   EQUAL, NOTEQUAL, OFSORT, NOTOFSORT, GREATER, EQUALPRED, GREATERPRED,
+				   EQUAL, NOTEQUAL, OFSORT, NOTOFSORT, GREATER, EQUALPRED, GREATERPRED, EQUALPREDF, GREATERPREDF,
 				   WHEN,   // conditional effect
 				   VALUE, COST, COST_CHANGE, COST_CHANGE_INCREASE, COST_CHANGE_DECREASE, COST_CHANGE_ASSIGN, // cost statement
 				   REWARD, REWARD_CHANGE, FVALUE, PREDVALUE, INTVALUE, // reward statement
