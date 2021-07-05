@@ -123,6 +123,8 @@ vector<DecompositionPath> TDG::decomposition_recursion(vector<int> dfs_nodes, in
         for(vector<int> ordering : possible_orderings) {
             bool ordering_exec = true;
             vector<literal> world_state_copy = world_state;
+
+            unsigned int ordering_index = 0;
             for(int c : ordering) {
                 vector<int>::iterator it = std::find(dfs_nodes.begin(),dfs_nodes.end(),c);
                 int c_pos = std::distance(dfs_nodes.begin(),it);
@@ -169,6 +171,76 @@ vector<DecompositionPath> TDG::decomposition_recursion(vector<int> dfs_nodes, in
                             expansion_needed = false;
                         }
                     }
+
+                    if(expansion_needed) {
+                        /*
+                            Check if expansion is possible. For this to be true, the sum of decreases and increases of the expansion predicate in the possible ordering must be
+                            negative (since we only have greater than preconditions for now)
+                        */
+                        variant<int,float> expansion_pred_sum = 0;
+
+                        for(unsigned int i = ordering_index+1; i < ordering.size(); i++) {
+                            task ch = tdg[i].t;
+
+                            vector<pair<string,string>> ch_var_mapping;
+                            for(auto subtask : n.m.ps) {
+                                if(subtask.task == ch.name) {
+                                    int index = 0;
+                                    for(string var : subtask.args) {
+                                        string aux;
+                                        for(auto mapping : variable_mapping) {
+                                            if(mapping.first == var) { //Found mapping from methods
+                                                aux = mapping.second;
+                                                ch_var_mapping.push_back(make_pair(ch.vars.at(index).first,aux));
+                                                break;
+                                            }
+                                        }
+
+                                        index++;
+                                    }
+
+                                    break;
+                                }
+                            }
+
+                            variant<int,float> ch_sum = check_expansion_predicate_assignments(ch, ch_var_mapping, expansion_pred);
+
+                            if(holds_alternative<int>(expansion_pred_sum)) {
+                                int current_sum = std::get<int>(expansion_pred_sum);
+
+                                if(holds_alternative<int>(ch_sum)) {
+                                    std::cout << "Child " << ch.name << " sum: " << std::get<int>(ch_sum) << std::endl;
+                                    expansion_pred_sum = current_sum + std::get<int>(ch_sum);
+                                } else {
+                                    expansion_pred_sum = static_cast<float>(current_sum) + std::get<float>(ch_sum);
+                                }
+                            } else {
+                                float current_sum = std::get<float>(expansion_pred_sum);
+
+                                if(holds_alternative<int>(ch_sum)) {
+                                    expansion_pred_sum = current_sum + static_cast<float>(std::get<int>(ch_sum));
+                                } else {
+                                    expansion_pred_sum = current_sum + std::get<float>(ch_sum);
+                                }
+                            }
+                        }
+
+                        bool expansion_error = false;
+                        if(holds_alternative<int>(expansion_pred_sum)) {
+                            std::cout << "Expansion sum: " << std::get<int>(expansion_pred_sum) << std::endl;
+                            if(std::get<int>(expansion_pred_sum) >= 0) expansion_error = true;
+                        } else {
+                            float exp_sum = std::get<float>(expansion_pred_sum);
+
+                            if(greater_than_floats(exp_sum, 0.0) || compare_floats(0.0, exp_sum)) expansion_error = true;
+                        }
+
+                        if(expansion_error) {
+                            string infinite_expansion_error = "Infinite expansion generated with method [" + n.m.name + "]";
+
+                            throw std::runtime_error(infinite_expansion_error); 
+                        }
+                    }
                 }
 
                 if(executable) {
@@ -179,6 +251,8 @@ vector<DecompositionPath> TDG::decomposition_recursion(vector<int> dfs_nodes, in
                     ordering_exec = false;
                     break;
                 }
+
+                ordering_index++;
             }
 
             // Here is one place where we need to check for expansion_needed flags
@@ -896,4 +970,50 @@ vector<vector<int>> TDG::recursive_method_possible_ordering(map<int,set<int>> pr
     }
 
     return new_orderings;
+}
+
+variant<int,float> TDG::check_expansion_predicate_assignments(task t, vector<pair<string,string>> var_mapping, literal expansion_pred) {
+    variable_renaming(t, var_mapping);
+
+    variant<int,float> sum_of_assignments = 0;
+
+    for(literal eff : t.costExpression) {
+        if(holds_alternative<int>(sum_of_assignments)) {
+            int sum = std::get<int>(sum_of_assignments);
+
+            if(eff.isCostChangeExpression) {
+                if(is_same_predicate(eff,expansion_pred)) {
+                    if(holds_alternative<int>(eff.costValue)) {
+                        sum_of_assignments = sum + std::get<int>(eff.costValue);
+                    } else {
+                        sum_of_assignments = static_cast<float>(sum) + std::get<float>(eff.costValue);
+                    }
+                }
+            } else if(eff.isAssignCostChangeExpression) {
+                // TODO
+                string assignment_in_expansion_error = "Assignment expressions on expansion cycle are not allowed";
+
+                throw std::runtime_error(assignment_in_expansion_error);
+            }
+        } else {
+            float sum = std::get<float>(sum_of_assignments);
+
+            if(eff.isCostChangeExpression) {
+                if(is_same_predicate(eff,expansion_pred)) {
+                    if(holds_alternative<int>(eff.costValue)) {
+                        sum_of_assignments = sum + static_cast<float>(std::get<int>(eff.costValue));
+                    } else {
+                        sum_of_assignments = sum + std::get<float>(eff.costValue);
+                    }
+                }
+            } else {
+                // TODO
+                string assignment_in_expansion_error = "Assignment expressions on expansion cycle are not allowed";
+
+                throw std::runtime_error(assignment_in_expansion_error);
+            }
+        }
+    }
+
+    return sum_of_assignments;
 }
