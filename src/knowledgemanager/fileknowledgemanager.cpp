@@ -462,18 +462,22 @@ void FileKnowledgeManager::initialize_relationship_mapping(SemanticMapping sm, p
 
                             vector<string> related_entities;
 
-                            pt::ptree attr_tree = child.second.get_child(attribute_name);
-                            if(attr_tree.empty() && !attr_tree.data().empty()) { //Key is value and not tree
-                                stringstream ss(attr_tree.data());
+                            boost::optional attr_tree_opt = child.second.get_child_optional(attribute_name);
 
-                                string temp;
-                                while(ss >> temp) {
-                                    related_entities.push_back(temp);
+                            if(attr_tree_opt) {
+                                pt::ptree attr_tree = attr_tree_opt.get();
+                                if(attr_tree.empty() && !attr_tree.data().empty()) { //Key is value and not tree
+                                    stringstream ss(attr_tree.data());
+
+                                    string temp;
+                                    while(ss >> temp) {
+                                        related_entities.push_back(temp);
+                                    }
+                                } else if(!attr_tree.empty() && attr_tree.data().empty()) {
+                                    BOOST_FOREACH(pt::ptree::value_type related_entity, attr_tree) {
+                                        related_entities.push_back(related_entity.second.data());
+                                    }    
                                 }
-                            } else if(!attr_tree.empty() && attr_tree.data().empty()) {
-                                BOOST_FOREACH(pt::ptree::value_type related_entity, attr_tree) {
-                                    related_entities.push_back(related_entity.second.data());
-                                }    
                             }
                         }
                     }            
