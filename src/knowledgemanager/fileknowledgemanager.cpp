@@ -348,22 +348,27 @@ void FileKnowledgeManager::initialize_ownership_mapping(SemanticMapping sm, pt::
                         if(relationship_type == attribute_relationship_type) {
                             string attribute_name = std::get<string>(sm.get_prop(attributename_key));
 
-                            pt::ptree attr_tree = child.second.get_child(attribute_name);
-                            BOOST_FOREACH(pt::ptree::value_type& attr_child, attr_tree) {
-                                if(attr_child.first == owned_type) {
-                                    if(sorts[owned_hddl_type].find(attr_child.second.get<string>("name")) != sorts[owned_hddl_type].end()) {
-                                        string owned_name = attr_child.second.get<string>("name");
-                                        owned_objects.insert(owned_name);
+                            boost::optional attr_tree_opt = child.second.get_child_optional(attribute_name);
 
-                                        ground_literal l;
+                            if(attr_tree_opt) {
+                                pt::ptree attr_tree = attr_tree_opt.get();
 
-                                        l.predicate = pred.name;
-                                        l.positive = true;
+                                BOOST_FOREACH(pt::ptree::value_type& attr_child, attr_tree) {
+                                    if(attr_child.first == owned_type) {
+                                        if(sorts[owned_hddl_type].find(attr_child.second.get<string>("name")) != sorts[owned_hddl_type].end()) {
+                                            string owned_name = attr_child.second.get<string>("name");
+                                            owned_objects.insert(owned_name);
 
-                                        l.args.push_back(owned_name);
-                                        l.args.push_back(owner_name);
+                                            ground_literal l;
 
-                                        init.push_back(l);
+                                            l.predicate = pred.name;
+                                            l.positive = true;
+
+                                            l.args.push_back(owned_name);
+                                            l.args.push_back(owner_name);
+
+                                            init.push_back(l);
+                                        }
                                     }
                                 }
                             }
