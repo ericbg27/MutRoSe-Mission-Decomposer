@@ -236,42 +236,47 @@ void FileKnowledgeManager::initialize_attribute_mapping(SemanticMapping sm, pt::
                     string hddl_type = type_mapping[relation_type];
                     if(sorts[hddl_type].find(child.second.get<string>("name")) != sorts[hddl_type].end()) {
                         variant<int,float> val;
-                        try {
-                            string value = boost::to_lower_copy(child.second.get<string>(attr_name));
 
-                            if(value.find(".") != string::npos) {
-                                float v;
-                                istringstream(value) >> v;
-
-                                val = v;
-                            } else {
-                                int v;
-                                istringstream(value) >> v;
-
-                                val = v;
-                            }
-                        } catch(...) {
-                            string wrong_function_initialization_error = "Function initialization with attribute [" + attr_name + "] is not an integer value";
-
-                            throw std::runtime_error(wrong_function_initialization_error);
-                        }
-
-                        ground_literal l;
-
-                        l.predicate = pred.name;
-                        l.positive = true;
+                        boost::optional attr_value = child.second.get_optional<string>(attr_name);
                         
-                        /*
-                            For now, semantic mappings only involve one argument, which is of the hddl_type. With this in mind,
-                            we get the name attribute in the xml
-                        */
-                        for(string sort_type : pred.argument_sorts) {
-                            if(sort_type == hddl_type) {
-                                l.args.push_back(child.second.get<string>("name"));
-                            }
-                        }
+                        if(attr_value) {
+                            try {
+                                string value = boost::to_lower_copy(attr_value.get());
 
-                        init_functions.push_back(make_pair(l,val));
+                                if(value.find(".") != string::npos) {
+                                    float v;
+                                    istringstream(value) >> v;
+
+                                    val = v;
+                                } else {
+                                    int v;
+                                    istringstream(value) >> v;
+
+                                    val = v;
+                                }
+                            } catch(...) {
+                                string wrong_function_initialization_error = "Function initialization with attribute [" + attr_name + "] is not an integer value";
+
+                                throw std::runtime_error(wrong_function_initialization_error);
+                            }
+
+                            ground_literal l;
+
+                            l.predicate = pred.name;
+                            l.positive = true;
+                            
+                            /*
+                                For now, semantic mappings only involve one argument, which is of the hddl_type. With this in mind,
+                                we get the name attribute in the xml
+                            */
+                            for(string sort_type : pred.argument_sorts) {
+                                if(sort_type == hddl_type) {
+                                    l.args.push_back(child.second.get<string>("name"));
+                                }
+                            }
+
+                            init_functions.push_back(make_pair(l,val));
+                        }
                     }
                 } else {
                     string child_data = child.second.data();
