@@ -13,6 +13,7 @@
 struct DecompositionPath {
     std::vector<task> decomposition;
     bool needs_expansion = false;
+    variant<int,float> expansion_decrease = 0;
     std::vector<std::pair<std::pair<int,int>,literal>> fragments_to_expand;
 };
 
