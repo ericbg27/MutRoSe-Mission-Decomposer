@@ -165,9 +165,24 @@ vector<DecompositionPath> TDG::decomposition_recursion(vector<int> dfs_nodes, in
                     
                     if(expansion_needed) {
                         if(child_task.name.find(method_precondition_action_name) != string::npos) {
-                            children_num = n.m.ps.size();
+                            bool hasDecrease = false;
+                            for(unsigned int i = ordering_index+1; i < ordering.size(); i++) {
+                                task ch = tdg[i].t;
 
-                            expansion_pred = checking_result.second.first;
+                                for(literal ceff : ch.costExpression) {
+                                    if(ceff.isCostChangeExpression && !ceff.isAssignCostChangeExpression) {
+                                        hasDecrease = true;
+                                    }
+                                }
+                            }
+
+                            if(hasDecrease) {
+                                children_num = n.m.ps.size();
+
+                                expansion_pred = checking_result.second.first;
+                            } else {
+                                expansion_needed = false;
+                            }
                         } else {
                             expansion_needed = false;
                         }
@@ -208,7 +223,6 @@ vector<DecompositionPath> TDG::decomposition_recursion(vector<int> dfs_nodes, in
                                 int current_sum = std::get<int>(expansion_pred_sum);
 
                                 if(holds_alternative<int>(ch_sum)) {
-                                    std::cout << "Child " << ch.name << " sum: " << std::get<int>(ch_sum) << std::endl;
                                     expansion_pred_sum = current_sum + std::get<int>(ch_sum);
                                 } else {
                                     expansion_pred_sum = static_cast<float>(current_sum) + std::get<float>(ch_sum);
@@ -226,7 +240,6 @@ vector<DecompositionPath> TDG::decomposition_recursion(vector<int> dfs_nodes, in
 
                         bool expansion_error = false;
                         if(holds_alternative<int>(expansion_pred_sum)) {
-                            std::cout << "Expansion sum: " << std::get<int>(expansion_pred_sum) << std::endl;
                             if(std::get<int>(expansion_pred_sum) >= 0) expansion_error = true;
                         } else {
                             float exp_sum = std::get<float>(expansion_pred_sum);
@@ -713,7 +726,7 @@ pair<bool,pair<literal,bool>> TDG::check_predicates(task t, method parent_method
                                     }
                                 }
 
-                                variant<int,float> ch_sum = check_expansion_predicate_assignments(ch, ch_var_mapping, expansion_pred);
+                                variant<int,float> ch_sum = check_predicate_assignments(ch, ch_var_mapping, expansion_pred, expansion_offset, world_state);
 
                                 if(holds_alternative<int>(expansion_offset)) {
                                     int current_sum = std::get<int>(expansion_offset);
@@ -1040,7 +1053,7 @@ variant<int,float> TDG::check_expansion_predicate_assignments(task t, vector<pai
         if(holds_alternative<int>(sum_of_assignments)) {
             int sum = std::get<int>(sum_of_assignments);
 
-            if(eff.isCostChangeExpression) {
+            if(eff.isCostChangeExpression && !eff.isAssignCostChangeExpression) {
                 if(is_same_predicate(eff,expansion_pred)) {
                     if(holds_alternative<int>(eff.costValue)) {
                         sum_of_assignments = sum + std::get<int>(eff.costValue);
@@ -1048,8 +1061,7 @@ variant<int,float> TDG::check_expansion_predicate_assignments(task t, vector<pai
                         sum_of_assignments = static_cast<float>(sum) + std::get<float>(eff.costValue);
                     }
                 }
-            } else if(eff.isAssignCostChangeExpression) {
-                // TODO
+            } else {
                 string assignment_in_expansion_error = "Assignment expressions on expansion cycle are not allowed";
 
                 throw std::runtime_error(assignment_in_expansion_error);
@@ -1066,10 +1078,106 @@ variant<int,float> TDG::check_expansion_predicate_assignments(task t, vector<pai
                     }
                 }
             } else {
-                // TODO
                 string assignment_in_expansion_error = "Assignment expressions on expansion cycle are not allowed";
 
                 throw std::runtime_error(assignment_in_expansion_error);
+            }
+        }
+    }
+
+    return sum_of_assignments;
+}
+
+std::variant<int,float> TDG::check_predicate_assignments(task t, vector<pair<string,string>> var_mapping, literal pred, variant<int,float> current_sum, vector<literal> world_state) {
+    variable_renaming(t, var_mapping);
+
+    variant<int,float> sum_of_assignments = 0;
+
+    for(literal eff : t.costExpression) {
+        if(holds_alternative<int>(sum_of_assignments)) {
+            int sum = std::get<int>(sum_of_assignments);
+
+            if(eff.isCostChangeExpression && !eff.isAssignCostChangeExpression) {
+                if(is_same_predicate(eff,pred)) {
+                    if(holds_alternative<int>(eff.costValue)) {
+                        sum_of_assignments = sum + std::get<int>(eff.costValue);
+                    } else {
+                        sum_of_assignments = static_cast<float>(sum) + std::get<float>(eff.costValue);
+                    }
+                }
+            } else {
+                literal state;
+
+                for(literal ws : world_state) {
+                    if(is_same_predicate(ws,pred)) {
+                        state = ws;
+                    }
+                }
+
+                variant<int,float> state_val;
+                if(state.predicate == pred.predicate) {
+                    state_val = state.costValue;
+                } else {
+                    state_val = pred.costValue;
+                }
+
+                if(is_same_predicate(eff,pred)) {
+                    if(holds_alternative<int>(sum_of_assignments)) {
+                        int sum = std::get<int>(sum_of_assignments);
+
+                        if(holds_alternative<int>(eff.costValue)) {
+                            int eff_val = std::get<int>(eff.costValue);
+
+                            if(holds_alternative<int>(state_val)) {
+                                sum_of_assignments = sum + (std::get<int>(state_val) - sum - eff_val);
+                            } else {
+                                sum_of_assignments = static_cast<float>(sum) + (std::get<float>(state_val) - static_cast<float>(sum) - static_cast<float>(eff_val));
+                            }
+                        } else {
+                            float eff_val = std::get<float>(eff.costValue);
+
+                            if(holds_alternative<int>(state_val)) {
+                                sum_of_assignments = static_cast<float>(sum) + (static_cast<float>(std::get<int>(state_val)) - static_cast<float>(sum) - eff_val);
+                            } else {
+                                sum_of_assignments = static_cast<float>(sum) + (std::get<float>(state_val) - static_cast<float>(sum) - eff_val);
+                            }
+                        }
+                    } else {
+                        float sum = std::get<float>(sum_of_assignments);
+
+                        if(holds_alternative<int>(eff.costValue)) {
+                            int eff_val = std::get<int>(eff.costValue);
+
+                            if(holds_alternative<int>(state_val)) {
+                                sum_of_assignments = sum + (static_cast<float>(std::get<int>(state_val)) - sum - static_cast<float>(eff_val));
+                            } else {
+                                sum_of_assignments = sum + (std::get<float>(state_val) - sum - static_cast<float>(eff_val));
+                            }
+                        } else {
+                            float eff_val = std::get<float>(eff.costValue);
+
+                            if(holds_alternative<int>(state_val)) {
+                                sum_of_assignments = sum + (static_cast<float>(std::get<int>(state_val)) - sum - eff_val);
+                            } else {
+                                sum_of_assignments = sum + (std::get<float>(state_val) - sum - eff_val);
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            float sum = std::get<float>(sum_of_assignments);
+
+            if(eff.isCostChangeExpression) {
+                if(is_same_predicate(eff,pred)) {
+                    if(holds_alternative<int>(eff.costValue)) {
+                        sum_of_assignments = sum + static_cast<float>(std::get<int>(eff.costValue));
+                    } else {
+                        sum_of_assignments = sum + std::get<float>(eff.costValue);
+                    }
+                }
+            } else {
+                // TODO
             }
         }
     }

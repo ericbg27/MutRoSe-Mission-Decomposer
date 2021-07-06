@@ -78,6 +78,7 @@ class TDG {
         std::pair<bool,std::pair<literal,bool>> check_predicates(task t, method parent_method, std::vector<std::pair<std::string,std::string>> t_var_mapping, std::vector<std::pair<std::string,std::string>> global_var_mapping, int t_id, std::vector<literal>& world_state, std::pair<std::vector<int>,int> ordering_info);
 
         std::variant<int,float> check_expansion_predicate_assignments(task t, std::vector<std::pair<std::string,std::string>> var_mapping, literal expansion_pred);
+        std::variant<int,float> check_predicate_assignments(task t, std::vector<std::pair<std::string,std::string>> var_mapping, literal pred, std::variant<int,float> current_sum, std::vector<literal> world_state);
 
     private:
         bool verbose;

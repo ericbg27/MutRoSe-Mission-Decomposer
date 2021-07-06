@@ -59,11 +59,7 @@ void expand_decomposition(Decomposition& d, vector<pair<ground_literal,variant<i
                     if(holds_alternative<int>(d.path.expansion_decrease)) { //PROBLEM! NEEDS SOLVING
                         int decrease_rate = std::get<int>(d.path.expansion_decrease);
 
-                        std::cout << "Decrease rate: " << decrease_rate << std::endl;
-
                         expansion_number = static_cast<int>((p_val - std::get<int>(fragment.second.comparison_op_and_value.second))/(decrease_rate*-1)) - 1;
-
-                        std::cout << "Expansion number: " << expansion_number << std::endl;
                     } else {
                         float decrease_rate = std::get<float>(d.path.expansion_decrease);
 
