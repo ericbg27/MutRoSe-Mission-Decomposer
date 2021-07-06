@@ -159,24 +159,29 @@ void FileKnowledgeManager::initialize_attribute_mapping(SemanticMapping sm, pt::
                     string hddl_type = type_mapping[relation_type];
                     if(sorts[hddl_type].find(child.second.get<string>("name")) != sorts[hddl_type].end()) {
                         bool val;
-                        istringstream(boost::to_lower_copy(child.second.get<string>(attr_name))) >> std::boolalpha >> val;
 
-                        ground_literal l;
+                        boost::optional attr_val = child.second.get_optional<string>(attr_name);
 
-                        l.predicate = pred.name;
-                        l.positive = val;
+                        if(attr_val) {
+                            istringstream(boost::to_lower_copy(attr_val.get())) >> std::boolalpha >> val;
 
-                        /*
-                            For now, semantic mappings only involve one argument, which is of the hddl_type. With this in mind,
-                            we get the name attribute in the xml
-                        */
-                        for(string sort_type : pred.argument_sorts) {
-                            if(sort_type == hddl_type) {
-                                l.args.push_back(child.second.get<string>("name"));
+                            ground_literal l;
+
+                            l.predicate = pred.name;
+                            l.positive = val;
+
+                            /*
+                                For now, semantic mappings only involve one argument, which is of the hddl_type. With this in mind,
+                                we get the name attribute in the xml
+                            */
+                            for(string sort_type : pred.argument_sorts) {
+                                if(sort_type == hddl_type) {
+                                    l.args.push_back(child.second.get<string>("name"));
+                                }
                             }
-                        }
 
-                        init.push_back(l);
+                            init.push_back(l);
+                        }
                     }
                 } else {
                     string child_data = child.second.data();
