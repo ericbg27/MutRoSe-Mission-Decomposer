@@ -28,7 +28,7 @@
         )
     )
     (:action pick-object
-        :parameters (?r -robot ?rm - room)
+        :parameters (?r - robot ?rm - room)
         :required-capabilities (pickobject)
         :precondition ()
         :effect (and
