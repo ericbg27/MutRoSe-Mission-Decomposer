@@ -53,7 +53,11 @@ pair<vector<vector<pair<int,ATNode>>>,set<Decomposition>> ValidMissionGenerator:
     */
     map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>> effects_to_apply;
 
-    recursive_valid_mission_decomposition("", mission_queue, -1, effects_to_apply);
+    if(!is_unique_branch(mission_decomposition)) {
+        recursive_valid_mission_decomposition("", mission_queue, -1, effects_to_apply);
+    } else {
+        valid_mission_decompositions_from_unique_branch(mission_queue);
+    }
 
     vector<vector<pair<int,ATNode>>> final_valid_mission_decompositions;
     for(auto mission_decomposition : valid_mission_decompositions) {
@@ -314,6 +318,64 @@ map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>>
         
         // Return effects of task here
         return decompositions_effects;
+    }
+}
+
+void ValidMissionGenerator::valid_mission_decompositions_from_unique_branch(queue<pair<int,ATNode>> mission_queue) {
+    while(!mission_queue.empty()) {
+        pair<int,ATNode> current_node =  mission_queue.front();
+
+        if(current_node.second.node_type == ATASK) {
+            pair<int,ATNode> task_decomposition;
+
+            ATGraph::out_edge_iterator ei, ei_end;
+            for(boost::tie(ei,ei_end) = out_edges(current_node.first,mission_decomposition);ei != ei_end;++ei) {
+                int target = boost::target(*ei,mission_decomposition);
+
+                if(mission_decomposition[target].node_type == DECOMPOSITION) {
+                    ATNode decomposition = mission_decomposition[target];
+
+                    task_decomposition = make_pair(target,decomposition);
+                    break;
+                }
+            }
+
+            Decomposition d = std::get<Decomposition>(task_decomposition.second.content);
+            
+            bool preconditions_hold = true;
+            for(variant<ground_literal,literal> prec : d.prec) {
+                for(ground_literal state : world_state) {
+                    if(holds_alternative<ground_literal>(prec)) {
+                        ground_literal p = std::get<ground_literal>(prec);
+
+                        if(is_same_predicate(p,state)) {
+                            if(p.positive != state.positive) {
+                                preconditions_hold = false;
+
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if(!preconditions_hold) {
+                AbstractTask at = get<AbstractTask>(current_node.second.content);
+                string invalid_task_decomposition_error = "NO VALID DECOMPOSITIONS FOR TASK " + at.id + ": " + at.name;
+
+                throw std::runtime_error(invalid_task_decomposition_error);
+            }
+
+            vector<pair<int,ATNode>> valid_decomposition;
+            valid_decomposition.push_back(task_decomposition);
+
+            set<int> decomposition_id;
+            decomposition_id.insert(task_decomposition.first);
+
+            valid_mission_decompositions.push_back(make_pair(valid_decomposition,decomposition_id));
+        }
+
+        mission_queue.pop();
     }
 }
 
@@ -965,7 +1027,7 @@ void ValidMissionGenerator::solve_conflicts(std::map<int,std::vector<std::varian
         -> Verify in the children effects if we have any conflicts for each mission decomposition
             - If there is, erase the decomposition
             - Conflicts onyl happen in predicates effects
-    */     
+    */
     vector<int> decompositions_to_erase;
 
     int decomposition_index = 0;

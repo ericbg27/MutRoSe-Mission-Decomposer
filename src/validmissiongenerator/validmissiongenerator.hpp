@@ -20,6 +20,8 @@ class ValidMissionGenerator {
 
         std::map<int,std::vector<std::variant<ground_literal,std::pair<ground_literal,variant<int,float>>>>> recursive_valid_mission_decomposition(std::string last_op, std::queue<std::pair<int,ATNode>>& mission_queue, int depth, std::map<int, std::vector<std::variant<ground_literal,std::pair<ground_literal,variant<int,float>>>>> effects_to_apply);
 
+        void valid_mission_decompositions_from_unique_branch(std::queue<std::pair<int,ATNode>> mission_queue);
+
         void check_parallel_op_children(std::queue<std::pair<int,ATNode>>& mission_queue, std::map<int,std::vector<std::variant<ground_literal,std::pair<ground_literal,std::variant<int,float>>>>>& children_effects, int depth, std::pair<int,ATNode> current_node);
         void check_sequential_op_children(std::queue<std::pair<int,ATNode>>& mission_queue, std::map<int,std::vector<std::variant<ground_literal,std::pair<ground_literal,std::variant<int,float>>>>>& children_effects, int depth, std::pair<int,ATNode> current_node);
 

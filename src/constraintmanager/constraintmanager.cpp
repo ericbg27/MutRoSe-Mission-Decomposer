@@ -24,8 +24,6 @@ vector<Constraint> ConstraintManager::generate_mission_constraints() {
 
         ATGraph trimmed_mission_decomposition = trimmed_mission_decomposition_data.first;
 
-        print_mission_decomposition(trimmed_mission_decomposition);
-
         generate_at_constraints(trimmed_mission_decomposition);
 
         map<int,int> id_map = trimmed_mission_decomposition_data.second;
