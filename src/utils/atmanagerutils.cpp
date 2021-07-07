@@ -261,12 +261,18 @@ void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm
 				if(q.query.size() == 1) {
 					if(q.query.at(0) != "") {
 						string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
-						bool prop_val;
-						istringstream(boost::to_lower_copy(child.second.get<string>(prop))) >> std::boolalpha >> prop_val;
-						if(q.query.at(0).find('!') != string::npos) {
-							prop_val = !prop_val;
+
+						boost::optional prop_val_opt = child.second.get_optional<string>(prop);
+
+						if(prop_val_opt) {
+							bool prop_val;
+
+							istringstream(boost::to_lower_copy(prop_val_opt.get())) >> std::boolalpha >> prop_val;
+							if(q.query.at(0).find('!') != string::npos) {
+								prop_val = !prop_val;
+							}
+							if(prop_val) aux.push_back(child.second);
 						}
-						if(prop_val) aux.push_back(child.second);
 					} else {
 						aux.push_back(child.second);
 					}

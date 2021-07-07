@@ -159,24 +159,29 @@ void FileKnowledgeManager::initialize_attribute_mapping(SemanticMapping sm, pt::
                     string hddl_type = type_mapping[relation_type];
                     if(sorts[hddl_type].find(child.second.get<string>("name")) != sorts[hddl_type].end()) {
                         bool val;
-                        istringstream(boost::to_lower_copy(child.second.get<string>(attr_name))) >> std::boolalpha >> val;
 
-                        ground_literal l;
+                        boost::optional attr_val = child.second.get_optional<string>(attr_name);
 
-                        l.predicate = pred.name;
-                        l.positive = val;
+                        if(attr_val) {
+                            istringstream(boost::to_lower_copy(attr_val.get())) >> std::boolalpha >> val;
 
-                        /*
-                            For now, semantic mappings only involve one argument, which is of the hddl_type. With this in mind,
-                            we get the name attribute in the xml
-                        */
-                        for(string sort_type : pred.argument_sorts) {
-                            if(sort_type == hddl_type) {
-                                l.args.push_back(child.second.get<string>("name"));
+                            ground_literal l;
+
+                            l.predicate = pred.name;
+                            l.positive = val;
+
+                            /*
+                                For now, semantic mappings only involve one argument, which is of the hddl_type. With this in mind,
+                                we get the name attribute in the xml
+                            */
+                            for(string sort_type : pred.argument_sorts) {
+                                if(sort_type == hddl_type) {
+                                    l.args.push_back(child.second.get<string>("name"));
+                                }
                             }
-                        }
 
-                        init.push_back(l);
+                            init.push_back(l);
+                        }
                     }
                 } else {
                     string child_data = child.second.data();
@@ -231,42 +236,47 @@ void FileKnowledgeManager::initialize_attribute_mapping(SemanticMapping sm, pt::
                     string hddl_type = type_mapping[relation_type];
                     if(sorts[hddl_type].find(child.second.get<string>("name")) != sorts[hddl_type].end()) {
                         variant<int,float> val;
-                        try {
-                            string value = boost::to_lower_copy(child.second.get<string>(attr_name));
 
-                            if(value.find(".") != string::npos) {
-                                float v;
-                                istringstream(value) >> v;
-
-                                val = v;
-                            } else {
-                                int v;
-                                istringstream(value) >> v;
-
-                                val = v;
-                            }
-                        } catch(...) {
-                            string wrong_function_initialization_error = "Function initialization with attribute [" + attr_name + "] is not an integer value";
-
-                            throw std::runtime_error(wrong_function_initialization_error);
-                        }
-
-                        ground_literal l;
-
-                        l.predicate = pred.name;
-                        l.positive = true;
+                        boost::optional attr_value = child.second.get_optional<string>(attr_name);
                         
-                        /*
-                            For now, semantic mappings only involve one argument, which is of the hddl_type. With this in mind,
-                            we get the name attribute in the xml
-                        */
-                        for(string sort_type : pred.argument_sorts) {
-                            if(sort_type == hddl_type) {
-                                l.args.push_back(child.second.get<string>("name"));
-                            }
-                        }
+                        if(attr_value) {
+                            try {
+                                string value = boost::to_lower_copy(attr_value.get());
 
-                        init_functions.push_back(make_pair(l,val));
+                                if(value.find(".") != string::npos) {
+                                    float v;
+                                    istringstream(value) >> v;
+
+                                    val = v;
+                                } else {
+                                    int v;
+                                    istringstream(value) >> v;
+
+                                    val = v;
+                                }
+                            } catch(...) {
+                                string wrong_function_initialization_error = "Function initialization with attribute [" + attr_name + "] is not an integer value";
+
+                                throw std::runtime_error(wrong_function_initialization_error);
+                            }
+
+                            ground_literal l;
+
+                            l.predicate = pred.name;
+                            l.positive = true;
+                            
+                            /*
+                                For now, semantic mappings only involve one argument, which is of the hddl_type. With this in mind,
+                                we get the name attribute in the xml
+                            */
+                            for(string sort_type : pred.argument_sorts) {
+                                if(sort_type == hddl_type) {
+                                    l.args.push_back(child.second.get<string>("name"));
+                                }
+                            }
+
+                            init_functions.push_back(make_pair(l,val));
+                        }
                     }
                 } else {
                     string child_data = child.second.data();
@@ -338,22 +348,27 @@ void FileKnowledgeManager::initialize_ownership_mapping(SemanticMapping sm, pt::
                         if(relationship_type == attribute_relationship_type) {
                             string attribute_name = std::get<string>(sm.get_prop(attributename_key));
 
-                            pt::ptree attr_tree = child.second.get_child(attribute_name);
-                            BOOST_FOREACH(pt::ptree::value_type& attr_child, attr_tree) {
-                                if(attr_child.first == owned_type) {
-                                    if(sorts[owned_hddl_type].find(attr_child.second.get<string>("name")) != sorts[owned_hddl_type].end()) {
-                                        string owned_name = attr_child.second.get<string>("name");
-                                        owned_objects.insert(owned_name);
+                            boost::optional attr_tree_opt = child.second.get_child_optional(attribute_name);
 
-                                        ground_literal l;
+                            if(attr_tree_opt) {
+                                pt::ptree attr_tree = attr_tree_opt.get();
 
-                                        l.predicate = pred.name;
-                                        l.positive = true;
+                                BOOST_FOREACH(pt::ptree::value_type& attr_child, attr_tree) {
+                                    if(attr_child.first == owned_type) {
+                                        if(sorts[owned_hddl_type].find(attr_child.second.get<string>("name")) != sorts[owned_hddl_type].end()) {
+                                            string owned_name = attr_child.second.get<string>("name");
+                                            owned_objects.insert(owned_name);
 
-                                        l.args.push_back(owned_name);
-                                        l.args.push_back(owner_name);
+                                            ground_literal l;
 
-                                        init.push_back(l);
+                                            l.predicate = pred.name;
+                                            l.positive = true;
+
+                                            l.args.push_back(owned_name);
+                                            l.args.push_back(owner_name);
+
+                                            init.push_back(l);
+                                        }
                                     }
                                 }
                             }
@@ -447,18 +462,22 @@ void FileKnowledgeManager::initialize_relationship_mapping(SemanticMapping sm, p
 
                             vector<string> related_entities;
 
-                            pt::ptree attr_tree = child.second.get_child(attribute_name);
-                            if(attr_tree.empty() && !attr_tree.data().empty()) { //Key is value and not tree
-                                stringstream ss(attr_tree.data());
+                            boost::optional attr_tree_opt = child.second.get_child_optional(attribute_name);
 
-                                string temp;
-                                while(ss >> temp) {
-                                    related_entities.push_back(temp);
+                            if(attr_tree_opt) {
+                                pt::ptree attr_tree = attr_tree_opt.get();
+                                if(attr_tree.empty() && !attr_tree.data().empty()) { //Key is value and not tree
+                                    stringstream ss(attr_tree.data());
+
+                                    string temp;
+                                    while(ss >> temp) {
+                                        related_entities.push_back(temp);
+                                    }
+                                } else if(!attr_tree.empty() && attr_tree.data().empty()) {
+                                    BOOST_FOREACH(pt::ptree::value_type related_entity, attr_tree) {
+                                        related_entities.push_back(related_entity.second.data());
+                                    }    
                                 }
-                            } else if(!attr_tree.empty() && attr_tree.data().empty()) {
-                                BOOST_FOREACH(pt::ptree::value_type related_entity, attr_tree) {
-                                    related_entities.push_back(related_entity.second.data());
-                                }    
                             }
                         }
                     }            
