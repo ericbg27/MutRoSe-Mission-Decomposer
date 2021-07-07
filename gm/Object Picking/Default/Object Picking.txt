@@ -57,7 +57,7 @@
             "Description": "",
             "GoalType": "Query",
             "Controls": "objects : Sequence(Object)",
-            "QueriedProperty": "current_room.objects->select(o:Object | )",
+            "QueriedProperty": "current_room.objects->select(o:Object | !o.is_picked)",
             "Monitors": "current_room"
           }
         },
@@ -70,7 +70,7 @@
           "customProperties": {
             "Description": "",
             "GoalType": "Achieve",
-            "AchieveCondition": "objects->forAll(obj | obj.picked)",
+            "AchieveCondition": "objects->forAll(obj | obj.is_picked)",
             "Monitors": "objects, current_room",
             "Controls": "obj : Object"
           }
@@ -94,31 +94,31 @@
   "dependencies": [],
   "links": [
     {
-      "id": "86a0d2d4-e657-402f-aaec-3e18f4b032b7",
+      "id": "cedca26d-62dd-4b0a-b417-d03a717ee120",
       "type": "istar.AndRefinementLink",
       "source": "ce69cf82-bf83-4ad6-b04b-92e50bc9c62d",
       "target": "e55ae68a-d27e-4fb2-8090-e3be66d56c07"
     },
     {
-      "id": "5f86a91a-05f0-44fd-b814-e62051ad3b51",
+      "id": "4451231d-f10f-48a7-88fe-b1533b339bc0",
       "type": "istar.AndRefinementLink",
       "source": "06631305-b4d6-456c-bb13-880f644f8fd9",
       "target": "e55ae68a-d27e-4fb2-8090-e3be66d56c07"
     },
     {
-      "id": "e0c6c355-1181-4e83-b728-a67453c6228a",
+      "id": "a51782ee-5fe6-4de0-887c-efa15bad552e",
       "type": "istar.AndRefinementLink",
       "source": "51099262-fd4c-4d23-a56b-ef22c2274ce6",
       "target": "06631305-b4d6-456c-bb13-880f644f8fd9"
     },
     {
-      "id": "3c3fdf1f-8e67-43d3-a1eb-2dd1b1d595e8",
+      "id": "81111243-96fa-4a4d-892e-20cdac835487",
       "type": "istar.AndRefinementLink",
       "source": "ecc9478d-d342-44ff-9f88-3a92bff96f64",
       "target": "06631305-b4d6-456c-bb13-880f644f8fd9"
     },
     {
-      "id": "77134880-1a01-4b0d-ae89-40468ffe24c4",
+      "id": "4f03048a-6035-499c-b33d-dccfb3cecb3a",
       "type": "istar.AndRefinementLink",
       "source": "997d0bc7-c6a6-4b44-91b4-62b4a1206a07",
       "target": "ecc9478d-d342-44ff-9f88-3a92bff96f64"
@@ -152,7 +152,7 @@
   },
   "tool": "pistar.2.0.0",
   "istar": "2.0",
-  "saveDate": "Mon, 12 Apr 2021 12:43:52 GMT",
+  "saveDate": "Wed, 07 Jul 2021 13:33:34 GMT",
   "diagram": {
     "width": 2000,
     "height": 1300,
