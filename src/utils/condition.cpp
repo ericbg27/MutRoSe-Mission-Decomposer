@@ -17,7 +17,8 @@ void Condition::set_condition(string cond) {
 }
 
 variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<variant<int,float>,variant<bool,string>>>,bool> Condition::evaluate_condition(variant<pair<string,string>,pair<vector<string>,string>> var_value_and_type, vector<SemanticMapping> semantic_mapping) {
-    regex r1("(((\\bnot\\b)[ ]+)?[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}"); // (not) [VAR].[ATTR]
+    //regex r1("(((\\bnot\\b)[ ]+)?[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}"); // (not) [VAR].[ATTR]
+    regex r1("([!]?[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}"); // ![VAR].[ATTR]
     regex r2("[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+[\"][A-Za-z0-9]*[\"]){1}"); // [VAR].[ATTR] = "[VALUE]" || [VAR].[ATTR] <> "[VALUE]"
     regex r3("[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+([0-9]*[.])?[0-9]+){1}"); // [VAR].[ATTR] = [INTVALUE | FLOATVALUE] || [VAR].[ATTR] <> [INTVALUE | FLOATVALUE]
     regex r4("[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((>)|(<)|(>=)|(<=)){1}[ ]+([0-9]*[.])?[0-9]+){1}"); // [VAR].[ATTR] > [INTVALUE | FLOATVALUE] || [VAR].[ATTR] < [INTVALUE | FLOATVALUE] || [VAR].[ATTR] >= [INTVALUE | FLOATVALUE] || [VAR].[ATTR] <= [INTVALUE | FLOATVALUE]
@@ -42,10 +43,10 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate
 
         bool negative_condition = false;
         string variable, attribute;
-        if(split_cond.at(0) == "not") {
+        if(split_cond.at(0).find("!") == 0) {
             negative_condition = true;
-            variable = split_cond.at(1);
-            attribute = split_cond.at(2);
+            variable = split_cond.at(0).substr(1);
+            attribute = split_cond.at(1);
         } else {
             variable = split_cond.at(0);
             attribute = split_cond.at(1);
@@ -71,6 +72,7 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate
                         if(relation == value_and_type.second) {
                             if(std::get<string>(sm.get_prop("name")) == attribute) {
                                 map_pred = std::get<predicate_definition>(sm.get_prop("map"));
+                                
                                 break;
                             }
                         }
@@ -97,6 +99,10 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate
             }
         
             pred_args.push_back(value_and_type.first);
+        }
+
+        if(map_pred.name == "") {
+            invalid_condition = true;
         }
 
         if(!invalid_condition) {
@@ -168,6 +174,7 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate
                         if(relation == value_and_type.second) {
                             if(std::get<string>(sm.get_prop("name")) == attribute) {
                                 map_pred = std::get<predicate_definition>(sm.get_prop("map"));
+
                                 break;
                             }
                         }
@@ -186,6 +193,7 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate
                         if(relation == value_and_type.second) {
                             if(std::get<string>(sm.get_prop("name")) == attribute) {
                                 map_pred = std::get<predicate_definition>(sm.get_prop("map"));
+
                                 break;
                             }
                         }
@@ -196,15 +204,21 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate
             pred_args.push_back(value_and_type.first);
         }
 
-        variant<int,float> pred_value;
-
-        if(split_cond.at(3).find(".") == string::npos) {
-            pred_value = stoi(split_cond.at(3));
-        } else {
-            pred_value = static_cast<float>(::atof(split_cond.at(3).c_str()));
+        if(map_pred.name == "") {
+            invalid_condition = true;
         }
 
-        return make_pair(make_pair(map_pred,pred_args),make_pair(pred_value,negative_condition));
+        if(!invalid_condition) {
+            variant<int,float> pred_value;
+
+            if(split_cond.at(3).find(".") == string::npos) {
+                pred_value = stoi(split_cond.at(3));
+            } else {
+                pred_value = static_cast<float>(::atof(split_cond.at(3).c_str()));
+            }
+
+            return make_pair(make_pair(map_pred,pred_args),make_pair(pred_value,negative_condition));
+        }
     } else if(regex_match(condition, r4)) {
         std::replace(cond.begin(), cond.end(), '.', ' ');
 
@@ -243,6 +257,7 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate
                         if(relation == value_and_type.second) {
                             if(std::get<string>(sm.get_prop("name")) == attribute) {
                                 map_pred = std::get<predicate_definition>(sm.get_prop("map"));
+
                                 break;
                             }
                         }
@@ -261,6 +276,7 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate
                         if(relation == value_and_type.second) {
                             if(std::get<string>(sm.get_prop("name")) == attribute) {
                                 map_pred = std::get<predicate_definition>(sm.get_prop("map"));
+
                                 break;
                             }
                         }
@@ -271,16 +287,22 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate
             pred_args.push_back(value_and_type.first);
         }
 
-        string op = split_cond.at(2);
-        variant<int,float> pred_value;
-
-        if(split_cond.at(3).find(".") == string::npos) {
-            pred_value = stoi(split_cond.at(3));
-        } else {
-            pred_value = static_cast<float>(::atof(split_cond.at(3).c_str()));
+        if(map_pred.name == "") {
+            invalid_condition = true;
         }
 
-        return make_pair(make_pair(map_pred,pred_args),make_pair(pred_value,op));
+        if(!invalid_condition) {
+            string op = split_cond.at(2);
+            variant<int,float> pred_value;
+
+            if(split_cond.at(3).find(".") == string::npos) {
+                pred_value = stoi(split_cond.at(3));
+            } else {
+                pred_value = static_cast<float>(::atof(split_cond.at(3).c_str()));
+            }
+
+            return make_pair(make_pair(map_pred,pred_args),make_pair(pred_value,op));
+        }
     } else if(condition == "") {
         return true;
     } else {
