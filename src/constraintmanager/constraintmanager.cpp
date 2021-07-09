@@ -21,7 +21,6 @@ vector<Constraint> ConstraintManager::generate_mission_constraints() {
     
     if(!is_unique) {
         pair<ATGraph,map<int,int>> trimmed_mission_decomposition_data = generate_trimmed_at_graph(mission_decomposition);
-
         ATGraph trimmed_mission_decomposition = trimmed_mission_decomposition_data.first;
 
         generate_at_constraints(trimmed_mission_decomposition);
@@ -46,12 +45,14 @@ vector<Constraint> ConstraintManager::generate_mission_constraints() {
     trim_mission_constraints();
 
     if(verbose) {
-        vector<Constraint> sequential_constraints, execution_constraints;
+        vector<Constraint> sequential_constraints, execution_constraints, fallback_constraints;
         for(Constraint c : mission_constraints) {
             if(c.type == SEQ) {
                 sequential_constraints.push_back(c);
-            } else {
+            } else if(c.type == NC) {
                 execution_constraints.push_back(c);
+            } else if(c.type == FB) {
+                fallback_constraints.push_back(c);
             }
         }
 
@@ -73,6 +74,16 @@ vector<Constraint> ConstraintManager::generate_mission_constraints() {
         for(Constraint c : execution_constraints) {
             std::cout << get<Decomposition>(c.nodes_involved.first.second.content).id;
             std::cout << " EC ";
+            std::cout << get<Decomposition>(c.nodes_involved.second.second.content).id;
+            std::cout << std::endl;
+        }
+
+        std::cout << std::endl;
+        std::cout << "Number of fallback constraints: " << fallback_constraints.size() << std::endl;
+        std::cout << "Fallback Constraints:" << std::endl; 
+        for(Constraint c : fallback_constraints) {
+            std::cout << get<Decomposition>(c.nodes_involved.first.second.content).id;
+            std::cout << " FB ";
             std::cout << get<Decomposition>(c.nodes_involved.second.second.content).id;
             std::cout << std::endl;
         }
@@ -115,7 +126,7 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
     pair<int,int> current_root_node = make_pair(depth_first_nodes.at(0),1);
 
     unsigned int dfs_node_index;
-    for(dfs_node_index = 1;dfs_node_index < depth_first_nodes.size();dfs_node_index++) { 
+    for(dfs_node_index = 1;dfs_node_index < depth_first_nodes.size();dfs_node_index++) {
         int current_node_index = dfs_node_index;
 
         pair<int,ATNode> current_node = make_pair(current_node_index, trimmed_mission_decomposition[current_node_index]);
@@ -138,6 +149,10 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
 
             current_root_node.first = current_node.first;
             current_root_node.second = dfs_node_index+1;
+
+            if(last_op != "") {
+                last_op = std::get<string>(operators_stack.top().second.content);
+            }
         } else if(current_node.second.parent == current_root_node.first && current_node_index != depth_first_nodes.at(current_root_node.second) && !holds_alternative<AbstractTask>(current_node.second.content)) {
             pair<int,ATNode> artificial_node;
             artificial_node.first = -1;
@@ -146,9 +161,52 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
 
             current_root_node.first = current_node.first;
             current_root_node.second = dfs_node_index+1;
+
+            if(last_op != "") {
+                last_op = std::get<string>(operators_stack.top().second.content);
+            }
         } else if(current_node.second.parent == current_root_node.first && current_node_index != depth_first_nodes.at(current_root_node.second) && holds_alternative<AbstractTask>(current_node.second.content)) {
             current_branch_operators_stack.push(make_pair(current_root_node.first,trimmed_mission_decomposition[current_root_node.first]));
+
+            if(last_op != "") {
+                last_op = std::get<string>(operators_stack.top().second.content);
+            }
         }
+
+        /*stack<variant<pair<int,ATNode>,Constraint>> n_stack_cpy = current_branch_nodes_stack;
+        std::cout << "-------------------------------------------------------------------------" << std::endl;
+        std::cout << "NODES STACK:" << std::endl;
+        while(!n_stack_cpy.empty()) {
+            if(holds_alternative<pair<int,ATNode>>(n_stack_cpy.top())) {
+                pair<int,ATNode> node = std::get<pair<int,ATNode>>(n_stack_cpy.top());
+
+                std::cout << node.first << std::endl;
+            } else {
+                Constraint node = std::get<Constraint>(n_stack_cpy.top());
+
+                std::cout << node.nodes_involved.first.first << " ";
+                if(node.type == PAR) {
+                    std::cout << parallel_op;
+                } else if(node.type == SEQ) {
+                    std::cout << sequential_op;
+                } else if(node.type == FB) {
+                    std::cout << "FB";
+                }
+                std::cout << " " << node.nodes_involved.second.first << std::endl;
+            }
+
+            n_stack_cpy.pop();
+        }
+
+        stack<pair<int,ATNode>> op_stack_cpy = current_branch_operators_stack;
+        std::cout << std::endl;
+        std::cout << "OPERATORS STACK:" << std::endl;
+        while(!op_stack_cpy.empty()) {
+            std::cout << op_stack_cpy.top().first << std::endl;
+
+            op_stack_cpy.pop();
+        }
+        std::cout << "-------------------------------------------------------------------------" << std::endl;*/
 
         if(current_node.second.node_type == ATASK) {
             current_branch_nodes_stack.push(current_node);
@@ -182,7 +240,9 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
                                 - If we have a parallel operator we take into consideration all of the constraints we have until reaching one that has id -1 or the
                                 first created constraint
                     */
-                    if(std::get<string>(current_branch_operators_stack.top().second.content) == "#") {
+                    //std::cout << "TASK " << current_node.first << std::endl;
+                    //std::cout << "OP STACK TOP: " << std::get<string>(current_branch_operators_stack.top().second.content) << std::endl;
+                    if(std::get<string>(current_branch_operators_stack.top().second.content) == parallel_op || std::get<string>(current_branch_operators_stack.top().second.content) == fallback_op) {
                         /*
                             While we don't reach an artificial node or the end of the nodes stack we populate our temporary vector
                         */
@@ -205,6 +265,8 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
                             }
                         }
 
+                        constraint_type ctype = (std::get<string>(current_branch_operators_stack.top().second.content) == parallel_op ? PAR : FB);
+
                         /*
                             Using the temporary vector, generate the constraints, delete AT's and generate the new constraints
 
@@ -222,7 +284,7 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
                                 /*
                                     We are dealing with a task, so we need to build a constraint with it
                                 */
-                                Constraint c = generate_constraint(std::get<pair<int,ATNode>>(temp.front()), last_task, PAR);
+                                Constraint c = generate_constraint(std::get<pair<int,ATNode>>(temp.front()), last_task, ctype);
 
                                 existing_constraints[c.nodes_involved.first.first].insert(c.nodes_involved.second.first);
 
@@ -237,8 +299,8 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
 
                                 pair<pair<int,ATNode>,pair<int,ATNode>> constraint_nodes = get<Constraint>(temp.front()).nodes_involved;
 
-                                c1 = generate_constraint(constraint_nodes.first, last_task, PAR);
-                                c2 = generate_constraint(constraint_nodes.second, last_task, PAR);
+                                c1 = generate_constraint(constraint_nodes.first, last_task, ctype);
+                                c2 = generate_constraint(constraint_nodes.second, last_task, ctype);
 
                                 if(existing_constraints[constraint_nodes.second.first].find(last_task.first) == existing_constraints[constraint_nodes.second.first].end()) {
                                     existing_constraints[constraint_nodes.second.first].insert(last_task.first);
@@ -265,9 +327,9 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
                             new_constraints.pop();
                         }
 
-                        last_op = "#";
+                        last_op = (ctype == PAR ? parallel_op : fallback_op);
                     } else {
-                        if(last_op == "#") {
+                        if(last_op == parallel_op) {
                             /*
                                 If the last operator was parallel, we need to create constraints with all of the constraints (and their tasks) until we reach a sequential
                                 constraint, where we will create a constraint with the last involved task
@@ -362,8 +424,7 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
                                 current_branch_nodes_stack.push(new_constraints.top());
                                 new_constraints.pop();
                             }
-
-                        } else if(last_op == ";") {
+                        } else if(last_op == sequential_op) {
                             /*
                                 If the last operator was sequential, we just need to create a constraint with the last constraint in the stack
 
@@ -379,6 +440,79 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
 
                             current_branch_nodes_stack.push(new_constraint);
                             existing_constraints[last_constraint.nodes_involved.second.first].insert(last_task.first);
+                        } else if(last_op == fallback_op) {
+                            /*
+                                If the last operator was a fallback, we need to create constraints with all of the constraints (and their tasks) until we reach an artificial
+                                node
+                            */
+                            queue<variant<pair<int,ATNode>,Constraint>> temp;
+                            bool end_reached = false;
+                            while(!end_reached) {
+                                if(holds_alternative<pair<int,ATNode>>(current_branch_nodes_stack.top())) {
+                                    if(get<pair<int,ATNode>>(current_branch_nodes_stack.top()).first == -1) {
+                                        end_reached = true;
+                                    }
+                                }
+
+                                if(!end_reached) {
+                                    temp.push(current_branch_nodes_stack.top());
+                                    current_branch_nodes_stack.pop();
+                                }
+
+                                if(current_branch_nodes_stack.empty()) {
+                                    end_reached = true;
+                                }
+                            }
+
+                            pair<int,ATNode> last_task = get<pair<int,ATNode>>(temp.front());
+                            temp.pop();
+
+                            stack<Constraint> new_constraints;
+                            stack<Constraint> old_constraints;
+
+                            while(!temp.empty()) {
+                                if(holds_alternative<pair<int,ATNode>>(temp.front())) {
+                                    /*
+                                        We are dealing with a task, so we need to build a constraint with it
+                                    */
+                                    Constraint c = generate_constraint(std::get<pair<int,ATNode>>(temp.front()),last_task, FB);
+
+                                    existing_constraints[c.nodes_involved.first.first].insert(c.nodes_involved.second.first);
+
+                                    new_constraints.push(c);
+                                    temp.pop();
+                                } else {
+                                    Constraint c1, c2;
+
+                                    pair<pair<int,ATNode>,pair<int,ATNode>> constraint_nodes = get<Constraint>(temp.front()).nodes_involved;
+
+                                    c1 = generate_constraint(constraint_nodes.first, last_task, FB);
+                                    c2 = generate_constraint(constraint_nodes.second, last_task, FB);
+
+                                    if(existing_constraints[constraint_nodes.second.first].find(last_task.first) == existing_constraints[constraint_nodes.second.first].end()) {
+                                        existing_constraints[constraint_nodes.second.first].insert(last_task.first);
+                                        new_constraints.push(c2);
+                                    }
+
+                                    if(existing_constraints[constraint_nodes.first.first].find(last_task.first) == existing_constraints[constraint_nodes.first.first].end()) {
+                                        existing_constraints[constraint_nodes.first.first].insert(last_task.first);
+                                        new_constraints.push(c1);
+                                    }
+
+                                    old_constraints.push(std::get<Constraint>(temp.front()));
+                                    temp.pop();
+                                }
+                            }
+
+                            while(!old_constraints.empty()) {
+                                current_branch_nodes_stack.push(old_constraints.top());
+                                old_constraints.pop();
+                            }
+
+                            while(!new_constraints.empty()) {
+                                current_branch_nodes_stack.push(new_constraints.top());
+                                new_constraints.pop();
+                            }
                         } else { 
                             /*
                                 If no operator was considered yet, we need to create a constraint with another task
@@ -397,7 +531,7 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
                             existing_constraints[c.nodes_involved.first.first].insert(c.nodes_involved.second.first);
                         }
 
-                        last_op = ";";
+                        last_op = sequential_op;
                     }
 
                     current_branch_operators_stack.pop();
@@ -484,10 +618,12 @@ void ConstraintManager::generate_constraints_from_stacks(stack<pair<int,ATNode>>
             aux_stack.pop();
         }
 
-        if(get<string>(current_op.second.content) == "#") {
+        if(std::get<string>(current_op.second.content) == parallel_op || std::get<string>(current_op.second.content) == fallback_op) {
             /*
-                If we have a parallel operator we need to create parallel constraints for all tasks that are not in the existing constraints map
+                If we have a parallel/fallback operator we need to create parallel constraints for all tasks that are not in the existing constraints map
             */
+            constraint_type ctype = (std::get<string>(current_op.second.content) == parallel_op ? PAR : FB);
+
             vector<vector<Constraint>> constraint_branches;
             vector<Constraint> aux;
             while(!considered_nodes.empty()) {
@@ -502,7 +638,7 @@ void ConstraintManager::generate_constraints_from_stacks(stack<pair<int,ATNode>>
                         pair<int,ATNode> artificial_node;
                         artificial_node.first = -1;
 
-                        Constraint c = generate_constraint(top_node, artificial_node, PAR);
+                        Constraint c = generate_constraint(top_node, artificial_node, ctype);
                         aux.push_back(c);
                     }
                 } else {
@@ -534,19 +670,19 @@ void ConstraintManager::generate_constraints_from_stacks(stack<pair<int,ATNode>>
 
                                 Constraint nc1,nc2,nc3,nc4;
 
-                                nc1 = generate_constraint(c1.nodes_involved.first, c2.nodes_involved.first, PAR);
+                                nc1 = generate_constraint(c1.nodes_involved.first, c2.nodes_involved.first, ctype);
 
-                                nc2 = generate_constraint(c1.nodes_involved.first, c2.nodes_involved.second, PAR);
+                                nc2 = generate_constraint(c1.nodes_involved.first, c2.nodes_involved.second, ctype);
                                 if(c2.nodes_involved.second.first == -1) {
                                     nc2.type = NEX;
                                 }
 
-                                nc3 = generate_constraint(c1.nodes_involved.second, c2.nodes_involved.first, PAR);
+                                nc3 = generate_constraint(c1.nodes_involved.second, c2.nodes_involved.first, ctype);
                                 if(c1.nodes_involved.second.first == -1) {
                                     nc3.type = NEX;
                                 }
 
-                                nc4 = generate_constraint(c1.nodes_involved.second, c2.nodes_involved.second, PAR);
+                                nc4 = generate_constraint(c1.nodes_involved.second, c2.nodes_involved.second, ctype);
                                 if(c1.nodes_involved.second.first == -1 || c2.nodes_involved.second.first == -1) {
                                     nc4.type = NEX;
                                 }
@@ -585,7 +721,7 @@ void ConstraintManager::generate_constraints_from_stacks(stack<pair<int,ATNode>>
                     }
                 }
             }
-        } else if(get<string>(current_op.second.content) == ";") {
+        } else if(get<string>(current_op.second.content) == sequential_op) {
             /*
                 If we have a sequential operator, we just need to create additional constraints between the constraints that are between artificial nodes
             */
@@ -830,6 +966,36 @@ void ConstraintManager::transform_at_constraints() {
 
                         transformed_constraints.push_back(new_c);
                     }
+                }
+            }
+        } else if(c.type == FB) {
+            pair<int,ATNode> n1 = c.nodes_involved.first;
+            pair<int,ATNode> n2 = c.nodes_involved.second;
+
+            vector<pair<int,ATNode>> n1_decompositions, n2_decompositions;
+            
+            if(constraint_nodes_decompositions.find(n1.first) != constraint_nodes_decompositions.end()) {
+                n1_decompositions = constraint_nodes_decompositions[n1.first];
+            } else {
+                n1_decompositions = find_decompositions(mission_decomposition,n1.first);
+
+                constraint_nodes_decompositions[n1.first] = n1_decompositions;
+            }
+
+            if(constraint_nodes_decompositions.find(n2.first) != constraint_nodes_decompositions.end()) {
+                n2_decompositions = constraint_nodes_decompositions[n2.first];
+            } else {
+                n2_decompositions = find_decompositions(mission_decomposition,n2.first);
+
+                constraint_nodes_decompositions[n2.first] = n2_decompositions;
+            }
+
+            unsigned int i,j;
+            for(i=0;i<n1_decompositions.size();i++) {
+                for(j=0;j<n2_decompositions.size();j++) {
+                    Constraint new_c = generate_constraint(n1_decompositions.at(i), n2_decompositions.at(j), FB);
+
+                    transformed_constraints.push_back(new_c);
                 }
             }
         } else {

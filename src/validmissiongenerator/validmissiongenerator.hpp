@@ -24,6 +24,7 @@ class ValidMissionGenerator {
 
         void check_parallel_op_children(std::queue<std::pair<int,ATNode>>& mission_queue, std::map<int,std::vector<std::variant<ground_literal,std::pair<ground_literal,std::variant<int,float>>>>>& children_effects, int depth, std::pair<int,ATNode> current_node);
         void check_sequential_op_children(std::queue<std::pair<int,ATNode>>& mission_queue, std::map<int,std::vector<std::variant<ground_literal,std::pair<ground_literal,std::variant<int,float>>>>>& children_effects, int depth, std::pair<int,ATNode> current_node);
+        void check_fallback_op_children(std::queue<std::pair<int,ATNode>>& mission_queue, std::map<int,std::vector<std::variant<ground_literal,std::pair<ground_literal,std::variant<int,float>>>>>& children_effects, int depth, std::pair<int,ATNode> current_node);
 
         void check_conditions(std::map<int, std::vector<std::variant<ground_literal,std::pair<ground_literal,std::variant<int,float>>>>> effects_to_apply, std::pair<int,ATNode> current_node);
         void solve_conflicts(std::map<int,std::vector<std::variant<ground_literal,std::pair<ground_literal,std::variant<int,float>>>>> children_effects);

@@ -3,7 +3,7 @@
 
 #include "../missiondecomposer/missiondecomposer.hpp"
 
-enum constraint_type {SEQ,PAR,NC,NEX};
+enum constraint_type {SEQ,PAR,NC,NEX,FB};
 
 // Constraint involving two different abstract tasks/decompositions
 struct Constraint {
