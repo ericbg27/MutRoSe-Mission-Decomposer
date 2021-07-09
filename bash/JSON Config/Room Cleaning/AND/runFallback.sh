@@ -1,0 +1,1 @@
+./pandaPIparser hddl/Room\ Cleaning/AND/Room\ Cleaning\ Fallback.hddl gm/Room\ Cleaning/AND/RoomCleaningFallback.txt configs/JSON/Room\ Cleaning/AND/configurationFallback.json -v

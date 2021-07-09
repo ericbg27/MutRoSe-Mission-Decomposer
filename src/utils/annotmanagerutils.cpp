@@ -113,7 +113,7 @@ void rename_at_instances_in_runtime_annot(general_annot* gmannot, map<string,vec
         at_instances_counter[task_id] = 0;
     }
 
-    if(gmannot->content == "#" && gmannot->related_goal == "") {
+    if(gmannot->content == parallel_op && gmannot->related_goal == "") {
         //Dealing with a forAll in the root
         for(general_annot* child : gmannot->children) {
             recursive_at_instances_renaming(child, at_instances_counter, true, at_instances, gm);
@@ -137,7 +137,7 @@ void rename_at_instances_in_runtime_annot(general_annot* gmannot, map<string,vec
     @ Output: Void. The runtime goal model annotation is renamed
 */ 
 void recursive_at_instances_renaming(general_annot* rannot, map<string,int>& at_instances_counter, bool in_forAll, map<string,vector<AbstractTask>> at_instances, GMGraph gm) {
-    set<string> operators {";","#","FALLBACK","OPT","|"};
+    set<string> operators {sequential_op,parallel_op,fallback_op,"OPT","|"};
 
     set<string>::iterator op_it;
 
@@ -158,7 +158,7 @@ void recursive_at_instances_renaming(general_annot* rannot, map<string,int>& at_
             }
         }
     } else {
-        if(rannot->content == "#" && rannot->related_goal == "") {
+        if(rannot->content == parallel_op && rannot->related_goal == "") {
             for(general_annot* child : rannot->children) {
                 recursive_at_instances_renaming(child, at_instances_counter, true, at_instances, gm);
             }
@@ -193,7 +193,7 @@ void print_runtime_annot_from_general_annot(general_annot* rt) {
     @ Output: The current runtime annotation string
 */ 
 string recursive_rt_annot_build(general_annot* rt) {
-    set<string> operators {";","#","FALLBACK","OPT","|"};
+    set<string> operators {sequential_op,parallel_op,fallback_op,"OPT","|"};
 
     set<string>::iterator op_it;
 
@@ -208,7 +208,7 @@ string recursive_rt_annot_build(general_annot* rt) {
             string child = recursive_rt_annot_build(rt->children.at(0));
 
             annot += "OPT(" + child + ")";
-        } else if(rt->content == "FALLBACK") {
+        } else if(rt->content == fallback_op) {
             vector<string> children;
             for(general_annot* child : rt->children) {
                 children.push_back(recursive_rt_annot_build(child));

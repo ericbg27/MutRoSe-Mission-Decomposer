@@ -11,11 +11,6 @@
 
 enum annot_manager_type {FILEANNOTMANAGER};
 
-//###################################################### CONSTANTS DECLARATION #################################################################
-const std::string sequential_op = ";";
-const std::string parallel_op = "#";
-//##############################################################################################################################################
-
 class AnnotManager {
     public:
         virtual general_annot* retrieve_gm_annot() = 0;

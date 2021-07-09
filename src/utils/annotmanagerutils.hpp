@@ -11,6 +11,12 @@
 
 namespace pt = boost::property_tree;
 
+//###################################################### CONSTANTS DECLARATION #################################################################
+const std::string sequential_op = ";";
+const std::string parallel_op = "#";
+const std::string fallback_op = "FALLBACK";
+//##############################################################################################################################################
+
 enum rannot_type {OPERATOR, GOAL, TASK, MEANSEND}; //Goal type is useless (needs checking!)
 
 struct general_annot {

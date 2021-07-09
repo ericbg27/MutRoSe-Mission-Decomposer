@@ -114,10 +114,12 @@ map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>>
        */
         string op = std::get<string>(current_node.second.content);
 
-        if(op == "#") {
+        if(op == parallel_op) {
             check_parallel_op_children(mission_queue, children_effects, depth, current_node);
-        } else if(op == ";") {
+        } else if(op == sequential_op) {
             check_sequential_op_children(mission_queue, children_effects, depth, current_node);
+        } else if(op == fallback_op) {
+            check_fallback_op_children(mission_queue, children_effects, depth, current_node);
         }
 
         /*
@@ -633,6 +635,102 @@ void ValidMissionGenerator::check_parallel_op_children(queue<pair<int,ATNode>>& 
     solve_conflicts(children_effects);
 }
 
+void ValidMissionGenerator::check_fallback_op_children(queue<pair<int,ATNode>>& mission_queue, map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>>& children_effects, int depth, pair<int,ATNode> current_node) {
+    bool checking_children = true;
+
+    vector<pair<vector<pair<int,ATNode>>,set<int>>> initial_decompositions = valid_mission_decompositions;
+
+    vector<vector<pair<vector<pair<int,ATNode>>,set<int>>>> child_decompositions;
+    
+    while(checking_children) {
+        if(mission_queue.size() == 0) {
+            break;
+        }
+        pair<int,ATNode> next_node = mission_queue.front();
+
+        bool is_child = false;
+
+        ATGraph::out_edge_iterator ei, ei_end;
+        for(boost::tie(ei,ei_end) = out_edges(current_node.first,mission_decomposition);ei != ei_end;++ei) {
+            int source = boost::source(*ei,mission_decomposition);
+            int target = boost::target(*ei,mission_decomposition);
+            auto edge = boost::edge(source,target,mission_decomposition).first;
+
+            int children_num = 0;
+            ATGraph::out_edge_iterator target_ei, target_ei_end;
+            for(boost::tie(target_ei,target_ei_end) = out_edges(target,mission_decomposition);target_ei != target_ei_end;++target_ei) {
+                children_num++;
+            }
+
+            /*
+                If we have a goal node as child we have to search its children for the next node
+            */
+            if(mission_decomposition[target].node_type == GOALNODE || (mission_decomposition[target].node_type == OP && children_num < 2)) {
+                bool goal_node = true;
+                int child_id = target;
+                while(goal_node) {
+                    ATGraph::out_edge_iterator ci, ci_end;
+                    for(boost::tie(ci,ci_end) = out_edges(child_id,mission_decomposition);ci != ci_end;++ci) {
+                        int s = boost::source(*ci,mission_decomposition);
+                        int t = boost::target(*ci,mission_decomposition);
+                        auto e = boost::edge(s,t,mission_decomposition).first;
+
+                        /*
+                            A goal node only has a goal as child if it has a Means-end decomposition
+                        */
+                        if(mission_decomposition[t].node_type != GOALNODE) {
+                            goal_node = false;
+                            if(mission_decomposition[e].edge_type == NORMALAND || mission_decomposition[e].edge_type == NORMALOR) {
+                                if(t == next_node.first) {
+                                    is_child = true;
+                                    break;
+                                }
+                            }
+                        } else {
+                            child_id = t;
+                        }
+                    }
+                }
+
+                if(is_child) {
+                    break;
+                }
+            } else {
+                if(mission_decomposition[edge].edge_type == NORMALAND || mission_decomposition[edge].edge_type == NORMALOR) {
+                    if(target == next_node.first) {
+                        is_child = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if(is_child) {
+            map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>> child_effects;
+            child_effects = recursive_valid_mission_decomposition("#", mission_queue, depth, child_effects);
+
+            vector<int> aux;
+            map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>>::iterator ceff_it;
+            for(ceff_it = child_effects.begin(); ceff_it != child_effects.end(); ++ceff_it) {
+                if(children_effects.find(ceff_it->first) == children_effects.end()) {
+                    children_effects[ceff_it->first] = ceff_it->second;
+                } else {
+                    vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>> aux = children_effects[ceff_it->first];
+                    aux.insert(aux.end(), ceff_it->second.begin(), ceff_it->second.end());
+
+                    children_effects[ceff_it->first] = aux;
+                }
+
+                aux.push_back(ceff_it->first);
+            }
+                
+            child_effects.clear();
+        } else {
+            checking_children = false;
+        }
+    }
+}
+
 /*
     Function: generate_mission_queue
     Objective: Generate the mission queue based on the Task Graph
@@ -1022,7 +1120,7 @@ vector<ground_literal> ValidMissionGenerator::apply_pred_effects(map<int,vector<
     return ws;
 }
 
-void ValidMissionGenerator::solve_conflicts(std::map<int,std::vector<std::variant<ground_literal,std::pair<ground_literal,variant<int,float>>>>> children_effects) {
+void ValidMissionGenerator::solve_conflicts(map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>> children_effects) {
     /*
         -> Verify in the children effects if we have any conflicts for each mission decomposition
             - If there is, erase the decomposition

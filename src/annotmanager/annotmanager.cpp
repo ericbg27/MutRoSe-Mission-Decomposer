@@ -179,7 +179,7 @@ void AnnotManager::expand_forall_annot(general_annot* node_annot, int generated_
     @ Output: Void. The runtime goal model annotation is generated
 */ 
 void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* node_annot, vector<int> &vctr,  pt::ptree worlddb, int current_node, std::map<int,AchieveCondition> valid_forAll_conditions) {    
-    set<string> operators {sequential_op,parallel_op,"FALLBACK","OPT","|"};
+    set<string> operators {sequential_op,parallel_op,fallback_op,"OPT","|"};
 
     set<string>::iterator op_it;
 
@@ -224,6 +224,10 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
 
     if(node_annot->content == sequential_op && node_annot->or_decomposition) {
         string sequential_or_error = "OR decomposed goal cannot have sequential runtime annotations";
+
+        throw std::runtime_error(sequential_or_error);
+    } else if(node_annot->content == fallback_op && node_annot->or_decomposition) {
+        string sequential_or_error = "OR decomposed goal cannot have fallback runtime annotations";
 
         throw std::runtime_error(sequential_or_error);
     }
