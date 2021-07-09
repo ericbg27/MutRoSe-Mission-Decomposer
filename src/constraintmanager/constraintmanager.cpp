@@ -149,10 +149,6 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
 
             current_root_node.first = current_node.first;
             current_root_node.second = dfs_node_index+1;
-
-            if(last_op != "") {
-                last_op = std::get<string>(operators_stack.top().second.content);
-            }
         } else if(current_node.second.parent == current_root_node.first && current_node_index != depth_first_nodes.at(current_root_node.second) && !holds_alternative<AbstractTask>(current_node.second.content)) {
             pair<int,ATNode> artificial_node;
             artificial_node.first = -1;
@@ -161,52 +157,24 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
 
             current_root_node.first = current_node.first;
             current_root_node.second = dfs_node_index+1;
-
-            if(last_op != "") {
-                last_op = std::get<string>(operators_stack.top().second.content);
-            }
         } else if(current_node.second.parent == current_root_node.first && current_node_index != depth_first_nodes.at(current_root_node.second) && holds_alternative<AbstractTask>(current_node.second.content)) {
-            current_branch_operators_stack.push(make_pair(current_root_node.first,trimmed_mission_decomposition[current_root_node.first]));
+            int last_child;
+            
+            ATGraph::out_edge_iterator ei, ei_end;
+            for(boost::tie(ei,ei_end) = out_edges(current_node.second.parent,trimmed_mission_decomposition);ei != ei_end;++ei) {
+                int source = boost::source(*ei,trimmed_mission_decomposition);
+                int target = boost::target(*ei,trimmed_mission_decomposition);
+                auto edge = boost::edge(source,target,trimmed_mission_decomposition).first;
 
-            if(last_op != "") {
-                last_op = std::get<string>(operators_stack.top().second.content);
-            }
-        }
-
-        /*stack<variant<pair<int,ATNode>,Constraint>> n_stack_cpy = current_branch_nodes_stack;
-        std::cout << "-------------------------------------------------------------------------" << std::endl;
-        std::cout << "NODES STACK:" << std::endl;
-        while(!n_stack_cpy.empty()) {
-            if(holds_alternative<pair<int,ATNode>>(n_stack_cpy.top())) {
-                pair<int,ATNode> node = std::get<pair<int,ATNode>>(n_stack_cpy.top());
-
-                std::cout << node.first << std::endl;
-            } else {
-                Constraint node = std::get<Constraint>(n_stack_cpy.top());
-
-                std::cout << node.nodes_involved.first.first << " ";
-                if(node.type == PAR) {
-                    std::cout << parallel_op;
-                } else if(node.type == SEQ) {
-                    std::cout << sequential_op;
-                } else if(node.type == FB) {
-                    std::cout << "FB";
+                if(trimmed_mission_decomposition[edge].edge_type == NORMALAND) {
+                    last_child = target;
                 }
-                std::cout << " " << node.nodes_involved.second.first << std::endl;
             }
 
-            n_stack_cpy.pop();
+            if(current_node.first != last_child) {
+                current_branch_operators_stack.push(make_pair(current_root_node.first,trimmed_mission_decomposition[current_root_node.first]));
+            }
         }
-
-        stack<pair<int,ATNode>> op_stack_cpy = current_branch_operators_stack;
-        std::cout << std::endl;
-        std::cout << "OPERATORS STACK:" << std::endl;
-        while(!op_stack_cpy.empty()) {
-            std::cout << op_stack_cpy.top().first << std::endl;
-
-            op_stack_cpy.pop();
-        }
-        std::cout << "-------------------------------------------------------------------------" << std::endl;*/
 
         if(current_node.second.node_type == ATASK) {
             current_branch_nodes_stack.push(current_node);
@@ -240,8 +208,6 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
                                 - If we have a parallel operator we take into consideration all of the constraints we have until reaching one that has id -1 or the
                                 first created constraint
                     */
-                    //std::cout << "TASK " << current_node.first << std::endl;
-                    //std::cout << "OP STACK TOP: " << std::get<string>(current_branch_operators_stack.top().second.content) << std::endl;
                     if(std::get<string>(current_branch_operators_stack.top().second.content) == parallel_op || std::get<string>(current_branch_operators_stack.top().second.content) == fallback_op) {
                         /*
                             While we don't reach an artificial node or the end of the nodes stack we populate our temporary vector
@@ -475,7 +441,7 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
                                     /*
                                         We are dealing with a task, so we need to build a constraint with it
                                     */
-                                    Constraint c = generate_constraint(std::get<pair<int,ATNode>>(temp.front()),last_task, FB);
+                                    Constraint c = generate_constraint(std::get<pair<int,ATNode>>(temp.front()),last_task, SEQ);
 
                                     existing_constraints[c.nodes_involved.first.first].insert(c.nodes_involved.second.first);
 
@@ -486,8 +452,8 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
 
                                     pair<pair<int,ATNode>,pair<int,ATNode>> constraint_nodes = get<Constraint>(temp.front()).nodes_involved;
 
-                                    c1 = generate_constraint(constraint_nodes.first, last_task, FB);
-                                    c2 = generate_constraint(constraint_nodes.second, last_task, FB);
+                                    c1 = generate_constraint(constraint_nodes.first, last_task, SEQ);
+                                    c2 = generate_constraint(constraint_nodes.second, last_task, SEQ);
 
                                     if(existing_constraints[constraint_nodes.second.first].find(last_task.first) == existing_constraints[constraint_nodes.second.first].end()) {
                                         existing_constraints[constraint_nodes.second.first].insert(last_task.first);
