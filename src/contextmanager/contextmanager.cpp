@@ -1,5 +1,7 @@
 #include "contextmanager.hpp"
 
+#include <iostream>
+
 using namespace std;
 
 string Context::get_context_type() {
