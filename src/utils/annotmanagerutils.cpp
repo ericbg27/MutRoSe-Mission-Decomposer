@@ -315,6 +315,84 @@ void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm
                         }
 
                         if(result) aux.push_back(child.second);
+                    } else if(q.query.at(1) == ocl_in) {
+						string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
+						string prop_val;
+						try {
+							prop_val = child.second.get<string>(prop);
+						} catch(...) {
+							string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
+
+							throw std::runtime_error(bad_condition);
+						}
+
+						string attr_to_search = q.query.at(2);
+						std::replace(attr_to_search.begin(), attr_to_search.end(), '.', ' ');
+						
+						vector<string> split_attr;
+						
+						stringstream ss(attr_to_search);
+						string tmp;
+						while(ss >> tmp) {
+							split_attr.push_back(tmp);
+						}
+
+						/*
+							If we have [VAR].[ATTR] in [VAR].[ÁTTR] we search in the ptree
+
+							If we have [VAR].[ATTR] in [VAR], where VAR is a collection variable, we search in the variable value
+						*/
+						if(split_attr.size() == 1) {
+                            vector<pt::ptree> var_value = valid_variables[split_attr.at(0)].second;
+                            
+                            bool found_attr = false;
+                            for(pt::ptree val : var_value) {
+                                if(val.get<string>("name") == prop_val) {
+                                    found_attr = true;
+                                    
+                                    break;
+                                }
+                            }
+
+                            if(found_attr) {
+                                aux.push_back(child.second);
+                            }
+						} else if(split_attr.size() == 2) {
+							// Here we need to get the query ptree for the second attribute
+							pt::ptree attr_tree = valid_variables[split_attr.at(0)].second.at(0).get_child(split_attr.at(1));
+
+							string attr_data = attr_tree.data();
+							boost::trim(attr_data);
+							if(attr_tree.empty() && attr_data != "") {
+								vector<string> attr_values;
+
+								stringstream ss(attr_data);
+								string tmp;
+								while(ss >> tmp) {
+									attr_values.push_back(tmp);
+								}
+
+								if(std::find(attr_values.begin(), attr_values.end(), prop_val) != attr_values.end()) {
+									aux.push_back(child.second);
+								}
+							} else if(!attr_tree.empty() && attr_data == "") {
+								BOOST_FOREACH(pt::ptree::value_type val, attr_tree) {
+									if(prop_val == val.second.data()) {
+										aux.push_back(child.second);
+
+										break;
+									}
+								}
+							} else {
+								string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
+
+								throw std::runtime_error(bad_condition);
+							}
+						} else {
+							string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
+
+							throw std::runtime_error(bad_condition);
+						} 
                     } else if(q.query.at(1) == ocl_gt || q.query.at(1) == ocl_lt || q.query.at(1) == ocl_geq || q.query.at(1) == ocl_leq) {
                         string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
 						string prop_val;
