@@ -116,14 +116,23 @@ bool MissionDecomposer::check_context_dependency(int parent_node, int context_no
 	
 	vector<int> visited_nodes;
 
-	bool found_at = recursive_context_dependency_checking(parent_node, context_node, var_and_pred, instantiated_vars, semantic_mapping, visited_nodes, false);
+	bool is_sequential = false;
+	if(mission_decomposition[context_node].node_type == OP) {
+		string node_content = std::get<string>(mission_decomposition[context_node].content);
+
+		if(node_content == sequential_op) {
+			is_sequential = true;
+		}
+	}
+
+	bool found_at = recursive_context_dependency_checking(parent_node, context_node, var_and_pred, instantiated_vars, semantic_mapping, visited_nodes, false, is_sequential);
 
 	return found_at;
 }
 
 // Are the ids in the mission_decomposition or in the GM?
 bool MissionDecomposer::recursive_context_dependency_checking(int current_node, int context_node, pair<bool,pair<string,predicate_definition>> var_and_pred, map<string, variant<string,vector<string>>> instantiated_vars, vector<SemanticMapping> semantic_mapping,
-																vector<int>& visited_nodes, bool parallel_checking) {	
+																vector<int>& visited_nodes, bool parallel_checking, bool is_sequential) {	
 	/*
 		-> This recursion will go from bottom to top
 
@@ -178,8 +187,8 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 			int target = boost::target(*ei,mission_decomposition);
 			ATEdge e = mission_decomposition[*ei];
 
-			if(e.edge_type == NORMALAND) {
-				found_at = recursive_context_dependency_checking(target, context_node, var_and_pred, instantiated_vars, semantic_mapping, visited_nodes, parallel_checking);
+			if(e.edge_type == NORMALAND && std::find(visited_nodes.begin(),visited_nodes.end(),target) == visited_nodes.end()) {
+				found_at = recursive_context_dependency_checking(target, context_node, var_and_pred, instantiated_vars, semantic_mapping, visited_nodes, parallel_checking, is_sequential);
 
 				visited_nodes.push_back(target);
 			}
@@ -190,7 +199,7 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 		} else {
 			visited_nodes.push_back(current_node);
 
-			return recursive_context_dependency_checking(mission_decomposition[current_node].parent, context_node, var_and_pred, instantiated_vars, semantic_mapping, visited_nodes, false);
+			return recursive_context_dependency_checking(mission_decomposition[current_node].parent, context_node, var_and_pred, instantiated_vars, semantic_mapping, visited_nodes, false, is_sequential);
 		}
 	}
 
@@ -198,7 +207,7 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 		if(current_node != 0) {
 			visited_nodes.push_back(current_node);
 
-			return recursive_context_dependency_checking(mission_decomposition[current_node].parent, context_node, var_and_pred, instantiated_vars, semantic_mapping, visited_nodes, false);
+			return recursive_context_dependency_checking(mission_decomposition[current_node].parent, context_node, var_and_pred, instantiated_vars, semantic_mapping, visited_nodes, false, false);
 		} else {
 			return false;
 		}
@@ -210,14 +219,28 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 
 		bool found_at = false;
 
-		if(node_content == parallel_op || (node_content == sequential_op && parallel_checking)) {
+		if((node_content == parallel_op || (node_content == sequential_op && parallel_checking)) && !is_sequential) {
 			ATGraph::out_edge_iterator ei, ei_end;
 			for(boost::tie(ei,ei_end) = out_edges(current_node,mission_decomposition);ei != ei_end;++ei) {
 				int target = boost::target(*ei,mission_decomposition);
 				ATEdge e = mission_decomposition[*ei];
 
 				if(e.edge_type == NORMALAND && target != context_node && (std::find(visited_nodes.begin(), visited_nodes.end(), target) == visited_nodes.end())) {
-					found_at = recursive_context_dependency_checking(target, context_node, var_and_pred, instantiated_vars, semantic_mapping, visited_nodes, true);
+					found_at = recursive_context_dependency_checking(target, context_node, var_and_pred, instantiated_vars, semantic_mapping, visited_nodes, true, false);
+
+					visited_nodes.push_back(target);
+				}
+
+				if(found_at) break;
+			}
+		} else {
+			ATGraph::out_edge_iterator ei, ei_end;
+			for(boost::tie(ei,ei_end) = out_edges(current_node,mission_decomposition);ei != ei_end;++ei) {
+				int target = boost::target(*ei,mission_decomposition);
+				ATEdge e = mission_decomposition[*ei];
+
+				if(e.edge_type == NORMALAND && target != context_node && (std::find(visited_nodes.begin(), visited_nodes.end(), target) == visited_nodes.end())) {
+					found_at = recursive_context_dependency_checking(target, context_node, var_and_pred, instantiated_vars, semantic_mapping, visited_nodes, true, true);
 
 					visited_nodes.push_back(target);
 				}
@@ -231,7 +254,7 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 		} else {
 			visited_nodes.push_back(current_node);
 
-			return recursive_context_dependency_checking(mission_decomposition[current_node].parent, context_node, var_and_pred, instantiated_vars, semantic_mapping, visited_nodes, false);
+			return recursive_context_dependency_checking(mission_decomposition[current_node].parent, context_node, var_and_pred, instantiated_vars, semantic_mapping, visited_nodes, false, is_sequential);
 		}
 	} else if(mission_decomposition[current_node].node_type == ATASK) {
 		AbstractTask at = std::get<AbstractTask>(mission_decomposition[current_node].content);
@@ -368,7 +391,7 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 			}
 
 			//If context is satisfied, insert a ContextDependency edge
-			if(context_satisfied) {
+			if(context_satisfied && !is_sequential) {
 				ATEdge e;
 				e.edge_type = CDEPEND;
 				e.source = d_id;
@@ -381,6 +404,12 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 				}
 
 				//For now we create the dependency between the first AT that satisfies its context
+				found_at = true;
+			} else if(context_satisfied && is_sequential) {
+				if(verbose) {
+					cout << "Context satisfied with task " << std::get<Decomposition>(mission_decomposition[d_id].content).id << ": " << at.name << endl;
+				}
+				
 				found_at = true;
 			}
 		}
