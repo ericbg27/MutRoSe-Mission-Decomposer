@@ -70,7 +70,7 @@
           "customProperties": {
             "Description": "",
             "GoalType": "Achieve",
-            "AchieveCondition": "objects->forAll(obj | obj.picked)",
+            "AchieveCondition": "objects->forAll(obj | obj.is_picked)",
             "Monitors": "objects, current_room",
             "Controls": "obj : Object"
           }
