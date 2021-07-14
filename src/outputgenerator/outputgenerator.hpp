@@ -20,8 +20,8 @@ enum output_generator_type {FILEOUTGEN};
 
 class OutputGenerator {
     public:
-        virtual void generate_instances_output(std::vector<SemanticMapping> semantic_mapping, std::map<std::string,set<std::string>> sorts, std::vector<sort_definition> sort_definitions, 
-                                                std::vector<predicate_definition> predicate_definitions, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_var_map) = 0;
+        virtual void generate_instances_output(std::vector<SemanticMapping> semantic_mapping, std::map<std::string,set<std::string>> sorts, std::vector<sort_definition> sort_definitions, std::vector<predicate_definition> predicate_definitions,
+                                                    std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_var_map, std::set<std::string> robot_related_sorts) = 0;
         
         void set_mission_decomposition(ATGraph md);
         void set_gm(GMGraph g);

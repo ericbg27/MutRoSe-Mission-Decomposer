@@ -19,7 +19,7 @@ using namespace std;
     @ Input 7: The Goal Model variable mappings (between them and their values)
     @ Input 8: The verbose flag
 */
-ValidMissionGenerator::ValidMissionGenerator(ATGraph md, GMGraph g, vector<Constraint> mc, vector<ground_literal> ws, vector<pair<ground_literal,variant<int,float>>> wsf, vector<SemanticMapping> sm, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gmvmap, bool verb) {
+ValidMissionGenerator::ValidMissionGenerator(ATGraph md, GMGraph g, vector<Constraint> mc, vector<ground_literal> ws, vector<pair<ground_literal,variant<int,float>>> wsf, vector<SemanticMapping> sm, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gmvmap, bool verb, set<string> r_srts) {
     mission_decomposition = md;
     gm = g;
     mission_constraints = mc;
@@ -28,6 +28,7 @@ ValidMissionGenerator::ValidMissionGenerator(ATGraph md, GMGraph g, vector<Const
     semantic_mapping = sm;
     gm_var_map = gmvmap;
     verbose = verb;
+    robot_related_sorts = r_srts;
 }
 
 /*
@@ -51,7 +52,7 @@ pair<vector<vector<pair<int,ATNode>>>,set<Decomposition>> ValidMissionGenerator:
         -> If the operator succeeds another operator, we know that we need to relate a task with task already involved in another constraint
         -> If the operator succeds a task, we know that this operator relates to the last two tasks
     */
-    map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>> effects_to_apply;
+    map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>> effects_to_apply;
 
     if(!is_unique_branch(mission_decomposition)) {
         recursive_valid_mission_decomposition("", mission_queue, -1, effects_to_apply);
@@ -95,8 +96,8 @@ pair<vector<vector<pair<int,ATNode>>>,set<Decomposition>> ValidMissionGenerator:
     @ Input 4: The current node depth
     @ Output: Void. The valid mission decompositions will be generated
 */
-map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>> ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op, queue<pair<int,ATNode>>& mission_queue, int depth,
-                                                                                                                        map<int,vector<variant<ground_literal,pair<ground_literal,std::variant<int,float>>>>> effects_to_apply) {
+map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>> ValidMissionGenerator::recursive_valid_mission_decomposition(string last_op, queue<pair<int,ATNode>>& mission_queue, int depth,
+                                                                                                                        map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>> effects_to_apply) {
     /*
         Here we will get the current node and check whether it is an operator or an Abstract Task
     */
@@ -104,7 +105,7 @@ map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>>
    mission_queue.pop();
    depth++;
 
-   map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>> children_effects;
+   map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>> children_effects;
 
    if(holds_alternative<string>(current_node.second.content)) {
        /*
@@ -143,7 +144,7 @@ map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>>
             }
         }
 
-        map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>> decompositions_effects;
+        map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>> decompositions_effects;
 
         if(valid_mission_decompositions.size() > 0) {
             /*
@@ -157,16 +158,18 @@ map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>>
                 bool valid_task_decomposition = false; //Check if one task decomposition is valid for this mission decomposition
 
                 for(pair<int,ATNode> task_decomposition : task_decompositions) {
-                    Decomposition d = get<Decomposition>(task_decomposition.second.content);
+                    Decomposition d = std::get<Decomposition>(task_decomposition.second.content);
                     // World state will be the initial world state + the effects in effects_to_apply (given which tasks are in the set of tasks of the decomposition)
                     vector<ground_literal> ws = world_state;
                     vector<pair<ground_literal,variant<int,float>>> wsf = world_state_functions;
+
+                    map<int,vector<pair<literal,vector<string>>>> ws_ng = non_ground_world_state;
                     
-                    apply_effects_in_valid_decomposition(ws, wsf, valid_mission_decomposition, effects_to_apply);
+                    apply_effects_in_valid_decomposition(ws, wsf, ws_ng, valid_mission_decomposition, effects_to_apply);
 
                     vector<pair<int,ATNode>> m_decomposition = valid_mission_decomposition.first;
 
-                    bool preconditions_hold = check_decomposition_preconditions(ws, wsf, d);
+                    bool preconditions_hold = check_decomposition_preconditions(ws, wsf, ws_ng, make_pair(task_decomposition.first,d), mission_constraints, valid_mission_decomposition.second, robot_related_sorts);
 
                     /*
                         Check for any context dependency in current decomposition. If a valid mission decomposition does not contain any tasks
@@ -223,19 +226,30 @@ map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>>
                         new_valid_mission_decompositions.push_back(aux);
 
                         vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>> decomposition_effects;
+                        vector<pair<literal,vector<string>>> decomposition_literal_effects;
                         for(auto eff : d.eff) {
                             if(holds_alternative<ground_literal>(eff)) {
                                 ground_literal e = std::get<ground_literal>(eff);
                                 decomposition_effects.push_back(e);
+                            } else {
+                                literal e = std::get<literal>(eff);
+                                vector<string> e_args = get_predicate_argument_types(d.at.at, e);
+
+                                decomposition_literal_effects.push_back(make_pair(e,e_args));
                             }
                         }
                         for(auto func_eff : d.func_eff) {
                             if(holds_alternative<pair<ground_literal,variant<int,float>>>(func_eff)) {
                                 pair<ground_literal,variant<int,float>> f_eff = std::get<pair<ground_literal,variant<int,float>>>(func_eff);
                                 decomposition_effects.push_back(f_eff);
+                            } else {
+                                literal f_eff = std::get<literal>(func_eff);
+                                vector<string> f_eff_args = get_predicate_argument_types(d.at.at, f_eff);
+
+                                decomposition_literal_effects.push_back(make_pair(f_eff,f_eff_args));
                             }
                         }
-                        decompositions_effects[task_decomposition.first] = decomposition_effects;
+                        decompositions_effects[task_decomposition.first] = make_pair(decomposition_effects,decomposition_literal_effects);
 
                         valid_task_decomposition = true;
                     } else {
@@ -266,7 +280,8 @@ map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>>
                 Decomposition d = get<Decomposition>(task_decomposition.second.content);
 
                 //Check preconditions using the initial world state
-                bool preconditions_hold = check_decomposition_preconditions(world_state, world_state_functions, d);
+                set<int> empty_set;
+                bool preconditions_hold = check_decomposition_preconditions(world_state, world_state_functions, non_ground_world_state, make_pair(task_decomposition.first,d), mission_constraints, empty_set, robot_related_sorts);
 
                 if(preconditions_hold) {
                     /*
@@ -292,19 +307,30 @@ map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>>
                     valid_mission_decompositions.push_back(new_valid_mission);
 
                     vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>> decomposition_effects;
+                    vector<pair<literal,vector<string>>> decomposition_literal_effects;
                     for(auto eff : d.eff) {
                         if(holds_alternative<ground_literal>(eff)) {
                             ground_literal e = std::get<ground_literal>(eff);
                             decomposition_effects.push_back(e);
+                        } else {
+                            literal e = std::get<literal>(eff);
+                            vector<string> e_args = get_predicate_argument_types(d.at.at,e);
+
+                            decomposition_literal_effects.push_back(make_pair(e,e_args));
                         }
                     }
                     for(auto func_eff : d.func_eff) {
                         if(holds_alternative<pair<ground_literal,variant<int,float>>>(func_eff)) {
                             pair<ground_literal,variant<int,float>> f_eff = std::get<pair<ground_literal,variant<int,float>>>(func_eff);
                             decomposition_effects.push_back(f_eff);
+                        } else {
+                            literal f_eff = std::get<literal>(func_eff);
+                            vector<string> f_eff_args = get_predicate_argument_types(d.at.at,f_eff);
+
+                            decomposition_literal_effects.push_back(make_pair(f_eff,f_eff_args));
                         }
                     }
-                    decompositions_effects[task_decomposition.first] = decomposition_effects;
+                    decompositions_effects[task_decomposition.first] = make_pair(decomposition_effects,decomposition_literal_effects);
 
                     at_least_one_decomposition_valid = true;
                 } 
@@ -396,7 +422,7 @@ void ValidMissionGenerator::valid_mission_decompositions_from_unique_branch(queu
     @ Inpui 4: The current node info
     @ Output: Void. The recursive call to the valid missions generation function is performed for each child.
 */
-void ValidMissionGenerator::check_sequential_op_children(queue<pair<int,ATNode>>& mission_queue, map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>>& children_effects, int depth, pair<int,ATNode> current_node) {
+void ValidMissionGenerator::check_sequential_op_children(queue<pair<int,ATNode>>& mission_queue, map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>>& children_effects, int depth, pair<int,ATNode> current_node) {
     bool checking_children = true;
 
     while(checking_children) {
@@ -459,17 +485,22 @@ void ValidMissionGenerator::check_sequential_op_children(queue<pair<int,ATNode>>
         }
 
         if(is_child) {
-            map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>> aux = recursive_valid_mission_decomposition(";", mission_queue, depth, children_effects);
+            map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>> aux = recursive_valid_mission_decomposition(";", mission_queue, depth, children_effects);
             
-            map<int, vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>>::iterator ceff_it;
+            map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>>::iterator ceff_it;
             for(ceff_it = aux.begin(); ceff_it != aux.end(); ++ceff_it) {
                 if(children_effects.find(ceff_it->first) == children_effects.end()) {
                     children_effects[ceff_it->first] = ceff_it->second;
                 } else {
-                    vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>> tmp = children_effects[ceff_it->first];
-                    tmp.insert(tmp.end(), ceff_it->second.begin(), ceff_it->second.end());
+                    vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>> tmp = children_effects[ceff_it->first].first;
+                    tmp.insert(tmp.end(), ceff_it->second.first.begin(), ceff_it->second.first.end());
 
-                    children_effects[ceff_it->first] = tmp;
+                    children_effects[ceff_it->first].first = tmp;
+
+                    vector<pair<literal,vector<string>>> tmp2 = children_effects[ceff_it->first].second;
+                    tmp2.insert(tmp2.end(), ceff_it->second.second.begin(), ceff_it->second.second.end());
+
+                    children_effects[ceff_it->first].second = tmp2;
                 }
             }
         } else {
@@ -493,7 +524,7 @@ void ValidMissionGenerator::check_sequential_op_children(queue<pair<int,ATNode>>
     @ Inpui 4: The current node info
     @ Output: Void. The recursive call to the valid missions generation function is performed for each child.
 */
-void ValidMissionGenerator::check_parallel_op_children(queue<pair<int,ATNode>>& mission_queue, map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>>& children_effects, int depth, pair<int,ATNode> current_node) {
+void ValidMissionGenerator::check_parallel_op_children(queue<pair<int,ATNode>>& mission_queue, map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>>& children_effects, int depth, pair<int,ATNode> current_node) {
     bool checking_children = true;
     bool is_or = false;
 
@@ -570,18 +601,23 @@ void ValidMissionGenerator::check_parallel_op_children(queue<pair<int,ATNode>>& 
 
         if(is_child) {
             if(!is_or) {
-                map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>> child_effects;
+                map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>> child_effects;
                 child_effects = recursive_valid_mission_decomposition("#", mission_queue, depth, child_effects);
 
-                map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>>::iterator ceff_it;
+                map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>>::iterator ceff_it;
                 for(ceff_it = child_effects.begin(); ceff_it != child_effects.end(); ++ceff_it) {
                     if(children_effects.find(ceff_it->first) == children_effects.end()) {
                         children_effects[ceff_it->first] = ceff_it->second;
                     } else {
-                        vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>> aux = children_effects[ceff_it->first];
-                        aux.insert(aux.end(), ceff_it->second.begin(), ceff_it->second.end());
+                        vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>> aux = children_effects[ceff_it->first].first;
+                        aux.insert(aux.end(), ceff_it->second.first.begin(), ceff_it->second.first.end());
 
-                        children_effects[ceff_it->first] = aux;
+                        children_effects[ceff_it->first].first = aux;
+
+                        vector<pair<literal,vector<string>>> aux2 = children_effects[ceff_it->first].second;
+                        aux2.insert(aux2.end(), ceff_it->second.second.begin(), ceff_it->second.second.end());
+
+                        children_effects[ceff_it->first].second = aux2;
                     }
                 }
                 
@@ -601,18 +637,23 @@ void ValidMissionGenerator::check_parallel_op_children(queue<pair<int,ATNode>>& 
                 */
                 valid_mission_decompositions = initial_decompositions;
 
-                map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>> child_effects;
+                map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>> child_effects;
                 child_effects = recursive_valid_mission_decomposition("#", mission_queue, depth, child_effects);
 
-                map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>>::iterator ceff_it;
+                map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>>::iterator ceff_it;
                 for(ceff_it = child_effects.begin(); ceff_it != child_effects.end(); ++ceff_it) {
                     if(children_effects.find(ceff_it->first) == children_effects.end()) {
                         children_effects[ceff_it->first] = ceff_it->second;
                     } else {
-                        vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>> aux = children_effects[ceff_it->first];
-                        aux.insert(aux.end(), ceff_it->second.begin(), ceff_it->second.end());
+                        vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>> aux = children_effects[ceff_it->first].first;
+                        aux.insert(aux.end(), ceff_it->second.first.begin(), ceff_it->second.first.end());
 
-                        children_effects[ceff_it->first] = aux;
+                        children_effects[ceff_it->first].first = aux;
+
+                        vector<pair<literal,vector<string>>> aux2 = children_effects[ceff_it->first].second;
+                        aux2.insert(aux2.end(), ceff_it->second.second.begin(), ceff_it->second.second.end());
+
+                        children_effects[ceff_it->first].second = aux2;
                     }
                 }
                 
@@ -635,7 +676,7 @@ void ValidMissionGenerator::check_parallel_op_children(queue<pair<int,ATNode>>& 
     solve_conflicts(children_effects);
 }
 
-void ValidMissionGenerator::check_fallback_op_children(queue<pair<int,ATNode>>& mission_queue, map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>>& children_effects, int depth, pair<int,ATNode> current_node) {
+void ValidMissionGenerator::check_fallback_op_children(queue<pair<int,ATNode>>& mission_queue, map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>>& children_effects, int depth, pair<int,ATNode> current_node) {
     bool checking_children = true;
 
     vector<pair<vector<pair<int,ATNode>>,set<int>>> initial_decompositions = valid_mission_decompositions;
@@ -706,22 +747,24 @@ void ValidMissionGenerator::check_fallback_op_children(queue<pair<int,ATNode>>& 
         }
 
         if(is_child) {
-            map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>> child_effects;
+            map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>> child_effects;
             child_effects = recursive_valid_mission_decomposition("#", mission_queue, depth, child_effects);
 
-            vector<int> aux;
-            map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>>::iterator ceff_it;
+            map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>>::iterator ceff_it;
             for(ceff_it = child_effects.begin(); ceff_it != child_effects.end(); ++ceff_it) {
                 if(children_effects.find(ceff_it->first) == children_effects.end()) {
                     children_effects[ceff_it->first] = ceff_it->second;
                 } else {
-                    vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>> aux = children_effects[ceff_it->first];
-                    aux.insert(aux.end(), ceff_it->second.begin(), ceff_it->second.end());
+                    vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>> aux = children_effects[ceff_it->first].first;
+                    aux.insert(aux.end(), ceff_it->second.first.begin(), ceff_it->second.first.end());
 
-                    children_effects[ceff_it->first] = aux;
+                    children_effects[ceff_it->first].first = aux;
+
+                    vector<pair<literal,vector<string>>> aux2 = children_effects[ceff_it->first].second;
+                    aux2.insert(aux2.end(), ceff_it->second.second.begin(), ceff_it->second.second.end());
+
+                    children_effects[ceff_it->first].second = aux2;
                 }
-
-                aux.push_back(ceff_it->first);
             }
                 
             child_effects.clear();
@@ -824,7 +867,7 @@ queue<pair<int,ATNode>> ValidMissionGenerator::generate_mission_queue() {
     @ Input 2: The current node to be evaluated
     @ Output: Void. The valid mission decompositions will be trimmed (if needed)
 */
-void ValidMissionGenerator::check_conditions(std::map<int, std::vector<std::variant<ground_literal,std::pair<ground_literal,variant<int,float>>>>> effects_to_apply, std::pair<int,ATNode> current_node) {
+void ValidMissionGenerator::check_conditions(map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>> effects_to_apply, pair<int,ATNode> current_node) {
     if(current_node.second.is_achieve_type) {
         string achievel_goal_id;
 
@@ -899,9 +942,9 @@ void ValidMissionGenerator::check_conditions(std::map<int, std::vector<std::vari
         if(need_predicate_checking) {  
             map<int,std::vector<ground_literal>> pred_effs;
 
-            map<int,std::vector<std::variant<ground_literal,std::pair<ground_literal,variant<int,float>>>>>::iterator eff_it;
+            map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>>::iterator eff_it;
             for(eff_it = effects_to_apply.begin(); eff_it != effects_to_apply.end(); ++eff_it) {
-                for(auto eff : eff_it->second) {
+                for(auto eff : eff_it->second.first) {
                     if(holds_alternative<ground_literal>(eff)) {
                         pred_effs[eff_it->first].push_back(std::get<ground_literal>(eff));
                     }
@@ -941,9 +984,9 @@ void ValidMissionGenerator::check_conditions(std::map<int, std::vector<std::vari
         } else if(need_function_predicate_checking) {
             map<int,vector<pair<ground_literal,variant<int,float>>>> func_effs;
 
-            map<int,std::vector<std::variant<ground_literal,std::pair<ground_literal,variant<int,float>>>>>::iterator eff_it;
+            map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>>::iterator eff_it;
             for(eff_it = effects_to_apply.begin(); eff_it != effects_to_apply.end(); ++eff_it) {
-                for(auto eff : eff_it->second) {
+                for(auto eff : eff_it->second.first) {
                     if(holds_alternative<pair<ground_literal,variant<int,float>>>(eff)) {
                         func_effs[eff_it->first].push_back(std::get<pair<ground_literal,variant<int,float>>>(eff));
                     }
@@ -1120,7 +1163,7 @@ vector<ground_literal> ValidMissionGenerator::apply_pred_effects(map<int,vector<
     return ws;
 }
 
-void ValidMissionGenerator::solve_conflicts(map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>> children_effects) {
+void ValidMissionGenerator::solve_conflicts(map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>> children_effects) {
     /*
         -> Verify in the children effects if we have any conflicts for each mission decomposition
             - If there is, erase the decomposition
@@ -1134,10 +1177,10 @@ void ValidMissionGenerator::solve_conflicts(map<int,vector<variant<ground_litera
 
         bool found_conflict = false;
         
-        map<int,vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>>::iterator ceff_it;
+        map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>>::iterator ceff_it;
         for(ceff_it = children_effects.begin(); ceff_it != children_effects.end(); ++ceff_it) {
             if(decomposition.second.find(ceff_it->first) != decomposition.second.end()) {
-                for(auto eff : ceff_it->second) {
+                for(auto eff : ceff_it->second.first) {
                     if(holds_alternative<ground_literal>(eff)) {
                         ground_literal e = std::get<ground_literal>(eff);
                         
