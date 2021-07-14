@@ -147,11 +147,14 @@ bool check_decomposition_preconditions(vector<ground_literal> world_state, vecto
     }
     // Here we need to check in the predicate definition (which we currently don't have) if all of the arguments are of robot or robotteam type
 
-    vector<pair<literal,vector<string>>> ws_ng;
+    vector<pair<int,pair<literal,vector<string>>>> ws_ng_aux;
+    vector<literal> ws_ng;
     
     if(robot_related_precs.size() > 0) {
         vector<int> task_ordering;
         map<int,set<int>> execution_constrained_tasks;
+        map<int,map<int,map<string,string>>> var_maps;
+
         for(Constraint c : mission_constraints) {
             if(c.type == SEQ) {
                 vector<int>::iterator t_it = std::find(task_ordering.begin(),task_ordering.end(),c.nodes_involved.second.first);
@@ -163,6 +166,33 @@ bool check_decomposition_preconditions(vector<ground_literal> world_state, vecto
                     task_ordering.push_back(c.nodes_involved.second.first);
                 }
             } else if(c.type == NC) {
+                //map variables of execution constrained tasks
+                task t1 = std::get<Decomposition>(c.nodes_involved.first.second.content).at.at;
+                task t2 = std::get<Decomposition>(c.nodes_involved.second.second.content).at.at;
+
+                map<string,string> var_map1, var_map2;
+                
+                int arg_index2 = 0;
+                for(int arg_index1 = 0; arg_index1 < t1.number_of_original_vars; arg_index1++) {
+                    string t1_var_type = t1.vars.at(arg_index1).second;
+                    if(t1_var_type == hddl_robot_type || t1_var_type == hddl_robotteam_type || robot_related_sorts.find(t1_var_type) != robot_related_sorts.end()) {
+                        bool found_arg = false;
+                        while(!found_arg || arg_index2 < t2.number_of_original_vars) {
+                            if(t2.vars.at(arg_index2).second == t1_var_type) {
+                                var_map1[t1.vars.at(arg_index1).first] = t2.vars.at(arg_index2).first;
+                                var_map2[t2.vars.at(arg_index2).first] = t1.vars.at(arg_index1).first;
+                                
+                                found_arg = true;
+                            }
+
+                            arg_index2++;
+                        }
+                    }
+                }
+
+                var_maps[c.nodes_involved.first.first][c.nodes_involved.second.first] = var_map1;
+                var_maps[c.nodes_involved.second.first][c.nodes_involved.first.first] = var_map2;
+
                 execution_constrained_tasks[c.nodes_involved.first.first].insert(c.nodes_involved.second.first);
                 execution_constrained_tasks[c.nodes_involved.second.first].insert(c.nodes_involved.first.first);
             }
@@ -178,12 +208,25 @@ bool check_decomposition_preconditions(vector<ground_literal> world_state, vecto
                     for(pair<literal,vector<string>> eff : non_ground_world_state[t]) {
                         bool found_predicate = false;
 
-                        for(pair<literal,vector<string>>& state : ws_ng) {
-                            bool same_predicate = is_same_non_ground_predicate(eff, state); // THIS MUST CHANGE!
+                        for(pair<int,pair<literal,vector<string>>>& state : ws_ng_aux) {
+                            //bool same_predicate = is_same_non_ground_predicate(eff, state); // THIS MUST CHANGE!
+                            bool same_predicate = true;
+                            if(eff.first.predicate == state.second.first.predicate) {
+                                int arg_index = 0;
+                                for(string arg : eff.first.arguments) {
+                                    string map_var = var_maps[t][state.first][arg];
+
+                                    if(state.second.first.arguments.at(arg_index) != map_var) {
+                                        same_predicate = false;
+                                    }
+                                }
+                            } else {
+                                same_predicate = false;
+                            }
 
                             if(same_predicate) {
-                                if(eff.first.positive != state.first.positive) {
-                                    state.first.positive = eff.first.positive;
+                                if(eff.first.positive != state.second.first.positive) {
+                                    state.second.first.positive = eff.first.positive;
                                 }
 
                                 found_predicate = true;
@@ -192,11 +235,21 @@ bool check_decomposition_preconditions(vector<ground_literal> world_state, vecto
                         }
 
                         if(!found_predicate) {
-                            ws_ng.push_back(eff);
+                            ws_ng_aux.push_back(make_pair(t,eff));
                         }
                     }
                 }
             }
+        }
+
+        for(pair<int,pair<literal,vector<string>>> state : ws_ng_aux) {
+            literal s = state.second.first;
+
+            for(string& arg : s.arguments) {
+                arg = var_maps[state.first][d_id][arg];
+            }
+
+            ws_ng.push_back(s);
         }
     }
 
@@ -270,14 +323,11 @@ bool check_decomposition_preconditions(vector<ground_literal> world_state, vecto
             }
         } else {
             literal p = std::get<literal>(prec);
-            vector<string> p_args = get_predicate_argument_types(d.at.at,p);
-
-            pair<literal,vector<string>> p_info = make_pair(p,p_args);
 
             if(robot_related_precs.find(prec_index) != robot_related_precs.end()) {
-                for(pair<literal,vector<string>> s : ws_ng) {
-                    if(is_same_non_ground_predicate(p_info,s)) {
-                        if(s.first.positive != p_info.first.positive) {
+                for(literal s : ws_ng) {
+                    if(is_same_predicate(p,s)) {
+                        if(s.positive != p.positive) {
                             preconditions_hold = false;
                         }
 
