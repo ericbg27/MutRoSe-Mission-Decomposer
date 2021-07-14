@@ -44,6 +44,8 @@ vector<Constraint> ConstraintManager::generate_mission_constraints() {
     generate_execution_constraints();
     trim_mission_constraints();
 
+    check_execution_constraints();
+
     if(verbose) {
         vector<Constraint> sequential_constraints, execution_constraints, fallback_constraints;
         for(Constraint c : mission_constraints) {
@@ -1151,6 +1153,57 @@ void ConstraintManager::trim_mission_constraints() {
             }
         } else {
             constraint_it++;
+        }
+    }
+}
+
+void ConstraintManager::check_execution_constraints() {
+    for(Constraint c : mission_constraints) {
+        if(c.type == NC) {
+            Decomposition t1 = std::get<Decomposition>(c.nodes_involved.first.second.content);
+            Decomposition t2 = std::get<Decomposition>(c.nodes_involved.second.second.content);
+
+            bool robot_num_error = false;
+
+            if(t1.at.fixed_robot_num) {
+                if(t2.at.fixed_robot_num) {
+                    int t1_robot_num = std::get<int>(t1.at.robot_num);
+                    int t2_robot_num = std::get<int>(t2.at.robot_num);
+
+                    if(t1_robot_num != t2_robot_num) {
+                        robot_num_error = true;
+                    }
+                } else {
+                    int t1_robot_num = std::get<int>(t1.at.robot_num);
+                    pair<int,int> t2_robot_num = std::get<pair<int,int>>(t2.at.robot_num);
+
+                    if(t1_robot_num < t2_robot_num.first || t1_robot_num > t2_robot_num.second) {
+                        robot_num_error = true;
+                    }
+                }
+            } else {
+                if(t2.at.fixed_robot_num) {
+                    pair<int,int> t1_robot_num = std::get<pair<int,int>>(t1.at.robot_num);
+                    int t2_robot_num = std::get<int>(t2.at.robot_num);
+
+                    if(t2_robot_num < t1_robot_num.first || t2_robot_num > t1_robot_num.second) {
+                        robot_num_error = true;
+                    }
+                } else {
+                    pair<int,int> t1_robot_num = std::get<pair<int,int>>(t1.at.robot_num);
+                    pair<int,int> t2_robot_num = std::get<pair<int,int>>(t2.at.robot_num);
+
+                    if(t1_robot_num.second < t2_robot_num.first || t2_robot_num.second < t1_robot_num.first) {
+                        robot_num_error = true;
+                    }
+                }
+            }
+
+            if(robot_num_error) {
+                string different_robot_num = "Wrong robot number for execution constrained tasks [" + t1.id + "] and [" + t2.id + "]";
+
+                throw std::runtime_error(different_robot_num);
+            }
         }
     }
 }
