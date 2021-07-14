@@ -60,6 +60,7 @@ vector<pair<predicate_definition,string>> parsed_functions;
 string metric_target = dummy_function_type;
 
 map<string,set<string>> sorts;
+set<string> robot_related_sorts;
 vector<method> methods;
 vector<task> primitive_tasks;
 vector<task> abstract_tasks;
@@ -265,6 +266,51 @@ int main(int argc, char** argv) {
 		hascapability_pred->argument_sorts.push_back(hascapability_vars->vars[i].second);
 	}
 
+	if(sort_definitions.size() > 0) {
+		vector<sort_definition>::iterator sort_def_it = sort_definitions.begin();
+		sort_definition current_sort = *sort_def_it;
+
+		while(sort_def_it != sort_definitions.end()) {
+			bool next = false;
+
+			if(current_sort.has_parent_sort && (current_sort.parent_sort == hddl_robot_type || current_sort.parent_sort == hddl_robotteam_type)) {
+				for(string sort : current_sort.declared_sorts) {
+					robot_related_sorts.insert(sort);
+				}
+
+				next = true;
+			} else if(current_sort.has_parent_sort && current_sort.parent_sort != hddl_robot_type && current_sort.parent_sort != hddl_robotteam_type) {
+				bool found_def = false;
+				
+				sort_definition aux;
+				for(sort_definition s : sort_definitions) {
+					if(std::find(s.declared_sorts.begin(), s.declared_sorts.end(), current_sort.parent_sort) != s.declared_sorts.end()) {
+						aux = s;
+						found_def = true;
+
+						break;
+					}
+				}
+
+				if(found_def) {
+					current_sort = aux;
+				} else {
+					next = true;
+				}
+			} else {
+				next = true;
+			}
+
+			if(next) {
+				sort_def_it++;
+
+				if(sort_def_it != sort_definitions.end()) {
+					current_sort = *sort_def_it;
+				}
+			}
+		}
+	}
+
 	expand_sorts();
 	/*
 		Additional variables are added in lines 96-114 (14/10) of domain.cpp (in function flatten_mdp_tasks)
@@ -432,11 +478,11 @@ int main(int argc, char** argv) {
 		if(output_generator_ptr->get_file_output_generator_type() == XMLFILEOUTGEN) {
 			XMLOutputGenerator* output_generator = dynamic_cast<XMLOutputGenerator*>(output_generator_ptr.get());
 
-			output_generator->generate_instances_output(semantic_mapping, sorts, sort_definitions, predicate_definitions, gm_var_map);
+			output_generator->generate_instances_output(semantic_mapping, sorts, sort_definitions, predicate_definitions, gm_var_map, robot_related_sorts);
 		} else if(output_generator_ptr->get_file_output_generator_type() == JSONFILEOUTGEN) {
 			JSONOutputGenerator* output_generator = dynamic_cast<JSONOutputGenerator*>(output_generator_ptr.get());
 
-			output_generator->generate_instances_output(semantic_mapping, sorts, sort_definitions, predicate_definitions, gm_var_map);
+			output_generator->generate_instances_output(semantic_mapping, sorts, sort_definitions, predicate_definitions, gm_var_map, robot_related_sorts);
 		}
 	}
 }
