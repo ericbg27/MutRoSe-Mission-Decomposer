@@ -681,7 +681,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 						node.divisible = false;
 					} else {
 						node.group = rannot->group;
-						node.divisible = rannot->divisible;
+						node.divisible = false;
 					}
 				} else {
 					node.group = rannot->group;
