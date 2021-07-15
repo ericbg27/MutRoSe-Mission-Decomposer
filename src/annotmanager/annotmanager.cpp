@@ -140,8 +140,8 @@ void AnnotManager::expand_forall_annot(general_annot* node_annot, int generated_
     node_annot->type = OPERATOR;
     node_annot->related_goal = "";
     node_annot->children.clear();
-    node_annot->group = true;
-    node_annot->divisible = true;
+    //node_annot->group = true;
+    //node_annot->divisible = true;
     for(general_annot* annot : new_annots) {
         node_annot->children.push_back(annot);
     }
@@ -280,13 +280,16 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
     } else {
         int parent_id = gm[current_node].parent;
 
-        if((!gm[current_node].group) || (gm[current_node].group && !gm[current_node].divisible)) { // Group and divisible are not in the default values
+        /*if((!gm[current_node].group) || (gm[current_node].group && !gm[current_node].divisible)) { // Group and divisible are not in the default values
             node_annot->group = gm[current_node].group;
             node_annot->divisible = gm[current_node].divisible;
         } else {
             node_annot->group = gm[parent_id].group;
             node_annot->divisible = gm[parent_id].divisible;
-        }
+        }*/
+
+        node_annot->group = gm[current_node].group;
+        node_annot->divisible = gm[current_node].divisible;
 
         recursive_fill_up_runtime_annot(node_annot, gm[vctr.at(0)]);
 

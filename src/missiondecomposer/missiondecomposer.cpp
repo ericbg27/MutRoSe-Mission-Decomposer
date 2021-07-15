@@ -670,8 +670,25 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 		}
 		
 		node.non_coop = rannot->non_coop;
-		node.group = rannot->group;
-		node.divisible = rannot->divisible;
+		if(parent != -1) {
+			if(!mission_decomposition[parent].group) {
+				node.group = false;
+				node.divisible = mission_decomposition[parent].divisible;
+			} else {
+				if(!mission_decomposition[parent].divisible) {
+					if(rannot->group) {
+						node.group = true;
+						node.divisible = false;
+					}
+				} else {
+					node.group = rannot->group;
+					node.divisible = rannot->divisible;
+				}
+			}
+		} else {
+			node.group = rannot->group;
+			node.divisible = rannot->divisible;
+		}
 		if(rannot->children.size() == 0 || rannot->type == MEANSEND) {
 			node.node_type = GOALNODE;
 		} else {
@@ -835,6 +852,20 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 			string at_not_found_error = "Could not find AT " + rannot->content.substr(0,rannot->content.find("_")) + " definition";
 			
 			throw std::runtime_error(at_not_found_error);
+		}
+
+		bool non_group_task_error = false;
+		AbstractTask abstract_task = std::get<AbstractTask>(node.content);
+		if(!node.group && !abstract_task.fixed_robot_num) {
+			non_group_task_error = true;
+		} else if(!node.group && abstract_task.fixed_robot_num && std::get<int>(abstract_task.robot_num) != 1) {
+			non_group_task_error = true;
+		}
+
+		if(non_group_task_error) {
+			string non_group_task_robot_num_error = "Non group task [" + abstract_task.id + "] does not have 1 robot in its declaration";
+
+			throw std::runtime_error(non_group_task_robot_num_error);
 		}
 
 		node_id = boost::add_vertex(node, mission_decomposition);

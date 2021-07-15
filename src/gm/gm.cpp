@@ -342,6 +342,16 @@ vector<pair<pair<int,int>, EdgeData>> parse_gm_edges(pt::ptree links, GMGraph& g
         gm[boost::vertex(s,gm)].parent = t;
         gm[boost::vertex(t,gm)].children.push_back(s);
 
+        /*if(!gm[boost::vertex(t,gm)].group) {
+            gm[boost::vertex(s,gm)].group = false;
+        } else {
+            if(!gm[boost::vertex(t,gm)].divisible) {
+                if(gm[boost::vertex(s,gm)].group) {
+                    gm[boost::vertex(s,gm)].divisible = false;
+                }
+            }
+        }*/
+
         edges.push_back(make_pair(make_pair(s,t),e));
     }
 
@@ -494,6 +504,9 @@ void print_gm_nodes_info(GMGraph gm) {
                 std::cout << "\tParam: " << param << std::endl;
             }
         }
+
+        std::cout << "Group? " << node.group << std::endl;
+        std::cout << "Divisible? " << node.divisible << std::endl;
 			
 		std::cout << std::endl;
 	}
