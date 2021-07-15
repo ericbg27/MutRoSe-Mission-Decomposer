@@ -114,7 +114,7 @@ bool check_decomposition_preconditions(vector<ground_literal> world_state, vecto
             - If parallel or fallback, how do we deal with this?
     */
     set<int> robot_related_precs;
-    
+
     vector<pair<string,string>> d_vars;
     for(int var_index = 0; var_index < d.at.at.number_of_original_vars; var_index++) {
         d_vars.push_back(d.at.at.vars.at(var_index));
@@ -171,13 +171,13 @@ bool check_decomposition_preconditions(vector<ground_literal> world_state, vecto
                 task t2 = std::get<Decomposition>(c.nodes_involved.second.second.content).at.at;
 
                 map<string,string> var_map1, var_map2;
-                
+
                 int arg_index2 = 0;
                 for(int arg_index1 = 0; arg_index1 < t1.number_of_original_vars; arg_index1++) {
                     string t1_var_type = t1.vars.at(arg_index1).second;
                     if(t1_var_type == hddl_robot_type || t1_var_type == hddl_robotteam_type || robot_related_sorts.find(t1_var_type) != robot_related_sorts.end()) {
                         bool found_arg = false;
-                        while(!found_arg || arg_index2 < t2.number_of_original_vars) {
+                        while(!found_arg && arg_index2 < t2.number_of_original_vars) {
                             if(t2.vars.at(arg_index2).second == t1_var_type) {
                                 var_map1[t1.vars.at(arg_index1).first] = t2.vars.at(arg_index2).first;
                                 var_map2[t2.vars.at(arg_index2).first] = t1.vars.at(arg_index1).first;
