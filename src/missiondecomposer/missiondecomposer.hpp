@@ -5,6 +5,7 @@
 #include <vector>
 #include <variant>
 #include <string>
+#include <stack>
 
 #include <boost/property_tree/ptree.hpp>
 
@@ -34,7 +35,7 @@ class MissionDecomposer {
         bool recursive_context_dependency_checking(int current_node, int context_node, std::pair<bool,std::pair<std::string,predicate_definition>> var_and_pred, std::map<std::string, std::variant<std::string,std::vector<std::string>>> instantiated_vars, 
                                                     std::vector<SemanticMapping> semantic_mapping, std::vector<int>& visited_nodes, bool parallel_checking, bool is_sequential);
         
-        void create_execution_constraint_edges(int node_id);
+        void create_execution_constraint_edges();
         
         void set_verbose(bool verb);
         void set_mission_decomposer_type(mission_decomposer_type mdt);

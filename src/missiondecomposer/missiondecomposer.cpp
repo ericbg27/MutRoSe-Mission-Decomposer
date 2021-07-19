@@ -420,73 +420,101 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 	return false;
 }
 
-/*
-    Function: create_execution_constraint_edges
-    Objective: Create execution constraint edges with the current node (if they do not exist)
+void MissionDecomposer::create_execution_constraint_edges() {
+	auto nodes = vertices(mission_decomposition);
 
-	@ Input 1: The ID of the node being evaluated
-    @ Output: Void. The task graph is modified
-*/
-void MissionDecomposer::create_execution_constraint_edges(int node_id) {
-	int non_coop_parent_id = -1;
-	int current_node = node_id;
+    int graph_size = *nodes.second - *nodes.first;
 
-	bool is_group = false;
-	bool is_divisible = false;
-	while(non_coop_parent_id == -1) {
-		ATGraph::in_edge_iterator in_begin, in_end;
+	map<int,pair<bool,bool>> constraint_nodes; // <ID,<GROUP,DIVISIBLE>>
+	stack<pair<bool,int>> inactive_constraint_branches;
 
-        //Find out if the parent has non cooperative set to True
-        for(boost::tie(in_begin,in_end) = in_edges(current_node,mission_decomposition);in_begin != in_end;++in_begin) {
-            auto source = boost::source(*in_begin,mission_decomposition);
-            auto target = boost::target(*in_begin,mission_decomposition);
-            auto edge = boost::edge(source,target,mission_decomposition);
+	pair<bool,int> active_constraint_branch = make_pair(false,-1);
 
-			if(mission_decomposition[edge.first].edge_type == NORMALAND || mission_decomposition[edge.first].edge_type == NORMALOR) {
-				if(mission_decomposition[source].non_coop) {
-					non_coop_parent_id = source;
-					is_group = mission_decomposition[source].group;
-					is_divisible = mission_decomposition[source].divisible;
-					break;
+	set<int> active_tasks;
+
+	for(int current_node = 0; current_node < graph_size; current_node++) {
+		bool is_group = mission_decomposition[current_node].group;
+		bool is_divisible = mission_decomposition[current_node].divisible;
+
+		int parent = mission_decomposition[current_node].parent;
+
+		if(active_constraint_branch.first) {
+			if(mission_decomposition[current_node].parent <= mission_decomposition[active_constraint_branch.second].parent) {
+				if(inactive_constraint_branches.size() == 0) {
+					active_tasks.clear();
+
+					active_constraint_branch.first = false;
 				} else {
-					current_node = source;
+					active_constraint_branch = inactive_constraint_branches.top();
+					
+					inactive_constraint_branches.pop();
 				}
+			} else if(mission_decomposition[parent].is_achieve_type) { 
+				/*
+					This logic to deal with the forAll statement is very simple and possibly needs to be changed
+
+					-> If a group goal is a parent of the forAll statement we erase tasks
+				*/
+				active_tasks.clear();
 			}
 		}
-	}
 
-	set<int> non_coop_task_ids;
-	find_non_coop_task_ids(mission_decomposition, non_coop_parent_id, non_coop_task_ids);
+		if(mission_decomposition[current_node].node_type == GOALNODE || mission_decomposition[current_node].node_type == OP) {
+			if(!is_group || (is_group && !is_divisible)) {
+				constraint_nodes[current_node] = make_pair(is_group,is_divisible);
 
-	/*
-		Do we really need to create Edges in both ways?
-	*/
-	for(int t1 : non_coop_task_ids) {
-		for(int t2 : non_coop_task_ids) {
-			if(t1 != t2) {
-				ATEdge e1;
-				e1.edge_type = NONCOOP;
-				e1.source = t1;
-				e1.target = t2;
-				e1.group = is_group;
-				e1.divisible = is_divisible;
-				
-				bool edge_exists = boost::edge(t1,t2,mission_decomposition).second;
-				if(!edge_exists) {
-					boost::add_edge(boost::vertex(t1, mission_decomposition), boost::vertex(t2, mission_decomposition), e1, mission_decomposition);
+				if(!active_constraint_branch.first) {
+					active_constraint_branch.first = true;
+					active_constraint_branch.second = current_node;
+				} else {
+					pair<bool,bool> active_constraint = constraint_nodes[active_constraint_branch.second];
+
+					// If active constraint is a group and the one just found isn't, replace active constraint
+					if(!active_constraint.first) {
+						if(!is_group) {
+							inactive_constraint_branches.push(active_constraint_branch);
+
+							active_constraint_branch = make_pair(true,current_node);
+						}
+					}
+				}
+			}
+		} else if(mission_decomposition[current_node].node_type == ATASK) {
+			if(active_constraint_branch.first) {
+				pair<bool,bool> active_constraint = constraint_nodes[active_constraint_branch.second];
+
+				if(active_tasks.size() > 0) {
+					for(int task : active_tasks) {
+						AbstractTask t1 = std::get<AbstractTask>(mission_decomposition[current_node].content);
+						AbstractTask t2 = std::get<AbstractTask>(mission_decomposition[task].content);
+
+						ATEdge e1;
+						e1.edge_type = NONCOOP;
+						e1.source = task;
+						e1.target = current_node;
+						e1.group = active_constraint.first;
+						e1.divisible = active_constraint.second;
+
+						bool edge_exists = boost::edge(task,current_node,mission_decomposition).second;
+						if(!edge_exists) {
+							boost::add_edge(boost::vertex(task, mission_decomposition), boost::vertex(current_node, mission_decomposition), e1, mission_decomposition);
+						}
+
+						ATEdge e2;
+						e2.edge_type = NONCOOP;
+						e2.target = task;
+						e2.source = current_node;
+						e2.group = active_constraint.first;
+						e2.divisible = active_constraint.second;
+
+						edge_exists = boost::edge(current_node,task,mission_decomposition).second;
+						if(!edge_exists) {
+							boost::add_edge(boost::vertex(current_node, mission_decomposition), boost::vertex(task, mission_decomposition), e2, mission_decomposition);
+						}
+					}
 				}
 
-				ATEdge e2;
-				e2.edge_type = NONCOOP;
-				e2.source = t2;
-				e2.target = t1;
-				e2.group = is_group;
-				e2.divisible = is_divisible;
-
-				edge_exists = boost::edge(t2,t1,mission_decomposition).second;
-				if(!edge_exists) {
-					boost::add_edge(boost::vertex(t2, mission_decomposition), boost::vertex(t1, mission_decomposition), e2, mission_decomposition);
-				}
+				active_tasks.insert(current_node);
 			}
 		}
 	}
@@ -530,6 +558,8 @@ ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string, variant<pair<
 	recursive_at_graph_build(-1, gmannot, false, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
 
 	final_context_dependency_links_generation();
+
+	create_execution_constraint_edges();
 
 	if(is_unique_branch(mission_decomposition)) {
 		vector<size_t> achieve_goals;
@@ -886,9 +916,10 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 		
 		boost::add_edge(boost::vertex(parent, mission_decomposition), boost::vertex(node_id, mission_decomposition), e, mission_decomposition);
 
-		if(non_coop) {
+		/*if(non_coop) {
+			std::cout << "Non Coop Node: " << node_id << std::endl;
 			create_execution_constraint_edges(node_id);
-		}
+		}*/
 
 		AbstractTask at = std::get<AbstractTask>(node.content);
 
