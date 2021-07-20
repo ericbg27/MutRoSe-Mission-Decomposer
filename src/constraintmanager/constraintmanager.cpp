@@ -1098,16 +1098,16 @@ void ConstraintManager::generate_execution_constraints() {
 
                         for(unsigned int i=0;i<source_decompositions.size();i++) {
                             for(unsigned int j=0;j<target_decompositions.size();j++) {
-                                bool can_unite = can_unite_decompositions(get<Decomposition>(source_decompositions.at(i).second.content),get<Decomposition>(target_decompositions.at(j).second.content),true);
+                                //bool can_unite = can_unite_decompositions(get<Decomposition>(source_decompositions.at(i).second.content),get<Decomposition>(target_decompositions.at(j).second.content),true);
 
-                                if(can_unite) {
+                                //if(can_unite) {
                                     Constraint new_c = generate_constraint(source_decompositions.at(i), target_decompositions.at(j), NC);
                                     new_c.group = e.group;
                                     new_c.divisible = e.divisible;
 
                                     mission_constraints.push_back(new_c);
                                     non_coop_constraints.push_back(new_c);
-                                }
+                                //}
                             }
                         }
                     }
