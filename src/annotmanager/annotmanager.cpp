@@ -131,6 +131,7 @@ void AnnotManager::expand_forall_annot(general_annot* node_annot, int generated_
         aux->non_coop = node_annot->non_coop;
         aux->group = node_annot->group;
         aux->divisible = node_annot->divisible;
+        aux->or_decomposition = node_annot->or_decomposition;
         recursive_child_replacement(aux, node_annot);
 
         new_annots.push_back(aux);
@@ -140,6 +141,7 @@ void AnnotManager::expand_forall_annot(general_annot* node_annot, int generated_
     node_annot->type = OPERATOR;
     node_annot->related_goal = "";
     node_annot->children.clear();
+    node_annot->or_decomposition = false;
     //node_annot->group = true;
     //node_annot->divisible = true;
     for(general_annot* annot : new_annots) {
