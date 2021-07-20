@@ -430,7 +430,8 @@ void MissionDecomposer::create_execution_constraint_edges() {
 
 	pair<bool,int> active_constraint_branch = make_pair(false,-1);
 
-	set<int> active_tasks;
+	set<int> current_active_tasks;
+	map<int,set<int>> nodes_active_tasks;
 
 	for(int current_node = 0; current_node < graph_size; current_node++) {
 		bool is_group = mission_decomposition[current_node].group;
@@ -441,7 +442,7 @@ void MissionDecomposer::create_execution_constraint_edges() {
 		if(active_constraint_branch.first) {
 			if(mission_decomposition[current_node].parent <= mission_decomposition[active_constraint_branch.second].parent) {
 				if(inactive_constraint_branches.size() == 0) {
-					active_tasks.clear();
+					current_active_tasks.clear();
 
 					active_constraint_branch.first = false;
 				} else {
@@ -449,14 +450,19 @@ void MissionDecomposer::create_execution_constraint_edges() {
 					
 					inactive_constraint_branches.pop();
 				}
-			} else if(mission_decomposition[parent].is_achieve_type) { 
+			} else if(mission_decomposition[parent].is_achieve_type && active_constraint_branch.second >= parent) { 
 				/*
 					This logic to deal with the forAll statement is very simple and possibly needs to be changed
 
 					-> If a group goal is a parent of the forAll statement we erase tasks
 				*/
-				active_tasks.clear();
+				std::cout << "TESTE" << std::endl;
+				current_active_tasks = nodes_active_tasks[parent];
 			}
+		}
+
+		if(mission_decomposition[current_node].is_achieve_type) {
+			nodes_active_tasks[current_node] = current_active_tasks;
 		}
 
 		if(mission_decomposition[current_node].node_type == GOALNODE || mission_decomposition[current_node].node_type == OP) {
@@ -483,8 +489,8 @@ void MissionDecomposer::create_execution_constraint_edges() {
 			if(active_constraint_branch.first) {
 				pair<bool,bool> active_constraint = constraint_nodes[active_constraint_branch.second];
 
-				if(active_tasks.size() > 0) {
-					for(int task : active_tasks) {
+				if(current_active_tasks.size() > 0) {
+					for(int task : current_active_tasks) {
 						AbstractTask t1 = std::get<AbstractTask>(mission_decomposition[current_node].content);
 						AbstractTask t2 = std::get<AbstractTask>(mission_decomposition[task].content);
 
@@ -514,7 +520,7 @@ void MissionDecomposer::create_execution_constraint_edges() {
 					}
 				}
 
-				active_tasks.insert(current_node);
+				current_active_tasks.insert(current_node);
 			}
 		}
 	}
