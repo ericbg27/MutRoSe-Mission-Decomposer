@@ -433,11 +433,22 @@ void MissionDecomposer::create_execution_constraint_edges() {
 	set<int> current_active_tasks;
 	map<int,set<int>> nodes_active_tasks;
 
+	set<int> or_nodes;
+
+	bool mark_as_or = false;
+
 	for(int current_node = 0; current_node < graph_size; current_node++) {
 		bool is_group = mission_decomposition[current_node].group;
 		bool is_divisible = mission_decomposition[current_node].divisible;
 
 		int parent = mission_decomposition[current_node].parent;
+
+		if(mark_as_or) {
+			or_nodes.insert(current_node);
+			nodes_active_tasks[current_node] = current_active_tasks;
+
+			mark_as_or = false;
+		}
 
 		if(active_constraint_branch.first) {
 			if(mission_decomposition[current_node].parent <= mission_decomposition[active_constraint_branch.second].parent) {
@@ -450,18 +461,35 @@ void MissionDecomposer::create_execution_constraint_edges() {
 					
 					inactive_constraint_branches.pop();
 				}
-			} else if(mission_decomposition[parent].is_achieve_type && active_constraint_branch.second >= parent) { 
+			} else if((mission_decomposition[parent].is_achieve_type && active_constraint_branch.second >= parent) || (or_nodes.find(parent) != or_nodes.end())) { 
 				/*
 					This logic to deal with the forAll statement is very simple and possibly needs to be changed
 
 					-> If a group goal is a parent of the forAll statement we erase tasks
 				*/
-				std::cout << "TESTE" << std::endl;
 				current_active_tasks = nodes_active_tasks[parent];
 			}
 		}
 
-		if(mission_decomposition[current_node].is_achieve_type) {
+		bool is_or = false;
+		int edge_num = 0;
+		ATGraph::out_edge_iterator ei, ei_end;
+		for(boost::tie(ei,ei_end) = out_edges(current_node,mission_decomposition);ei != ei_end;++ei) {
+			ATEdge e = mission_decomposition[*ei];
+
+			if(e.edge_type == NORMALOR) {
+				is_or = true;
+				or_nodes.insert(current_node);
+
+				edge_num++;
+			}
+		}
+		
+		if(is_or && edge_num == 1) {
+			mark_as_or = true;
+		}
+
+		if(mission_decomposition[current_node].is_achieve_type || is_or) {
 			nodes_active_tasks[current_node] = current_active_tasks;
 		}
 
