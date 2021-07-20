@@ -442,7 +442,7 @@ void MissionDecomposer::create_execution_constraint_edges() {
 		int parent = mission_decomposition[current_node].parent;
 
 		if(active_constraint_branch.first) {
-			if(mission_decomposition[current_node].parent <= mission_decomposition[active_constraint_branch.second].parent) {
+			if(parent <= mission_decomposition[active_constraint_branch.second].parent) {
 				if(inactive_constraint_branches.size() == 0) {
 					current_active_tasks.clear();
 
@@ -485,7 +485,7 @@ void MissionDecomposer::create_execution_constraint_edges() {
 					pair<bool,bool> active_constraint = constraint_nodes[active_constraint_branch.second];
 
 					// If active constraint is a group and the one just found isn't, replace active constraint
-					if(!active_constraint.first) {
+					if(active_constraint.first) {
 						if(!is_group) {
 							inactive_constraint_branches.push(active_constraint_branch);
 
