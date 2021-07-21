@@ -1,1 +1,1 @@
-./pandaPIparser hddl/Room\ Cleaning/AND/Room\ Cleaning\ Fail.hddl gm/Room\ Cleaning/AND/RoomCleaningFail2.txt configs/XML/Room\ Cleaning/AND/configuration.xml -v
+./MRSDecomposer hddl/Room\ Cleaning/AND/Room\ Cleaning\ Fail.hddl gm/Room\ Cleaning/AND/RoomCleaningFail2.txt configs/XML/Room\ Cleaning/AND/configuration.xml -v

@@ -7,7 +7,7 @@ This is work in progress. The main branch contais partial work under test.
 ## Installation
 To use this modified PANDA parser just clone or download the repository and run it using the following syntax:
 
-./pandaPIparser [Modified HDDL Domain File] [Goal Model JSON file] [XML configuration file]
+./MRSDecomposer [Modified HDDL Domain File] [Goal Model JSON file] [XML configuration file]
 
 ## Modified HDDL and Modified Goal Model
 

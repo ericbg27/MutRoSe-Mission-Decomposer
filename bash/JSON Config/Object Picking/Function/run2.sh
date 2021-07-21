@@ -1,1 +1,1 @@
-./pandaPIparser hddl/Object\ Picking/Function/Object\ Picking\ v2.hddl gm/Object\ Picking/Function/Object\ Picking.txt configs/JSON/Object\ Picking/Function/configuration2.json -v
+./MRSDecomposer hddl/Object\ Picking/Function/Object\ Picking\ v2.hddl gm/Object\ Picking/Function/Object\ Picking.txt configs/JSON/Object\ Picking/Function/configuration2.json -v
