@@ -30,7 +30,7 @@
             "Description": "",
             "GoalType": "Query",
             "Controls": "rooms : Sequence(Room)",
-            "QueriedProperty": "location_db->select(r:Room|!r.is_organized)"
+            "QueriedProperty": "world_db->select(r:Room|!r.is_organized)"
           }
         },
         {
@@ -57,7 +57,7 @@
             "Description": "",
             "GoalType": "Query",
             "Controls": "objects : Sequence(Object)",
-            "QueriedProperty": "location_db->select(o:Object | o.name in current_room.objects)",
+            "QueriedProperty": "world_db->select(o:Object | o.name in current_room.objects)",
             "Monitors": "current_room"
           }
         },

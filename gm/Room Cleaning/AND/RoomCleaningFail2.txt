@@ -30,7 +30,7 @@
             "Description": "",
             "GoalType": "Query",
             "Controls": "rooms : Sequence(Rooms)",
-            "QueriedProperty": "location_db->select(r:Room | !r.is_clean)"
+            "QueriedProperty": "world_db->select(r:Room | !r.is_clean)"
           }
         },
         {

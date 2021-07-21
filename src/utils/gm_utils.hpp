@@ -31,7 +31,7 @@ const std::string istar_and = "istar.AndRefinementLink";
 const std::string istar_or = "istar.OrRefinementLink";
 const std::set<std::string> default_props{description_prop, queried_property_prop, failure_condition_prop, achieve_condition_prop};
 
-const string world_db_query_var = "location_db";
+const string world_db_query_var = "world_db";
 
 const std::string hddl_robot_type = "robot";
 const std::string hddl_robotteam_type = "robotteam";

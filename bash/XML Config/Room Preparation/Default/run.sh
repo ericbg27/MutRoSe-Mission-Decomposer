@@ -1,1 +1,1 @@
-./pandaPIparser hddl/Room\ Preparation/Default/Room\ Preparation.hddl gm/Room\ Preparation/Default/Room\ Preparation.txt configs/XML/Room\ Preparation/Default/configuration.xml -v
+./MRSDecomposer hddl/Room\ Preparation/Default/Room\ Preparation.hddl gm/Room\ Preparation/Default/Room\ Preparation.txt configs/XML/Room\ Preparation/Default/configuration.xml -v

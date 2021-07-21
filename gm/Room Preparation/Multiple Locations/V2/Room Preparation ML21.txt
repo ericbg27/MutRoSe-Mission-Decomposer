@@ -30,7 +30,7 @@
             "Description": "",
             "GoalType": "Query",
             "Controls": "rooms : Sequence(Room)",
-            "QueriedProperty": "location_db->select(r:Room|!r.is_prepared)"
+            "QueriedProperty": "world_db->select(r:Room|!r.is_prepared)"
           }
         },
         {
@@ -125,7 +125,7 @@
             "Description": "",
             "GoalType": "Query",
             "Controls": "sanitization_room : Room",
-            "QueriedProperty": "location_db->select(r:Room|r.name = \"SanitizationRoom\")"
+            "QueriedProperty": "world_db->select(r:Room|r.name = \"SanitizationRoom\")"
           }
         },
         {

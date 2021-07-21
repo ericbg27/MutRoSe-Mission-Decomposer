@@ -30,7 +30,7 @@
             "Description": "",
             "GoalType": "Query",
             "Controls": "rooms : Sequence(Room)",
-            "QueriedProperty": "location_db->select(r:Room | !r.is_clean)"
+            "QueriedProperty": "world_db->select(r:Room | !r.is_clean)"
           }
         },
         {
@@ -70,7 +70,7 @@
         },
         {
           "id": "23f7644a-2446-4cef-b955-8d0f4648ad20",
-          "text": "G6: Clean Curren Room With Laser",
+          "text": "G6: Clean Curren Room With UV Light",
           "type": "istar.Goal",
           "x": 887,
           "y": 524,
@@ -92,7 +92,7 @@
         },
         {
           "id": "32b08e24-0c51-4a89-aa3b-76c0286aa454",
-          "text": "AT2: RoomCleaningLaser",
+          "text": "AT2: RoomCleaningUV",
           "type": "istar.Task",
           "x": 873,
           "y": 632,
