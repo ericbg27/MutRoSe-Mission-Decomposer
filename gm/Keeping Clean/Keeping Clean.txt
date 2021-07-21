@@ -31,7 +31,7 @@
           "customProperties": {
             "Description": "",
             "GoalType": "Query",
-            "QueriedProperty": "location_db->select(r:Room | r.staphylococcus > 1)",
+            "QueriedProperty": "world_db->select(r:Room | r.staphylococcus > 1)",
             "Controls": "rooms : Sequence(Rooms)"
           }
         },
@@ -172,7 +172,7 @@
           "customProperties": {
             "Description": "",
             "GoalType": "Query",
-            "QueriedProperty": "location_db->select(r:Room | r.name = \"EquipmentRoom\")",
+            "QueriedProperty": "world_db->select(r:Room | r.name = \"EquipmentRoom\")",
             "Controls": "equipment_room : Room"
           }
         },
