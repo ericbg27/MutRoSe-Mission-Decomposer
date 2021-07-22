@@ -298,174 +298,169 @@ void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm
 				} else {
                     if(q.query.at(1) == ocl_equal || q.query.at(1) == ocl_different) {
                         string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
-                        string prop_val;
-                        try {
-                            prop_val = child.second.get<string>(prop);
-                        } catch(...) {
-                            string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
 
-                            throw std::runtime_error(bad_condition);
+                        boost::optional prop_val_opt = child.second.get_optional<string>(prop);
+
+						if(prop_val_opt) {
+                            string prop_val = prop_val_opt.get();
+
+                            bool result;
+                            if(q.query.at(1) == ocl_equal) {
+                                result = (prop_val == q.query.at(2));
+                            } else {
+                                result = (prop_val != q.query.at(2));
+                            }
+
+                            if(result) aux.push_back(child.second);
                         }
-
-                        bool result;
-                        if(q.query.at(1) == ocl_equal) {
-                            result = (prop_val == q.query.at(2));
-                        } else {
-                            result = (prop_val != q.query.at(2));
-                        }
-
-                        if(result) aux.push_back(child.second);
                     } else if(q.query.at(1) == ocl_in) {
 						string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
-						string prop_val;
-						try {
-							prop_val = child.second.get<string>(prop);
-						} catch(...) {
-							string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
 
-							throw std::runtime_error(bad_condition);
-						}
+                        boost::optional prop_val_opt = child.second.get_optional<string>(prop);
 
-						string attr_to_search = q.query.at(2);
-						std::replace(attr_to_search.begin(), attr_to_search.end(), '.', ' ');
-						
-						vector<string> split_attr;
-						
-						stringstream ss(attr_to_search);
-						string tmp;
-						while(ss >> tmp) {
-							split_attr.push_back(tmp);
-						}
-
-						/*
-							If we have [VAR].[ATTR] in [VAR].[ÁTTR] we search in the ptree
-
-							If we have [VAR].[ATTR] in [VAR], where VAR is a collection variable, we search in the variable value
-						*/
-						if(split_attr.size() == 1) {
-                            vector<pt::ptree> var_value = valid_variables[split_attr.at(0)].second;
+						if(prop_val_opt) {
+                            string prop_val = prop_val_opt.get();
                             
-                            bool found_attr = false;
-                            for(pt::ptree val : var_value) {
-                                if(val.get<string>("name") == prop_val) {
-                                    found_attr = true;
-                                    
-                                    break;
+
+                            string attr_to_search = q.query.at(2);
+                            std::replace(attr_to_search.begin(), attr_to_search.end(), '.', ' ');
+                            
+                            vector<string> split_attr;
+                            
+                            stringstream ss(attr_to_search);
+                            string tmp;
+                            while(ss >> tmp) {
+                                split_attr.push_back(tmp);
+                            }
+
+                            /*
+                                If we have [VAR].[ATTR] in [VAR].[ÁTTR] we search in the ptree
+
+                                If we have [VAR].[ATTR] in [VAR], where VAR is a collection variable, we search in the variable value
+                            */
+                            if(split_attr.size() == 1) {
+                                vector<pt::ptree> var_value = valid_variables[split_attr.at(0)].second;
+                                
+                                bool found_attr = false;
+                                for(pt::ptree val : var_value) {
+                                    if(val.get<string>("name") == prop_val) {
+                                        found_attr = true;
+                                        
+                                        break;
+                                    }
+                                }
+
+                                if(found_attr) {
+                                    aux.push_back(child.second);
+                                }
+                            } else if(split_attr.size() == 2) {
+                                // Here we need to get the query ptree for the second attribute
+                                pt::ptree attr_tree = valid_variables[split_attr.at(0)].second.at(0).get_child(split_attr.at(1));
+
+                                string attr_data = attr_tree.data();
+                                boost::trim(attr_data);
+                                if(attr_tree.empty() && attr_data != "") {
+                                    vector<string> attr_values;
+
+                                    stringstream ss(attr_data);
+                                    string tmp;
+                                    while(ss >> tmp) {
+                                        attr_values.push_back(tmp);
+                                    }
+
+                                    if(std::find(attr_values.begin(), attr_values.end(), prop_val) != attr_values.end()) {
+                                        aux.push_back(child.second);
+                                    }
+                                } else if(!attr_tree.empty() && attr_data == "") {
+                                    BOOST_FOREACH(pt::ptree::value_type val, attr_tree) {
+                                        if(prop_val == val.second.data()) {
+                                            aux.push_back(child.second);
+
+                                            break;
+                                        }
+                                    }
+                                } else {
+                                    string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
+
+                                    throw std::runtime_error(bad_condition);
+                                }
+                            } else {
+                                string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
+
+                                throw std::runtime_error(bad_condition);
+                            }
+                        }
+                    } else if(q.query.at(1) == ocl_gt || q.query.at(1) == ocl_lt || q.query.at(1) == ocl_geq || q.query.at(1) == ocl_leq) {
+                        string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
+
+                        boost::optional prop_val_opt = child.second.get_optional<string>(prop);
+
+						if(prop_val_opt) {
+                            string prop_val = prop_val_opt.get();
+
+                            std::regex integer("[0-9]+");
+
+                            bool result = false;
+                            if(std::regex_match(q.query.at(2), integer)) {
+                                int q_val = stoi(q.query.at(2));
+
+                                if(prop_val.find(".") == string::npos) {
+                                    int val = stoi(prop_val);
+
+                                    if(q.query.at(1) == ocl_gt) {
+                                        result = (val > q_val);
+                                    } else if(q.query.at(1) == ocl_lt) {
+                                        result = (val < q_val);
+                                    } else if(q.query.at(1) == ocl_geq) {
+                                        result = (val >= q_val);
+                                    } else if(q.query.at(1) == ocl_leq) {
+                                        result = (val <= q_val);
+                                    }
+                                } else {
+                                    float val = static_cast<float>(::atof(prop_val.c_str()));
+
+                                    if(q.query.at(1) == ocl_gt) {
+                                        result = greater_than_float_and_int(q_val, val);
+                                    } else if(q.query.at(1) == ocl_lt) {
+                                        result = greater_than_int_and_float(q_val, val);
+                                    } else if(q.query.at(1) == ocl_geq) {
+                                        result = !greater_than_int_and_float(q_val, val);
+                                    } else if(q.query.at(1) == ocl_leq) {
+                                        result = !greater_than_float_and_int(q_val, val);
+                                    }
+                                }
+                            } else {
+                                float q_val = static_cast<float>(::atof(q.query.at(2).c_str()));
+
+                                if(prop_val.find(".") == string::npos) {
+                                    int val = stoi(prop_val);
+
+                                    if(q.query.at(1) == ocl_gt) {
+                                        result = greater_than_int_and_float(val, q_val);
+                                    } else if(q.query.at(1) == ocl_lt) {
+                                        result = greater_than_float_and_int(val, q_val);
+                                    } else if(q.query.at(1) == ocl_geq) {
+                                        result = !greater_than_float_and_int(val, q_val);
+                                    } else if(q.query.at(1) == ocl_leq) {
+                                        result = !greater_than_int_and_float(val, q_val);
+                                    }
+                                } else {
+                                    float val = static_cast<float>(::atof(prop_val.c_str()));
+
+                                    if(q.query.at(1) == ocl_gt) {
+                                        result = greater_than_floats(val, q_val);
+                                    } else if(q.query.at(1) == ocl_lt) {
+                                        result = greater_than_floats(q_val, val);
+                                    } else if(q.query.at(1) == ocl_geq) {
+                                        result = !greater_than_floats(q_val, val);
+                                    } else if(q.query.at(1) == ocl_leq) {
+                                        result = !greater_than_floats(val, q_val);
+                                    }
                                 }
                             }
 
-                            if(found_attr) {
-                                aux.push_back(child.second);
-                            }
-						} else if(split_attr.size() == 2) {
-							// Here we need to get the query ptree for the second attribute
-							pt::ptree attr_tree = valid_variables[split_attr.at(0)].second.at(0).get_child(split_attr.at(1));
-
-							string attr_data = attr_tree.data();
-							boost::trim(attr_data);
-							if(attr_tree.empty() && attr_data != "") {
-								vector<string> attr_values;
-
-								stringstream ss(attr_data);
-								string tmp;
-								while(ss >> tmp) {
-									attr_values.push_back(tmp);
-								}
-
-								if(std::find(attr_values.begin(), attr_values.end(), prop_val) != attr_values.end()) {
-									aux.push_back(child.second);
-								}
-							} else if(!attr_tree.empty() && attr_data == "") {
-								BOOST_FOREACH(pt::ptree::value_type val, attr_tree) {
-									if(prop_val == val.second.data()) {
-										aux.push_back(child.second);
-
-										break;
-									}
-								}
-							} else {
-								string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
-
-								throw std::runtime_error(bad_condition);
-							}
-						} else {
-							string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
-
-							throw std::runtime_error(bad_condition);
-						} 
-                    } else if(q.query.at(1) == ocl_gt || q.query.at(1) == ocl_lt || q.query.at(1) == ocl_geq || q.query.at(1) == ocl_leq) {
-                        string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
-						string prop_val;
-						try {
-							prop_val = child.second.get<string>(prop);
-						} catch(...) {
-							string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
-
-							throw std::runtime_error(bad_condition);
-						}
-
-                        std::regex integer("[0-9]+");
-
-						bool result = false;
-						if(std::regex_match(q.query.at(2), integer)) {
-							int q_val = stoi(q.query.at(2));
-
-							if(prop_val.find(".") == string::npos) {
-								int val = stoi(prop_val);
-
-								if(q.query.at(1) == ocl_gt) {
-									result = (val > q_val);
-								} else if(q.query.at(1) == ocl_lt) {
-									result = (val < q_val);
-								} else if(q.query.at(1) == ocl_geq) {
-									result = (val >= q_val);
-								} else if(q.query.at(1) == ocl_leq) {
-									result = (val <= q_val);
-								}
-							} else {
-								float val = static_cast<float>(::atof(prop_val.c_str()));
-
-								if(q.query.at(1) == ocl_gt) {
-									result = greater_than_float_and_int(q_val, val);
-								} else if(q.query.at(1) == ocl_lt) {
-									result = greater_than_int_and_float(q_val, val);
-								} else if(q.query.at(1) == ocl_geq) {
-									result = !greater_than_int_and_float(q_val, val);
-								} else if(q.query.at(1) == ocl_leq) {
-									result = !greater_than_float_and_int(q_val, val);
-								}
-							}
-						} else {
-							float q_val = static_cast<float>(::atof(q.query.at(2).c_str()));
-
-							if(prop_val.find(".") == string::npos) {
-								int val = stoi(prop_val);
-
-								if(q.query.at(1) == ocl_gt) {
-									result = greater_than_int_and_float(val, q_val);
-								} else if(q.query.at(1) == ocl_lt) {
-									result = greater_than_float_and_int(val, q_val);
-								} else if(q.query.at(1) == ocl_geq) {
-									result = !greater_than_float_and_int(val, q_val);
-								} else if(q.query.at(1) == ocl_leq) {
-									result = !greater_than_int_and_float(val, q_val);
-								}
-							} else {
-								float val = static_cast<float>(::atof(prop_val.c_str()));
-
-								if(q.query.at(1) == ocl_gt) {
-									result = greater_than_floats(val, q_val);
-								} else if(q.query.at(1) == ocl_lt) {
-									result = greater_than_floats(q_val, val);
-								} else if(q.query.at(1) == ocl_geq) {
-									result = !greater_than_floats(q_val, val);
-								} else if(q.query.at(1) == ocl_leq) {
-									result = !greater_than_floats(val, q_val);
-								}
-							}
-						}
-
-						if(result) aux.push_back(child.second);
+                            if(result) aux.push_back(child.second);
+                        }
                     }
 				}
 			}
