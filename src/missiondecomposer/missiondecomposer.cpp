@@ -710,8 +710,20 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 			gm_node = gm[gm_node_id];
 	
 			is_forAll = true;
-			monitored_var = std::get<vector<pair<string,string>>>(gm_node.custom_props[monitors_prop]).at(0);
-			controlled_var = std::get<vector<pair<string,string>>>(gm_node.custom_props[controls_prop]).at(0);
+			AchieveCondition a = std::get<AchieveCondition>(gm_node.custom_props[achieve_condition_prop]);
+
+			for(pair<string,string> var : std::get<vector<pair<string,string>>>(gm_node.custom_props[monitors_prop])) {
+				if(var.first == a.get_iterated_var()) {
+					monitored_var = var;
+					break;
+				}
+			}
+			for(pair<string,string> var : std::get<vector<pair<string,string>>>(gm_node.custom_props[controls_prop])) {
+				if(var.first == a.get_iteration_var()) {
+					controlled_var = var;
+					break;
+				}
+			}
 		}
 		
 		node.non_coop = rannot->non_coop;
