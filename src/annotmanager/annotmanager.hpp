@@ -25,6 +25,8 @@ class AnnotManager {
         void expand_node_vector(std::vector<int>& vctr, int current, int generated_instances);
         void expand_forall_annot(general_annot* node_annot, int generated_instances, std::string iterated_var, std::string iteration_var, std::vector<int>& vctr, int current, pt::ptree worlddb, std::map<int,AchieveCondition> valid_forAll_conditions);
 
+        bool forall_goal_resolution(general_annot* node_annot, int current, int depth, std::map<int,AchieveCondition> valid_forAll_conditions, std::vector<int>& vctr, pt::ptree worlddb);
+
         annot_manager_type get_annot_manager_type();
     
     protected: 

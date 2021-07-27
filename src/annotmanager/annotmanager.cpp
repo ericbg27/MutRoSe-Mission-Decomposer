@@ -65,6 +65,9 @@ general_annot* FileKnowledgeAnnotManager::retrieve_gm_annot() {
         XMLKnowledgeBase* xml_base = dynamic_cast<XMLKnowledgeBase*>(world_knowledge_base.get());
 
         worlddb = xml_base->get_knowledge();
+        if(xml_base->get_root_key() != "") {
+            worlddb = worlddb.get_child(xml_base->get_root_key());
+        }
     }
 
     std::map<int,AchieveCondition> valid_forAll_conditions;
@@ -142,8 +145,6 @@ void AnnotManager::expand_forall_annot(general_annot* node_annot, int generated_
     node_annot->related_goal = "";
     node_annot->children.clear();
     node_annot->or_decomposition = false;
-    //node_annot->group = true;
-    //node_annot->divisible = true;
     for(general_annot* annot : new_annots) {
         node_annot->children.push_back(annot);
     }
@@ -165,6 +166,35 @@ void AnnotManager::expand_forall_annot(general_annot* node_annot, int generated_
 
         index++;
     }
+}
+
+bool AnnotManager::forall_goal_resolution(general_annot* node_annot, int current, int depth, map<int,AchieveCondition> valid_forAll_conditions, vector<int>& vctr, pt::ptree worlddb) {
+    bool expanded_in_forAll = false;
+
+    string iterated_var = valid_forAll_conditions[depth].get_iterated_var();
+    string iteration_var = valid_forAll_conditions[depth].get_iteration_var();
+
+    int generated_instances = valid_variables[iterated_var].second.size();
+
+    if(generated_instances > 1) {
+        expand_node_vector(vctr, current, generated_instances);
+
+        expand_forall_annot(node_annot, generated_instances, iterated_var, iteration_var, vctr, current, worlddb, valid_forAll_conditions);
+
+        expanded_in_forAll = true;
+    } else {
+        string var_type = valid_variables[iterated_var].first;
+        size_t begin = var_type.find("(")+1;
+        size_t end = var_type.find(")", begin);
+        var_type = var_type.substr(begin,end-begin); 
+
+        vector<pt::ptree> iteration_var_value;
+        iteration_var_value.push_back(valid_variables[iterated_var].second.at(0));
+
+        valid_variables[iteration_var] = make_pair(var_type, iteration_var_value);
+    }
+
+    return expanded_in_forAll;
 }
 
 /*
@@ -200,7 +230,7 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
 		if(std::get<string>(gm[current_node].custom_props[goal_type_prop]) == query_goal_type) {
             QueriedProperty q = std::get<QueriedProperty>(gm[current_node].custom_props[queried_property_prop]);
 
-            pt::ptree query_ptree = get_query_ptree(gm, current_node, valid_variables, valid_forAll_conditions, worlddb.get_child("world_db"));
+            pt::ptree query_ptree = get_query_ptree(gm, current_node, valid_variables, valid_forAll_conditions, worlddb);
 
             solve_query_statement(query_ptree,q,gm,current_node,valid_variables);
 		} else if(std::get<string>(gm[current_node].custom_props[goal_type_prop]) == achieve_goal_type) {
@@ -248,26 +278,9 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
         bool expanded_in_forAll = false;
 
         if(is_forAll_goal) {
-            string iterated_var = valid_forAll_conditions[depth].get_iterated_var();
-            string iteration_var = valid_forAll_conditions[depth].get_iteration_var();
-
-            int generated_instances = valid_variables[iterated_var].second.size();
-
-            if(generated_instances > 1) {
-                int c_node = vctr.at(0);
-
-                expand_node_vector(vctr, c_node, generated_instances);
-                
-                expand_forall_annot(node_annot, generated_instances, iterated_var, iteration_var, vctr, c_node, worlddb, valid_forAll_conditions);
-
-                expanded_in_forAll = true;
-            } else {
-                string var_type = valid_variables[iterated_var].first;
-                vector<pt::ptree> iteration_var_value;
-                iteration_var_value.push_back(valid_variables[iterated_var].second.at(0));
-
-                valid_variables[iteration_var] = make_pair(var_type, iteration_var_value);
-            }
+            int c_node = vctr.at(0);
+            
+            expanded_in_forAll = forall_goal_resolution(node_annot, c_node, depth, valid_forAll_conditions, vctr, worlddb);
         }
 
         vctr.erase(vctr.begin()); 
@@ -280,16 +293,6 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
             }
         }
     } else {
-        int parent_id = gm[current_node].parent;
-
-        /*if((!gm[current_node].group) || (gm[current_node].group && !gm[current_node].divisible)) { // Group and divisible are not in the default values
-            node_annot->group = gm[current_node].group;
-            node_annot->divisible = gm[current_node].divisible;
-        } else {
-            node_annot->group = gm[parent_id].group;
-            node_annot->divisible = gm[parent_id].divisible;
-        }*/
-
         node_annot->group = gm[current_node].group;
         node_annot->divisible = gm[current_node].divisible;
 
@@ -354,28 +357,7 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
             bool expanded_in_forAll = false;
             
             if(is_forAll_goal) {
-                string iterated_var = valid_forAll_conditions[depth].get_iterated_var();
-                string iteration_var = valid_forAll_conditions[depth].get_iteration_var();
-
-                int generated_instances = valid_variables[iterated_var].second.size();
-
-                if(generated_instances > 1) {
-                    expand_node_vector(vctr, current, generated_instances);
-
-                    expand_forall_annot(node_annot, generated_instances, iterated_var, iteration_var, vctr, current, worlddb, valid_forAll_conditions);
-
-                    expanded_in_forAll = true;
-                } else {
-                    string var_type = valid_variables[iterated_var].first;
-                    size_t begin = var_type.find("(")+1;
-                    size_t end = var_type.find(")", begin);
-                    var_type = var_type.substr(begin,end-begin); 
-
-                    vector<pt::ptree> iteration_var_value;
-                    iteration_var_value.push_back(valid_variables[iterated_var].second.at(0));
-
-                    valid_variables[iteration_var] = make_pair(var_type, iteration_var_value);
-                }
+                expanded_in_forAll = forall_goal_resolution(node_annot, current, depth, valid_forAll_conditions, vctr, worlddb);
             }
 
             if(!expanded_in_forAll) {
