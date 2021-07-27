@@ -39,20 +39,48 @@ vector<int> get_dfs_gm_nodes(GMGraph gm) {
 void check_gm_validity(GMGraph gm) {
     vector<int> vctr = get_dfs_gm_nodes(gm);
 
+    map<string,string> declared_vars;
+
     for(int v : vctr) {
         string goal_type = get<string>(gm[v].custom_props[goal_type_prop]);
+
+        vector<pair<string,string>> monitored_vars;
+        if(holds_alternative<vector<pair<string,string>>>(gm[v].custom_props[monitors_prop])) {
+            monitored_vars = std::get<vector<pair<string,string>>>(gm[v].custom_props[monitors_prop]);
+        }
+
+        pair<bool,pair<string,string>> undeclared_var;
+        undeclared_var.first = false;
+        
+        for(pair<string,string> var : monitored_vars) {
+            if(declared_vars.find(var.first) == declared_vars.end()) {
+                undeclared_var.first = true;
+                undeclared_var.second = var;
+            }
+        }
+
+        if(undeclared_var.first) {
+            string undeclared_variable_error = "Undeclared variable [" + undeclared_var.second.first + "] of type [" + undeclared_var.second.second + "] in goal " + get_node_name(gm[v].text);
+
+            throw std::runtime_error(undeclared_variable_error);
+        }
 
         vector<pair<string,string>> controlled_vars;
         if(holds_alternative<vector<pair<string,string>>>(gm[v].custom_props[controls_prop])) {
             controlled_vars = std::get<vector<pair<string,string>>>(gm[v].custom_props[controls_prop]);
         }
 
-        if(goal_type == achieve_goal_type) {
-            vector<pair<string,string>> monitored_vars;
-            if(holds_alternative<vector<pair<string,string>>>(gm[v].custom_props[monitors_prop])) {
-                monitored_vars = std::get<vector<pair<string,string>>>(gm[v].custom_props[monitors_prop]);
-            }
+        for(pair<string,string> var : controlled_vars) {
+            if(declared_vars.find(var.first) == declared_vars.end()) {
+                declared_vars[var.first] = var.second;
+            } else {
+                string var_redeclaration_error = "Redeclaration of variable [" + var.first + "] in goal " + get_node_name(gm[v].text);
 
+                throw std::runtime_error(var_redeclaration_error); 
+            }
+        }
+
+        if(goal_type == achieve_goal_type) {
             AchieveCondition ac = std::get<AchieveCondition>(gm[v].custom_props[achieve_condition_prop]);
             
             bool found_iterated_var = false;
@@ -341,16 +369,6 @@ vector<pair<pair<int,int>, EdgeData>> parse_gm_edges(pt::ptree links, GMGraph& g
 
         gm[boost::vertex(s,gm)].parent = t;
         gm[boost::vertex(t,gm)].children.push_back(s);
-
-        /*if(!gm[boost::vertex(t,gm)].group) {
-            gm[boost::vertex(s,gm)].group = false;
-        } else {
-            if(!gm[boost::vertex(t,gm)].divisible) {
-                if(gm[boost::vertex(s,gm)].group) {
-                    gm[boost::vertex(s,gm)].divisible = false;
-                }
-            }
-        }*/
 
         edges.push_back(make_pair(make_pair(s,t),e));
     }
