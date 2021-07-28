@@ -463,3 +463,91 @@ vector<string> get_predicate_argument_types(task t, literal pred) {
 
     return arg_types;
 }
+
+void update_world_state(vector<ground_literal>& world_state, DecompositionPath path, AbstractTask at) {
+	for(task t : path.decomposition) {
+		for(literal eff : t.eff) {
+			bool instantiated_eff = true;
+			vector<variant<pair<string,string>,pair<string,vector<string>>>> arg_map;
+			for(string arg : eff.arguments) {
+				bool found_arg = false;
+				variant<string,vector<string>> mapped_var;
+				// Here one place where we have to expand collection related predicates
+				for(pair<pair<variant<vector<string>,string>,string>,string> var_map : at.variable_mapping) {
+					if(arg == var_map.second) {
+						found_arg = true;
+						if(holds_alternative<string>(var_map.first.first)) {
+							mapped_var = std::get<string>(var_map.first.first);
+						} else {
+							mapped_var = std::get<vector<string>>(var_map.first.first);
+						}
+						break;
+					}
+				}
+
+				if(!found_arg) {
+					instantiated_eff = false;
+					break;
+				}
+
+				if(holds_alternative<string>(mapped_var)) {
+					arg_map.push_back(make_pair(arg,std::get<string>(mapped_var)));
+				} else {
+					arg_map.push_back(make_pair(arg,std::get<vector<string>>(mapped_var)));
+				}
+			}
+
+			if(instantiated_eff) {
+				vector<ground_literal> inst_eff;
+
+				for(variant<pair<string,string>,pair<string,vector<string>>> arg_inst : arg_map) {
+					if(inst_eff.size() == 0) {
+						ground_literal e;
+						e.positive = eff.positive;
+						e.predicate = eff.predicate;
+
+						inst_eff.push_back(e);
+					}
+
+					if(holds_alternative<pair<string,string>>(arg_inst)) {
+						pair<string,string> inst = std::get<pair<string,string>>(arg_inst);
+						for(ground_literal& e : inst_eff) {
+							e.args.push_back(inst.second);
+						}
+					} else {
+						pair<string,vector<string>> inst = std::get<pair<string,vector<string>>>(arg_inst);
+
+						vector<ground_literal> new_inst_eff;
+						for(ground_literal e : inst_eff) {
+							for(unsigned int index = 0; index < inst.second.size(); index++) {
+								ground_literal aux = e;
+								aux.args.push_back(inst.second.at(index));
+
+								new_inst_eff.push_back(aux);
+							}
+						}
+
+						inst_eff = new_inst_eff;
+					}
+				}
+
+				for(ground_literal e : inst_eff) {
+					bool effect_applied = false;
+					for(ground_literal& state : world_state) {
+						bool same_predicate = is_same_predicate(state, e);
+
+						if(same_predicate && (eff.positive != state.positive)) {
+							state.positive = eff.positive;
+							effect_applied = true;
+							break;
+						}
+					}
+
+					if(!effect_applied) {
+						world_state.push_back(e);
+					}
+				}
+			}
+		}
+	}
+}
