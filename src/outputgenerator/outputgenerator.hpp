@@ -12,6 +12,7 @@
 
 #include <boost/graph/adjacency_list.hpp>
 
+#include "../utils/outputgeneratorutils.hpp"
 #include "../missiondecomposer/missiondecomposer.hpp"
 #include "../constraintmanager/constraintmanager.hpp"
 #include "../gm/gm.hpp"
@@ -58,8 +59,5 @@ class FileOutputGenerator : public OutputGenerator {
     private:
         file_output_generator_type fog_type;
 };
-
-std::pair<SemanticMapping,bool> find_predicate_mapping(variant<ground_literal,literal> predicate, std::vector<SemanticMapping> semantic_mappings, std::map<std::string,set<std::string>> sorts,
-                                                std::map<std::string,std::string> vars, std::vector<sort_definition> sort_definitions);
 
 #endif
