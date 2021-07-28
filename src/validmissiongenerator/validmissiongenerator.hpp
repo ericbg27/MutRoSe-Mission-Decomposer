@@ -29,6 +29,9 @@ class ValidMissionGenerator {
         void check_conditions(std::map<int,std::pair<std::vector<std::variant<ground_literal,std::pair<ground_literal,std::variant<int,float>>>>,std::vector<std::pair<literal,std::vector<std::string>>>>> effects_to_apply, std::pair<int,ATNode> current_node);
         void solve_conflicts(std::map<int,std::pair<std::vector<std::variant<ground_literal,std::pair<ground_literal,std::variant<int,float>>>>,std::vector<std::pair<literal,std::vector<std::string>>>>> children_effects);
         
+        bool check_preconditions_for_decomposition(std::pair<int,ATNode> task_decomposition, std::pair<std::vector<std::pair<int,ATNode>>,std::set<int>> valid_mission_decomposition, Decomposition& d, std::vector<ground_literal> ws, 
+                                                    std::vector<std::pair<ground_literal,std::variant<int,float>>> wsf, std::map<int,std::vector<std::pair<literal,std::vector<std::string>>>> ws_ng);
+
         std::vector<ground_literal> apply_pred_effects(std::map<int,std::vector<ground_literal>> pred_eff, set<int> tasks_to_consider);
         std::vector<std::pair<ground_literal,std::variant<int,float>>> apply_func_effects(std::map<int,std::vector<std::pair<ground_literal,std::variant<int,float>>>> func_eff, set<int> tasks_to_consider);
 
