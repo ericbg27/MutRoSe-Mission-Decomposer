@@ -16,6 +16,7 @@
 #include "../knowledgemanager/knowledgemanager.hpp"
 #include "../contextmanager/contextmanager.hpp"
 #include "../utils/mission_decomposer_utils.hpp"
+#include "../utils/predicate_utils.hpp"
 
 namespace pt = boost::property_tree;
 
