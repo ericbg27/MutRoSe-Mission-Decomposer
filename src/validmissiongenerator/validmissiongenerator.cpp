@@ -186,28 +186,9 @@ map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float
 
                         vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>> decomposition_effects;
                         vector<pair<literal,vector<string>>> decomposition_literal_effects;
-                        for(auto eff : d.eff) {
-                            if(holds_alternative<ground_literal>(eff)) {
-                                ground_literal e = std::get<ground_literal>(eff);
-                                decomposition_effects.push_back(e);
-                            } else {
-                                literal e = std::get<literal>(eff);
-                                vector<string> e_args = get_predicate_argument_types(d.at.at, e);
+                        
+                        get_effects_from_decomposition(decomposition_effects, decomposition_literal_effects, d);
 
-                                decomposition_literal_effects.push_back(make_pair(e,e_args));
-                            }
-                        }
-                        for(auto func_eff : d.func_eff) {
-                            if(holds_alternative<pair<ground_literal,variant<int,float>>>(func_eff)) {
-                                pair<ground_literal,variant<int,float>> f_eff = std::get<pair<ground_literal,variant<int,float>>>(func_eff);
-                                decomposition_effects.push_back(f_eff);
-                            } else {
-                                literal f_eff = std::get<literal>(func_eff);
-                                vector<string> f_eff_args = get_predicate_argument_types(d.at.at, f_eff);
-
-                                decomposition_literal_effects.push_back(make_pair(f_eff,f_eff_args));
-                            }
-                        }
                         decompositions_effects[task_decomposition.first] = make_pair(decomposition_effects,decomposition_literal_effects);
 
                         valid_task_decomposition = true;
@@ -267,28 +248,9 @@ map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float
 
                     vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>> decomposition_effects;
                     vector<pair<literal,vector<string>>> decomposition_literal_effects;
-                    for(auto eff : d.eff) {
-                        if(holds_alternative<ground_literal>(eff)) {
-                            ground_literal e = std::get<ground_literal>(eff);
-                            decomposition_effects.push_back(e);
-                        } else {
-                            literal e = std::get<literal>(eff);
-                            vector<string> e_args = get_predicate_argument_types(d.at.at,e);
+                    
+                    get_effects_from_decomposition(decomposition_effects, decomposition_literal_effects, d);
 
-                            decomposition_literal_effects.push_back(make_pair(e,e_args));
-                        }
-                    }
-                    for(auto func_eff : d.func_eff) {
-                        if(holds_alternative<pair<ground_literal,variant<int,float>>>(func_eff)) {
-                            pair<ground_literal,variant<int,float>> f_eff = std::get<pair<ground_literal,variant<int,float>>>(func_eff);
-                            decomposition_effects.push_back(f_eff);
-                        } else {
-                            literal f_eff = std::get<literal>(func_eff);
-                            vector<string> f_eff_args = get_predicate_argument_types(d.at.at,f_eff);
-
-                            decomposition_literal_effects.push_back(make_pair(f_eff,f_eff_args));
-                        }
-                    }
                     decompositions_effects[task_decomposition.first] = make_pair(decomposition_effects,decomposition_literal_effects);
 
                     at_least_one_decomposition_valid = true;
