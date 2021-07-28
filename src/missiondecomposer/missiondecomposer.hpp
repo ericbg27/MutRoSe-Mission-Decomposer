@@ -36,6 +36,15 @@ class MissionDecomposer {
                                                     std::vector<SemanticMapping> semantic_mapping, std::vector<int>& visited_nodes, bool parallel_checking, bool is_sequential);
         
         void create_execution_constraint_edges();
+
+        void group_and_divisible_attrs_instantiation(int parent, ATNode& node, general_annot* rannot);
+        
+        int add_goal_op_node(ATNode& node, general_annot* rannot, int parent, bool is_forAll, bool is_achieve);
+        int add_task_node(ATNode& node, general_annot* rannot, int parent);
+
+        bool find_node_at(ATNode& node, general_annot* rannot);
+
+        void add_decomposition_path_nodes(ATNode node, int node_id);
         
         void set_verbose(bool verb);
         void set_mission_decomposer_type(mission_decomposer_type mdt);

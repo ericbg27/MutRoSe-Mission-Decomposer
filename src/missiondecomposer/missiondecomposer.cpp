@@ -171,8 +171,8 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 		}
 
 		bool finished_search = false;
-		for(pair<string,string> controlled_var : controlled_vars) {
-			if(controlled_var.first == var_and_pred.second.first) { // Current parent node is a the forAll goal that controls the variable in the condition
+		for(pair<string,string> iteration_var : controlled_vars) {
+			if(iteration_var.first == var_and_pred.second.first) { // Current parent node is a the forAll goal that controls the variable in the condition
 				if(is_or) {
 					return false;
 				} else {
@@ -535,6 +535,202 @@ void MissionDecomposer::create_execution_constraint_edges() {
 	}
 }
 
+void MissionDecomposer::group_and_divisible_attrs_instantiation(int parent, ATNode& node, general_annot* rannot) { 
+	if(parent != -1) {
+		if(!mission_decomposition[parent].group) {
+			node.group = false;
+			node.divisible = mission_decomposition[parent].divisible;
+		} else {
+			if(!mission_decomposition[parent].divisible) {
+				if(rannot->group) {
+					node.group = true;
+					node.divisible = false;
+				} else {
+					node.group = rannot->group;
+					node.divisible = false;
+				}
+			} else {
+				node.group = rannot->group;
+				node.divisible = rannot->divisible;
+			}
+		}
+	} else {
+		node.group = rannot->group;
+		node.divisible = rannot->divisible;
+	}
+}
+
+int MissionDecomposer::add_goal_op_node(ATNode& node, general_annot* rannot, int parent, bool is_forAll, bool is_achieve) {
+	node.non_coop = rannot->non_coop;
+	group_and_divisible_attrs_instantiation(parent, node, rannot);
+	if(rannot->children.size() == 0 || rannot->type == MEANSEND) {
+		node.node_type = GOALNODE;
+	} else {
+		node.node_type = OP;
+	}
+	node.content = rannot->content;
+	node.parent = parent;
+	node.is_achieve_type = is_forAll || is_achieve;
+
+	int achieve_goalnode_id = -1;
+	if(is_achieve && node.node_type == OP) {
+		ATNode new_achieve_node = node;
+
+		new_achieve_node.node_type = GOALNODE;
+		new_achieve_node.content = rannot->related_goal;
+
+		node.non_coop = false;
+		node.group = true;
+		node.divisible = true;
+
+		achieve_goalnode_id = boost::add_vertex(new_achieve_node, mission_decomposition);
+
+		node.parent = achieve_goalnode_id;
+		node.is_achieve_type = false;
+	}
+
+	int node_id = boost::add_vertex(node, mission_decomposition);
+
+	if(achieve_goalnode_id == -1) {
+		if(parent != -1) {
+			ATEdge e;
+			if(rannot->parent->or_decomposition) {
+				e.edge_type = NORMALOR;
+			} else {
+				e.edge_type = NORMALAND;
+			}
+			e.source = parent;
+			e.target = node_id;
+
+			//mission_decomposition[node_id].parent = parent;
+			boost::add_edge(boost::vertex(parent, mission_decomposition), boost::vertex(node_id, mission_decomposition), e, mission_decomposition);
+		}
+	} else {
+		if(parent != -1) {
+			ATEdge e;
+			if(rannot->parent->or_decomposition) {
+				e.edge_type = NORMALOR;
+			} else {
+				e.edge_type = NORMALAND;
+			}
+			e.source = parent;
+			e.target = achieve_goalnode_id;
+
+			//mission_decomposition[node_id].parent = parent;
+			boost::add_edge(boost::vertex(parent, mission_decomposition), boost::vertex(achieve_goalnode_id, mission_decomposition), e, mission_decomposition);
+		}
+
+		ATEdge e;
+		if(rannot->parent->or_decomposition) {
+			e.edge_type = NORMALOR;
+		} else {
+			e.edge_type = NORMALAND;
+		}
+		e.source = achieve_goalnode_id;
+		e.target = node_id;
+
+		boost::add_edge(boost::vertex(achieve_goalnode_id, mission_decomposition), boost::vertex(node_id, mission_decomposition), e, mission_decomposition);
+	}
+
+	return node_id;
+}
+
+int MissionDecomposer::add_task_node(ATNode& node, general_annot* rannot, int parent) {
+	node.non_coop = true;
+	node.node_type = ATASK;
+	node.parent = parent;
+	node.group = mission_decomposition[parent].group;
+	node.divisible = mission_decomposition[parent].divisible;
+
+	bool non_group_task_error = false;
+	AbstractTask abstract_task = std::get<AbstractTask>(node.content);
+	if(!node.group && !abstract_task.fixed_robot_num) {
+		non_group_task_error = true;
+	} else if(!node.group && abstract_task.fixed_robot_num && std::get<int>(abstract_task.robot_num) != 1) {
+		non_group_task_error = true;
+	}
+
+	if(non_group_task_error) {
+		string non_group_task_robot_num_error = "Non group task [" + abstract_task.id + "] does not have 1 robot in its declaration";
+
+		throw std::runtime_error(non_group_task_robot_num_error);
+	}
+
+	int node_id = boost::add_vertex(node, mission_decomposition);
+
+	ATEdge e;
+	if(rannot->parent->or_decomposition) {
+		e.edge_type = NORMALOR;
+	} else {
+		e.edge_type = NORMALAND;
+	}
+	e.source = parent;
+	e.target = node_id;
+
+	mission_decomposition[node_id].parent = parent;
+	
+	boost::add_edge(boost::vertex(parent, mission_decomposition), boost::vertex(node_id, mission_decomposition), e, mission_decomposition);
+
+	return node_id;
+}
+
+bool MissionDecomposer::find_node_at(ATNode& node, general_annot* rannot) {
+	bool found_at = false;
+
+	map<string,vector<AbstractTask>>::iterator at_inst_it;
+	for(at_inst_it = at_instances.begin();at_inst_it != at_instances.end();++at_inst_it) {
+		string rannot_id, at_id;
+		rannot_id = rannot->content.substr(0,rannot->content.find("_"));
+		at_id = at_inst_it->second.at(0).id.substr(0,at_inst_it->second.at(0).id.find("_"));
+		
+		if(at_id == rannot_id) { //If we are dealing with the same task
+			for(AbstractTask at : at_inst_it->second) {
+				if(at.id == rannot->content) {
+					node.content = at;
+					found_at = true;
+					break;
+				}
+			}
+		}
+
+		if(found_at) break;
+	}
+
+	return found_at;
+}
+
+void MissionDecomposer::add_decomposition_path_nodes(ATNode node, int node_id) {
+	AbstractTask at = std::get<AbstractTask>(node.content);
+
+	int path_id = 1;
+	for(DecompositionPath path : at_decomposition_paths[at.name]) {
+		ATNode path_node;
+		path_node.node_type = DECOMPOSITION;
+		path_node.non_coop = true;
+
+		Decomposition d;
+		d.id = at.id + "|" + to_string(path_id);
+		d.path = path;
+		d.at = at;
+		instantiate_decomposition_predicates(at,d,verbose);
+
+		path_id++;
+
+		path_node.content = d;
+
+		int dnode_id = boost::add_vertex(path_node, mission_decomposition);
+
+		ATEdge d_edge;
+		d_edge.edge_type = NORMALAND;
+		d_edge.source = node_id;
+		d_edge.target = dnode_id;
+
+		mission_decomposition[dnode_id].parent = node_id;
+
+		boost::add_edge(boost::vertex(node_id, mission_decomposition), boost::vertex(dnode_id, mission_decomposition), d_edge, mission_decomposition);
+	}
+}
+
 void FileKnowledgeMissionDecomposer::set_fk_manager(FileKnowledgeManager* manager) {
 	fk_manager = manager;
 }
@@ -679,8 +875,9 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 
 		bool is_forAll = false;
 		bool is_achieve = false;
-		pair<string,string> monitored_var;
-		pair<string,string> controlled_var;
+		
+		pair<string,string> iterated_var;
+		pair<string,string> iteration_var;
 
 		if(rannot->related_goal != "") { 
 			string n_id = rannot->related_goal;
@@ -701,8 +898,6 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 		} else {
 			/*
 				If we do not have a related goal this means that we have an operator generated by a forAll operator
-
-				- variables are of the form <var_name,var_type>
 			*/
 			string n_id = rannot->children.at(0)->related_goal;
 			int gm_node_id = find_gm_node_by_id(n_id, gm);
@@ -714,124 +909,27 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 
 			for(pair<string,string> var : std::get<vector<pair<string,string>>>(gm_node.custom_props[monitors_prop])) {
 				if(var.first == a.get_iterated_var()) {
-					monitored_var = var;
+					iterated_var = var;
 					break;
 				}
 			}
 			for(pair<string,string> var : std::get<vector<pair<string,string>>>(gm_node.custom_props[controls_prop])) {
 				if(var.first == a.get_iteration_var()) {
-					controlled_var = var;
+					iteration_var = var;
 					break;
 				}
 			}
 		}
-		
-		node.non_coop = rannot->non_coop;
-		if(parent != -1) {
-			if(!mission_decomposition[parent].group) {
-				node.group = false;
-				node.divisible = mission_decomposition[parent].divisible;
-			} else {
-				if(!mission_decomposition[parent].divisible) {
-					if(rannot->group) {
-						node.group = true;
-						node.divisible = false;
-					} else {
-						node.group = rannot->group;
-						node.divisible = false;
-					}
-				} else {
-					node.group = rannot->group;
-					node.divisible = rannot->divisible;
-				}
-			}
-		} else {
-			node.group = rannot->group;
-			node.divisible = rannot->divisible;
-		}
-		if(rannot->children.size() == 0 || rannot->type == MEANSEND) {
-			node.node_type = GOALNODE;
-		} else {
-			node.node_type = OP;
-		}
-		node.content = rannot->content;
-		node.parent = parent;
-		node.is_achieve_type = is_forAll || is_achieve;
 
-		int achieve_goalnode_id = -1;
-		if(is_achieve && node.node_type == OP) {
-			ATNode new_achieve_node = node;
+		node_id = add_goal_op_node(node, rannot, parent, is_forAll, is_achieve);
 
-			new_achieve_node.node_type = GOALNODE;
-			new_achieve_node.content = rannot->related_goal;
-
-			node.non_coop = false;
-			node.group = true;
-			node.divisible = true;
-
-			achieve_goalnode_id = boost::add_vertex(new_achieve_node, mission_decomposition);
-
-			node.parent = achieve_goalnode_id;
-			node.is_achieve_type = false;
-		}
-
-		node_id = boost::add_vertex(node, mission_decomposition);
-
-		if(achieve_goalnode_id == -1) {
-			if(parent != -1) {
-				ATEdge e;
-				if(rannot->parent->or_decomposition) {
-					e.edge_type = NORMALOR;
-				} else {
-					e.edge_type = NORMALAND;
-				}
-				e.source = parent;
-				e.target = node_id;
-
-				//mission_decomposition[node_id].parent = parent;
-				boost::add_edge(boost::vertex(parent, mission_decomposition), boost::vertex(node_id, mission_decomposition), e, mission_decomposition);
-			}
-		} else {
-			if(parent != -1) {
-				ATEdge e;
-				if(rannot->parent->or_decomposition) {
-					e.edge_type = NORMALOR;
-				} else {
-					e.edge_type = NORMALAND;
-				}
-				e.source = parent;
-				e.target = achieve_goalnode_id;
-
-				//mission_decomposition[node_id].parent = parent;
-				boost::add_edge(boost::vertex(parent, mission_decomposition), boost::vertex(achieve_goalnode_id, mission_decomposition), e, mission_decomposition);
-			}
-
-			ATEdge e;
-			if(rannot->parent->or_decomposition) {
-				e.edge_type = NORMALOR;
-			} else {
-				e.edge_type = NORMALAND;
-			}
-			e.source = achieve_goalnode_id;
-			e.target = node_id;
-
-			boost::add_edge(boost::vertex(achieve_goalnode_id, mission_decomposition), boost::vertex(node_id, mission_decomposition), e, mission_decomposition);
-		}
-		/*
-			- Check if context is active
-				- This requires a lot of thinking, how can we do that?
-				- We cannot assume that the context will always be of the format [variable].[attribute], or can we?
-					- Another valid way would be just a variable name for example
-				- If it is an attribute, we have to check for the type of the variable
-					- For now, the only valid types will be just one of the location types given in the configuration file
-				- We will need to check a SemanticMapping that involves this attribute from this variable type
-			- With this information, just search for all the ATASK type nodes and see if one of them leads to that context being active
-		*/
 		if(!active_context) {
 			/*
 				This will happen in two cases:
 					- If we have a wrong model
 					- If we have a parallel decomposition which is not completely parallel since we have a context dependency
+
+				-> Contexts are currently in the format [variable].[attribute]
 			*/
 			bool resolved_context = check_context_dependency(parent, node_id, context, instantiated_vars, semantic_mapping);
 
@@ -852,15 +950,11 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 		*/
 		unsigned int child_index = 0;
 		if(is_forAll) {
-			/*
-				- Controlled variable in forAll needs to be of value type
-				- Monitored variable in forAll needs to be of container type
-			*/
 			int value_index = 0;
 			for(general_annot* child : rannot->children) {
-				pair<vector<string>,string> var_map = std::get<pair<vector<string>,string>>(gm_vars_map[monitored_var.first]);
+				pair<vector<string>,string> var_map = std::get<pair<vector<string>,string>>(gm_vars_map[iterated_var.first]);
 
-				instantiated_vars[controlled_var.first] = var_map.first.at(value_index);
+				instantiated_vars[iteration_var.first] = var_map.first.at(value_index);
 				value_index++;
 
 				if(child_index < rannot->children.size()-1) {
@@ -881,32 +975,8 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 			}
 		}
 	} else if(rannot->type == TASK) {
-		node.non_coop = true;
-		node.node_type = ATASK;
-		node.parent = parent;
-		node.group = mission_decomposition[parent].group;
-		node.divisible = mission_decomposition[parent].divisible;
-		
 		//Find AT instance that corresponds to this node and put it in the content
-		bool found_at = false;
-		map<string,vector<AbstractTask>>::iterator at_inst_it;
-		for(at_inst_it = at_instances.begin();at_inst_it != at_instances.end();++at_inst_it) {
-			string rannot_id, at_id;
-			rannot_id = rannot->content.substr(0,rannot->content.find("_"));
-			at_id = at_inst_it->second.at(0).id.substr(0,at_inst_it->second.at(0).id.find("_"));
-			
-			if(at_id == rannot_id) { //If we are dealing with the same task
-				for(AbstractTask at : at_inst_it->second) {
-					if(at.id == rannot->content) {
-						node.content = at;
-						found_at = true;
-						break;
-					}
-				}
-			}
-
-			if(found_at) break;
-		}
+		bool found_at = find_node_at(node, rannot);
 
 		if(!found_at) {
 			string at_not_found_error = "Could not find AT " + rannot->content.substr(0,rannot->content.find("_")) + " definition";
@@ -914,70 +984,9 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 			throw std::runtime_error(at_not_found_error);
 		}
 
-		bool non_group_task_error = false;
-		AbstractTask abstract_task = std::get<AbstractTask>(node.content);
-		if(!node.group && !abstract_task.fixed_robot_num) {
-			non_group_task_error = true;
-		} else if(!node.group && abstract_task.fixed_robot_num && std::get<int>(abstract_task.robot_num) != 1) {
-			non_group_task_error = true;
-		}
+		node_id = add_task_node(node, rannot, parent);
 
-		if(non_group_task_error) {
-			string non_group_task_robot_num_error = "Non group task [" + abstract_task.id + "] does not have 1 robot in its declaration";
-
-			throw std::runtime_error(non_group_task_robot_num_error);
-		}
-
-		node_id = boost::add_vertex(node, mission_decomposition);
-
-		ATEdge e;
-		if(rannot->parent->or_decomposition) {
-			e.edge_type = NORMALOR;
-		} else {
-			e.edge_type = NORMALAND;
-		}
-		e.source = parent;
-		e.target = node_id;
-
-		mission_decomposition[node_id].parent = parent;
-		
-		boost::add_edge(boost::vertex(parent, mission_decomposition), boost::vertex(node_id, mission_decomposition), e, mission_decomposition);
-
-		/*if(non_coop) {
-			std::cout << "Non Coop Node: " << node_id << std::endl;
-			create_execution_constraint_edges(node_id);
-		}*/
-
-		AbstractTask at = std::get<AbstractTask>(node.content);
-
-		int path_id = 1;
-		for(DecompositionPath path : at_decomposition_paths[at.name]) {
-			ATNode path_node;
-			path_node.node_type = DECOMPOSITION;
-			path_node.non_coop = true;
-			path_node.parent = parent;
-
-			Decomposition d;
-			d.id = at.id + "|" + to_string(path_id);
-			d.path = path;
-			d.at = at;
-			instantiate_decomposition_predicates(at,d,verbose);
-
-			path_id++;
-
-			path_node.content = d;
-
-			int dnode_id = boost::add_vertex(path_node, mission_decomposition);
-
-			ATEdge d_edge;
-			d_edge.edge_type = NORMALAND;
-			d_edge.source = node_id;
-			d_edge.target = dnode_id;
-
-			mission_decomposition[dnode_id].parent = node_id;
-
-			boost::add_edge(boost::vertex(node_id, mission_decomposition), boost::vertex(dnode_id, mission_decomposition), d_edge, mission_decomposition);
-		}
+		add_decomposition_path_nodes(node, node_id);
 	}
 }
 
