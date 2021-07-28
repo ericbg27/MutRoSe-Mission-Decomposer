@@ -169,48 +169,7 @@ map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float
 
                     vector<pair<int,ATNode>> m_decomposition = valid_mission_decomposition.first;
 
-                    bool preconditions_hold = check_decomposition_preconditions(ws, wsf, ws_ng, make_pair(task_decomposition.first,d), mission_constraints, valid_mission_decomposition.second, robot_related_sorts);
-
-                    /*
-                        Check for any context dependency in current decomposition. If a valid mission decomposition does not contain any tasks
-                        involved in this kind of dependency, preconditions do not hold.
-                    */
-                    if(preconditions_hold) {
-                        Decomposition aux = d;
-                        expand_decomposition(d, wsf, verbose);
-                        if(aux.path.decomposition.size() != d.path.decomposition.size()) {
-                            expanded_decompositions.insert(d);
-                        }
-
-                        ATGraph::in_edge_iterator iei, ied;
-
-                        for(boost::tie(iei,ied) = boost::in_edges(task_decomposition.first,mission_decomposition); iei != ied; ++iei) {
-                            bool found_cdepend_node = false;
-                            bool has_cdependency = false;
-
-                            int source = boost::source(*iei,mission_decomposition);
-                            int target = boost::target(*iei,mission_decomposition);
-                            auto edge = boost::edge(source,target,mission_decomposition).first;
-
-                            ATEdge e = mission_decomposition[edge];
-                            if(e.edge_type == CDEPEND) {
-                                has_cdependency = true;
-                                for(pair<int,ATNode> node : valid_mission_decomposition.first) {
-                                    if(node.first == source) {
-                                        found_cdepend_node = true;
-                                        break;
-                                    }
-                                }
-                            }
-
-                            if(has_cdependency) {
-                                if(!found_cdepend_node) {
-                                    preconditions_hold = false;
-                                    break;
-                                }
-                            }
-                        }
-                    }
+                    bool preconditions_hold = check_preconditions_for_decomposition(task_decomposition, valid_mission_decomposition, d, ws, wsf, ws_ng);
 
                     if(preconditions_hold) {
                         /*
@@ -227,28 +186,9 @@ map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float
 
                         vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>> decomposition_effects;
                         vector<pair<literal,vector<string>>> decomposition_literal_effects;
-                        for(auto eff : d.eff) {
-                            if(holds_alternative<ground_literal>(eff)) {
-                                ground_literal e = std::get<ground_literal>(eff);
-                                decomposition_effects.push_back(e);
-                            } else {
-                                literal e = std::get<literal>(eff);
-                                vector<string> e_args = get_predicate_argument_types(d.at.at, e);
+                        
+                        get_effects_from_decomposition(decomposition_effects, decomposition_literal_effects, d);
 
-                                decomposition_literal_effects.push_back(make_pair(e,e_args));
-                            }
-                        }
-                        for(auto func_eff : d.func_eff) {
-                            if(holds_alternative<pair<ground_literal,variant<int,float>>>(func_eff)) {
-                                pair<ground_literal,variant<int,float>> f_eff = std::get<pair<ground_literal,variant<int,float>>>(func_eff);
-                                decomposition_effects.push_back(f_eff);
-                            } else {
-                                literal f_eff = std::get<literal>(func_eff);
-                                vector<string> f_eff_args = get_predicate_argument_types(d.at.at, f_eff);
-
-                                decomposition_literal_effects.push_back(make_pair(f_eff,f_eff_args));
-                            }
-                        }
                         decompositions_effects[task_decomposition.first] = make_pair(decomposition_effects,decomposition_literal_effects);
 
                         valid_task_decomposition = true;
@@ -308,28 +248,9 @@ map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float
 
                     vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>> decomposition_effects;
                     vector<pair<literal,vector<string>>> decomposition_literal_effects;
-                    for(auto eff : d.eff) {
-                        if(holds_alternative<ground_literal>(eff)) {
-                            ground_literal e = std::get<ground_literal>(eff);
-                            decomposition_effects.push_back(e);
-                        } else {
-                            literal e = std::get<literal>(eff);
-                            vector<string> e_args = get_predicate_argument_types(d.at.at,e);
+                    
+                    get_effects_from_decomposition(decomposition_effects, decomposition_literal_effects, d);
 
-                            decomposition_literal_effects.push_back(make_pair(e,e_args));
-                        }
-                    }
-                    for(auto func_eff : d.func_eff) {
-                        if(holds_alternative<pair<ground_literal,variant<int,float>>>(func_eff)) {
-                            pair<ground_literal,variant<int,float>> f_eff = std::get<pair<ground_literal,variant<int,float>>>(func_eff);
-                            decomposition_effects.push_back(f_eff);
-                        } else {
-                            literal f_eff = std::get<literal>(func_eff);
-                            vector<string> f_eff_args = get_predicate_argument_types(d.at.at,f_eff);
-
-                            decomposition_literal_effects.push_back(make_pair(f_eff,f_eff_args));
-                        }
-                    }
                     decompositions_effects[task_decomposition.first] = make_pair(decomposition_effects,decomposition_literal_effects);
 
                     at_least_one_decomposition_valid = true;
@@ -1223,6 +1144,54 @@ void ValidMissionGenerator::solve_conflicts(map<int,pair<vector<variant<ground_l
 
         throw std::runtime_error(conflict_solving_error);
     }
+}
+
+bool ValidMissionGenerator::check_preconditions_for_decomposition(pair<int,ATNode> task_decomposition, pair<vector<pair<int,ATNode>>,set<int>> valid_mission_decomposition, Decomposition& d, vector<ground_literal> ws, 
+                                                                    vector<pair<ground_literal,variant<int,float>>> wsf, map<int,vector<pair<literal,vector<string>>>> ws_ng) {
+    bool preconditions_hold = check_decomposition_preconditions(ws, wsf, ws_ng, make_pair(task_decomposition.first,d), mission_constraints, valid_mission_decomposition.second, robot_related_sorts);
+
+    /*
+        Check for any context dependency in current decomposition. If a valid mission decomposition does not contain any tasks
+        involved in this kind of dependency, preconditions do not hold.
+    */
+    if(preconditions_hold) {
+        Decomposition aux = d;
+        expand_decomposition(d, wsf, verbose);
+        if(aux.path.decomposition.size() != d.path.decomposition.size()) {
+            expanded_decompositions.insert(d);
+        }
+
+        ATGraph::in_edge_iterator iei, ied;
+
+        for(boost::tie(iei,ied) = boost::in_edges(task_decomposition.first,mission_decomposition); iei != ied; ++iei) {
+            bool found_cdepend_node = false;
+            bool has_cdependency = false;
+
+            int source = boost::source(*iei,mission_decomposition);
+            int target = boost::target(*iei,mission_decomposition);
+            auto edge = boost::edge(source,target,mission_decomposition).first;
+
+            ATEdge e = mission_decomposition[edge];
+            if(e.edge_type == CDEPEND) {
+                has_cdependency = true;
+                for(pair<int,ATNode> node : valid_mission_decomposition.first) {
+                    if(node.first == source) {
+                        found_cdepend_node = true;
+                        break;
+                    }
+                }
+            }
+
+            if(has_cdependency) {
+                if(!found_cdepend_node) {
+                    preconditions_hold = false;
+                    break;
+                }
+            }
+        }
+    }
+
+    return preconditions_hold;
 }
 
 vector<pair<ground_literal,variant<int,float>>> ValidMissionGenerator::apply_func_effects(map<int,vector<pair<ground_literal,variant<int,float>>>> func_eff, set<int> tasks_to_consider) {

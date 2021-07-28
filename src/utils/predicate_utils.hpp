@@ -18,6 +18,7 @@ bool check_decomposition_preconditions(std::vector<ground_literal> world_state, 
 void apply_effects_in_valid_decomposition(std::vector<ground_literal>& world_state, std::vector<std::pair<ground_literal,variant<int,float>>>& world_state_functions, std::map<int,std::vector<std::pair<literal,std::vector<std::string>>>>& non_ground_world_state, std::pair<std::vector<std::pair<int,ATNode>>,std::set<int>> valid_mission_decomposition,
                                             std::map<int,std::pair<std::vector<std::variant<ground_literal,std::pair<ground_literal,std::variant<int,float>>>>,std::vector<std::pair<literal,std::vector<std::string>>>>> effects_to_apply);
 void update_world_state(std::vector<ground_literal>& world_state, DecompositionPath path, AbstractTask at);
+void get_effects_from_decomposition(std::vector<std::variant<ground_literal,std::pair<ground_literal,std::variant<int,float>>>>& ground_effects, std::vector<std::pair<literal,std::vector<std::string>>>& literal_effects, Decomposition d);
 
 std::vector<std::string> get_predicate_argument_types(task t, literal pred);
 

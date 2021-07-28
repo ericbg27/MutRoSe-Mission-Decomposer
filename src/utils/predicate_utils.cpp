@@ -551,3 +551,28 @@ void update_world_state(vector<ground_literal>& world_state, DecompositionPath p
 		}
 	}
 }
+
+void get_effects_from_decomposition(vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>& ground_effects, vector<pair<literal,vector<string>>>& literal_effects, Decomposition d) {
+    for(auto eff : d.eff) {
+        if(holds_alternative<ground_literal>(eff)) {
+            ground_literal e = std::get<ground_literal>(eff);
+            ground_effects.push_back(e);
+        } else {
+            literal e = std::get<literal>(eff);
+            vector<string> e_args = get_predicate_argument_types(d.at.at, e);
+
+            literal_effects.push_back(make_pair(e,e_args));
+        }
+    }
+    for(auto func_eff : d.func_eff) {
+        if(holds_alternative<pair<ground_literal,variant<int,float>>>(func_eff)) {
+            pair<ground_literal,variant<int,float>> f_eff = std::get<pair<ground_literal,variant<int,float>>>(func_eff);
+            ground_effects.push_back(f_eff);
+        } else {
+            literal f_eff = std::get<literal>(func_eff);
+            vector<string> f_eff_args = get_predicate_argument_types(d.at.at, f_eff);
+
+            literal_effects.push_back(make_pair(f_eff,f_eff_args));
+        }
+    }
+}
