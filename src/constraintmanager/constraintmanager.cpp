@@ -212,292 +212,18 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
                     */
                     if(std::get<string>(current_branch_operators_stack.top().second.content) == parallel_op || std::get<string>(current_branch_operators_stack.top().second.content) == fallback_op) {
                         /*
-                            While we don't reach an artificial node or the end of the nodes stack we populate our temporary vector
-                        */
-                        queue<variant<pair<int,ATNode>,Constraint>> temp;
-                        bool end_reached = false;
-                        while(!end_reached) {
-                            if(holds_alternative<pair<int,ATNode>>(current_branch_nodes_stack.top())) {
-                                if(std::get<pair<int,ATNode>>(current_branch_nodes_stack.top()).first == -1) {
-                                    end_reached = true;
-                                }
-                            }
-
-                            if(!end_reached) {
-                                temp.push(current_branch_nodes_stack.top());
-                                current_branch_nodes_stack.pop();
-                            }
-
-                            if(current_branch_nodes_stack.empty()) {
-                                end_reached = true;
-                            }
-                        }
-
-                        constraint_type ctype = (std::get<string>(current_branch_operators_stack.top().second.content) == parallel_op ? PAR : FB);
-
-                        /*
                             Using the temporary vector, generate the constraints, delete AT's and generate the new constraints
 
                             -> Remember that we will have an AT in the first position of the queue and we will generate constraints using it 
                             and all of the constraints (or another AT) we already have
                         */
-                        pair<int,ATNode> last_task = get<pair<int,ATNode>>(temp.front());
-                        temp.pop();
+                        constraint_type ctype = (std::get<string>(current_branch_operators_stack.top().second.content) == parallel_op ? PAR : FB);
 
-                        stack<Constraint> new_constraints;
-                        stack<Constraint> old_constraints;
-
-                        while(!temp.empty()) {
-                            if(holds_alternative<pair<int,ATNode>>(temp.front())) {
-                                /*
-                                    We are dealing with a task, so we need to build a constraint with it
-                                */
-                                Constraint c = generate_constraint(std::get<pair<int,ATNode>>(temp.front()), last_task, ctype);
-
-                                existing_constraints[c.nodes_involved.first.first].insert(c.nodes_involved.second.first);
-
-                                new_constraints.push(c);
-                                temp.pop();
-                            } else {
-                                /*
-                                    We are dealing with a constraint. Since we are dealing with a parallel operator we will create parallel constraints with both of
-                                    the tasks
-                                */
-                                Constraint c1, c2;
-
-                                pair<pair<int,ATNode>,pair<int,ATNode>> constraint_nodes = get<Constraint>(temp.front()).nodes_involved;
-
-                                c1 = generate_constraint(constraint_nodes.first, last_task, ctype);
-                                c2 = generate_constraint(constraint_nodes.second, last_task, ctype);
-
-                                if(existing_constraints[constraint_nodes.second.first].find(last_task.first) == existing_constraints[constraint_nodes.second.first].end()) {
-                                    existing_constraints[constraint_nodes.second.first].insert(last_task.first);
-                                    new_constraints.push(c2);
-                                }
-
-                                if(existing_constraints[constraint_nodes.first.first].find(last_task.first) == existing_constraints[constraint_nodes.first.first].end()) {
-                                    existing_constraints[constraint_nodes.first.first].insert(last_task.first);
-                                    new_constraints.push(c1);
-                                }
-
-                                old_constraints.push(get<Constraint>(temp.front()));
-                                temp.pop();
-                            }
-                        }
-
-                        while(!old_constraints.empty()) {
-                            current_branch_nodes_stack.push(old_constraints.top());
-                            old_constraints.pop();
-                        }
-
-                        while(!new_constraints.empty()) {
-                            current_branch_nodes_stack.push(new_constraints.top());
-                            new_constraints.pop();
-                        }
+                        generate_par_and_fallback_constraints(existing_constraints, current_branch_nodes_stack, current_branch_operators_stack, ctype);
 
                         last_op = (ctype == PAR ? parallel_op : fallback_op);
                     } else {
-                        if(last_op == parallel_op) {
-                            /*
-                                If the last operator was parallel, we need to create constraints with all of the constraints (and their tasks) until we reach a sequential
-                                constraint, where we will create a constraint with the last involved task
-                            */
-                            queue<variant<pair<int,ATNode>,Constraint>> temp;
-                            bool end_reached = false;
-                            while(!end_reached) {
-                                if(holds_alternative<pair<int,ATNode>>(current_branch_nodes_stack.top())) {
-                                    if(get<pair<int,ATNode>>(current_branch_nodes_stack.top()).first == -1) {
-                                        end_reached = true;
-                                    }
-                                } else {
-                                    if(get<Constraint>(current_branch_nodes_stack.top()).type == SEQ) {
-                                        end_reached = true;
-                                        temp.push(current_branch_nodes_stack.top());
-                                        current_branch_nodes_stack.pop();
-                                    }
-                                }
-
-                                if(!end_reached) {
-                                    temp.push(current_branch_nodes_stack.top());
-                                    current_branch_nodes_stack.pop();
-                                }
-
-                                if(current_branch_nodes_stack.empty()) {
-                                    end_reached = true;
-                                }
-                            }
-
-                            pair<int,ATNode> last_task = get<pair<int,ATNode>>(temp.front());
-                            temp.pop();
-
-                            stack<Constraint> new_constraints;
-                            stack<Constraint> old_constraints;
-
-                            while(!temp.empty()) {
-                                if(holds_alternative<pair<int,ATNode>>(temp.front())) {
-                                    /*
-                                        We are dealing with a task, so we need to build a constraint with it
-                                    */
-                                    Constraint c = generate_constraint(std::get<pair<int,ATNode>>(temp.front()),last_task, SEQ);
-
-                                    existing_constraints[c.nodes_involved.first.first].insert(c.nodes_involved.second.first);
-
-                                    new_constraints.push(c);
-                                    temp.pop();
-                                } else {
-                                    if(get<Constraint>(temp.front()).type == PAR) {
-                                        Constraint c1, c2;
-
-                                        pair<pair<int,ATNode>,pair<int,ATNode>> constraint_nodes = get<Constraint>(temp.front()).nodes_involved;
-
-                                        c1 = generate_constraint(constraint_nodes.first, last_task, SEQ);
-                                        c2 = generate_constraint(constraint_nodes.second, last_task, SEQ);
-
-                                        if(existing_constraints[constraint_nodes.second.first].find(last_task.first) == existing_constraints[constraint_nodes.second.first].end()) {
-                                            existing_constraints[constraint_nodes.second.first].insert(last_task.first);
-                                            new_constraints.push(c2);
-                                        }
-
-                                        if(existing_constraints[constraint_nodes.first.first].find(last_task.first) == existing_constraints[constraint_nodes.first.first].end()) {
-                                            existing_constraints[constraint_nodes.first.first].insert(last_task.first);
-                                            new_constraints.push(c1);
-                                        }
-
-                                        old_constraints.push(std::get<Constraint>(temp.front()));
-                                        temp.pop();
-                                    } else {
-                                        Constraint c;
-
-                                        pair<pair<int,ATNode>,pair<int,ATNode>> constraint_nodes = std::get<Constraint>(temp.front()).nodes_involved;
-
-                                        c = generate_constraint(constraint_nodes.second, last_task, SEQ);
-
-                                        if(existing_constraints[constraint_nodes.second.first].find(last_task.first) == existing_constraints[constraint_nodes.second.first].end()) {
-                                            existing_constraints[constraint_nodes.second.first].insert(last_task.first);
-                                            new_constraints.push(c);
-                                        }
-
-                                        old_constraints.push(std::get<Constraint>(temp.front()));
-                                        temp.pop();
-                                    }
-                                }
-                            }
-
-                            while(!old_constraints.empty()) {
-                                current_branch_nodes_stack.push(old_constraints.top());
-                                old_constraints.pop();
-                            }
-
-                            while(!new_constraints.empty()) {
-                                current_branch_nodes_stack.push(new_constraints.top());
-                                new_constraints.pop();
-                            }
-                        } else if(last_op == sequential_op) {
-                            /*
-                                If the last operator was sequential, we just need to create a constraint with the last constraint in the stack
-
-                                -> If we create a constraint with another constraint, we just need to create with the second involved task
-                            */
-                            pair<int,ATNode> last_task = std::get<pair<int,ATNode>>(current_branch_nodes_stack.top());
-                            current_branch_nodes_stack.pop();
-
-                            Constraint new_constraint;
-                            Constraint last_constraint = std::get<Constraint>(current_branch_nodes_stack.top());
-
-                            new_constraint = generate_constraint(last_constraint.nodes_involved.second,last_task, SEQ);
-
-                            current_branch_nodes_stack.push(new_constraint);
-                            existing_constraints[last_constraint.nodes_involved.second.first].insert(last_task.first);
-                        } else if(last_op == fallback_op) {
-                            /*
-                                If the last operator was a fallback, we need to create constraints with all of the constraints (and their tasks) until we reach an artificial
-                                node
-                            */
-                            queue<variant<pair<int,ATNode>,Constraint>> temp;
-                            bool end_reached = false;
-                            while(!end_reached) {
-                                if(holds_alternative<pair<int,ATNode>>(current_branch_nodes_stack.top())) {
-                                    if(get<pair<int,ATNode>>(current_branch_nodes_stack.top()).first == -1) {
-                                        end_reached = true;
-                                    }
-                                }
-
-                                if(!end_reached) {
-                                    temp.push(current_branch_nodes_stack.top());
-                                    current_branch_nodes_stack.pop();
-                                }
-
-                                if(current_branch_nodes_stack.empty()) {
-                                    end_reached = true;
-                                }
-                            }
-
-                            pair<int,ATNode> last_task = get<pair<int,ATNode>>(temp.front());
-                            temp.pop();
-
-                            stack<Constraint> new_constraints;
-                            stack<Constraint> old_constraints;
-
-                            while(!temp.empty()) {
-                                if(holds_alternative<pair<int,ATNode>>(temp.front())) {
-                                    /*
-                                        We are dealing with a task, so we need to build a constraint with it
-                                    */
-                                    Constraint c = generate_constraint(std::get<pair<int,ATNode>>(temp.front()),last_task, SEQ);
-
-                                    existing_constraints[c.nodes_involved.first.first].insert(c.nodes_involved.second.first);
-
-                                    new_constraints.push(c);
-                                    temp.pop();
-                                } else {
-                                    Constraint c1, c2;
-
-                                    pair<pair<int,ATNode>,pair<int,ATNode>> constraint_nodes = get<Constraint>(temp.front()).nodes_involved;
-
-                                    c1 = generate_constraint(constraint_nodes.first, last_task, SEQ);
-                                    c2 = generate_constraint(constraint_nodes.second, last_task, SEQ);
-
-                                    if(existing_constraints[constraint_nodes.second.first].find(last_task.first) == existing_constraints[constraint_nodes.second.first].end()) {
-                                        existing_constraints[constraint_nodes.second.first].insert(last_task.first);
-                                        new_constraints.push(c2);
-                                    }
-
-                                    if(existing_constraints[constraint_nodes.first.first].find(last_task.first) == existing_constraints[constraint_nodes.first.first].end()) {
-                                        existing_constraints[constraint_nodes.first.first].insert(last_task.first);
-                                        new_constraints.push(c1);
-                                    }
-
-                                    old_constraints.push(std::get<Constraint>(temp.front()));
-                                    temp.pop();
-                                }
-                            }
-
-                            while(!old_constraints.empty()) {
-                                current_branch_nodes_stack.push(old_constraints.top());
-                                old_constraints.pop();
-                            }
-
-                            while(!new_constraints.empty()) {
-                                current_branch_nodes_stack.push(new_constraints.top());
-                                new_constraints.pop();
-                            }
-                        } else { 
-                            /*
-                                If no operator was considered yet, we need to create a constraint with another task
-                            */
-                            Constraint c;
-
-                            pair<int,ATNode> last_task = std::get<pair<int,ATNode>>(current_branch_nodes_stack.top());
-                            current_branch_nodes_stack.pop();
-
-                            pair<int,ATNode> other_task = std::get<pair<int,ATNode>>(current_branch_nodes_stack.top());
-                            current_branch_nodes_stack.pop();
-
-                            c = generate_constraint(other_task, last_task, SEQ);
-
-                            current_branch_nodes_stack.push(c);
-                            existing_constraints[c.nodes_involved.first.first].insert(c.nodes_involved.second.first);
-                        }
+                        generate_seq_constraints(existing_constraints, current_branch_nodes_stack, current_branch_operators_stack, last_op);
 
                         last_op = sequential_op;
                     }
@@ -863,6 +589,290 @@ void ConstraintManager::generate_constraints_from_stacks(stack<pair<int,ATNode>>
                 }
             }
         }
+    }
+}
+
+void ConstraintManager::generate_par_and_fallback_constraints(map<int,set<int>>& existing_constraints, stack<variant<pair<int,ATNode>,Constraint>>& current_branch_nodes_stack,
+                                                                stack<pair<int,ATNode>>& current_branch_operators_stack, constraint_type ctype) {
+    /*
+        While we don't reach an artificial node or the end of the nodes stack we populate our temporary vector
+    */
+    queue<variant<pair<int,ATNode>,Constraint>> node_queue;
+    bool end_reached = false;
+    while(!end_reached) {
+        if(holds_alternative<pair<int,ATNode>>(current_branch_nodes_stack.top())) {
+            if(std::get<pair<int,ATNode>>(current_branch_nodes_stack.top()).first == -1) {
+                end_reached = true;
+            }
+        }
+
+        if(!end_reached) {
+            node_queue.push(current_branch_nodes_stack.top());
+            current_branch_nodes_stack.pop();
+        }
+
+        if(current_branch_nodes_stack.empty()) {
+            end_reached = true;
+        }
+    }
+
+    pair<int,ATNode> last_task = std::get<pair<int,ATNode>>(node_queue.front());
+    node_queue.pop();
+
+    stack<Constraint> new_constraints;
+    stack<Constraint> old_constraints;
+
+    while(!node_queue.empty()) {
+        if(holds_alternative<pair<int,ATNode>>(node_queue.front())) {
+            /*
+                We are dealing with a task, so we need to build a constraint with it
+            */
+            Constraint c = generate_constraint(std::get<pair<int,ATNode>>(node_queue.front()), last_task, ctype);
+
+            existing_constraints[c.nodes_involved.first.first].insert(c.nodes_involved.second.first);
+
+            new_constraints.push(c);
+            node_queue.pop();
+        } else {
+            /*
+                We are dealing with a constraint. Since we are dealing with a parallel operator we will create parallel constraints with both of
+                the tasks
+            */
+            Constraint c1, c2;
+
+            pair<pair<int,ATNode>,pair<int,ATNode>> constraint_nodes = get<Constraint>(node_queue.front()).nodes_involved;
+
+            c1 = generate_constraint(constraint_nodes.first, last_task, ctype);
+            c2 = generate_constraint(constraint_nodes.second, last_task, ctype);
+
+            if(existing_constraints[constraint_nodes.second.first].find(last_task.first) == existing_constraints[constraint_nodes.second.first].end()) {
+                existing_constraints[constraint_nodes.second.first].insert(last_task.first);
+                new_constraints.push(c2);
+            }
+
+            if(existing_constraints[constraint_nodes.first.first].find(last_task.first) == existing_constraints[constraint_nodes.first.first].end()) {
+                existing_constraints[constraint_nodes.first.first].insert(last_task.first);
+                new_constraints.push(c1);
+            }
+
+            old_constraints.push(get<Constraint>(node_queue.front()));
+            node_queue.pop();
+        }
+    }
+
+    while(!old_constraints.empty()) {
+        current_branch_nodes_stack.push(old_constraints.top());
+        old_constraints.pop();
+    }
+
+    while(!new_constraints.empty()) {
+        current_branch_nodes_stack.push(new_constraints.top());
+        new_constraints.pop();
+    }
+}
+
+void ConstraintManager::generate_seq_constraints(map<int,set<int>>& existing_constraints, stack<variant<pair<int,ATNode>,Constraint>>& current_branch_nodes_stack,
+                                                    stack<pair<int,ATNode>>& current_branch_operators_stack, string last_op) {
+    if(last_op == parallel_op) {
+        /*
+            If the last operator was parallel, we need to create constraints with all of the constraints (and their tasks) until we reach a sequential
+            constraint, where we will create a constraint with the last involved task
+        */
+        queue<variant<pair<int,ATNode>,Constraint>> temp;
+        bool end_reached = false;
+        while(!end_reached) {
+            if(holds_alternative<pair<int,ATNode>>(current_branch_nodes_stack.top())) {
+                if(get<pair<int,ATNode>>(current_branch_nodes_stack.top()).first == -1) {
+                    end_reached = true;
+                }
+            } else {
+                if(get<Constraint>(current_branch_nodes_stack.top()).type == SEQ) {
+                    end_reached = true;
+                    temp.push(current_branch_nodes_stack.top());
+                    current_branch_nodes_stack.pop();
+                }
+            }
+
+            if(!end_reached) {
+                temp.push(current_branch_nodes_stack.top());
+                current_branch_nodes_stack.pop();
+            }
+
+            if(current_branch_nodes_stack.empty()) {
+                end_reached = true;
+            }
+        }
+
+        pair<int,ATNode> last_task = get<pair<int,ATNode>>(temp.front());
+        temp.pop();
+
+        stack<Constraint> new_constraints;
+        stack<Constraint> old_constraints;
+
+        while(!temp.empty()) {
+            if(holds_alternative<pair<int,ATNode>>(temp.front())) {
+                /*
+                    We are dealing with a task, so we need to build a constraint with it
+                */
+                Constraint c = generate_constraint(std::get<pair<int,ATNode>>(temp.front()),last_task, SEQ);
+
+                existing_constraints[c.nodes_involved.first.first].insert(c.nodes_involved.second.first);
+
+                new_constraints.push(c);
+                temp.pop();
+            } else {
+                if(get<Constraint>(temp.front()).type == PAR) {
+                    Constraint c1, c2;
+
+                    pair<pair<int,ATNode>,pair<int,ATNode>> constraint_nodes = get<Constraint>(temp.front()).nodes_involved;
+
+                    c1 = generate_constraint(constraint_nodes.first, last_task, SEQ);
+                    c2 = generate_constraint(constraint_nodes.second, last_task, SEQ);
+
+                    if(existing_constraints[constraint_nodes.second.first].find(last_task.first) == existing_constraints[constraint_nodes.second.first].end()) {
+                        existing_constraints[constraint_nodes.second.first].insert(last_task.first);
+                        new_constraints.push(c2);
+                    }
+
+                    if(existing_constraints[constraint_nodes.first.first].find(last_task.first) == existing_constraints[constraint_nodes.first.first].end()) {
+                        existing_constraints[constraint_nodes.first.first].insert(last_task.first);
+                        new_constraints.push(c1);
+                    }
+
+                    old_constraints.push(std::get<Constraint>(temp.front()));
+                    temp.pop();
+                } else {
+                    Constraint c;
+
+                    pair<pair<int,ATNode>,pair<int,ATNode>> constraint_nodes = std::get<Constraint>(temp.front()).nodes_involved;
+
+                    c = generate_constraint(constraint_nodes.second, last_task, SEQ);
+
+                    if(existing_constraints[constraint_nodes.second.first].find(last_task.first) == existing_constraints[constraint_nodes.second.first].end()) {
+                        existing_constraints[constraint_nodes.second.first].insert(last_task.first);
+                        new_constraints.push(c);
+                    }
+
+                    old_constraints.push(std::get<Constraint>(temp.front()));
+                    temp.pop();
+                }
+            }
+        }
+
+        while(!old_constraints.empty()) {
+            current_branch_nodes_stack.push(old_constraints.top());
+            old_constraints.pop();
+        }
+
+        while(!new_constraints.empty()) {
+            current_branch_nodes_stack.push(new_constraints.top());
+            new_constraints.pop();
+        }
+    } else if(last_op == sequential_op) {
+        /*
+            If the last operator was sequential, we just need to create a constraint with the last constraint in the stack
+
+            -> If we create a constraint with another constraint, we just need to create with the second involved task
+        */
+        pair<int,ATNode> last_task = std::get<pair<int,ATNode>>(current_branch_nodes_stack.top());
+        current_branch_nodes_stack.pop();
+
+        Constraint new_constraint;
+        Constraint last_constraint = std::get<Constraint>(current_branch_nodes_stack.top());
+
+        new_constraint = generate_constraint(last_constraint.nodes_involved.second,last_task, SEQ);
+
+        current_branch_nodes_stack.push(new_constraint);
+        existing_constraints[last_constraint.nodes_involved.second.first].insert(last_task.first);
+    } else if(last_op == fallback_op) {
+        /*
+            If the last operator was a fallback, we need to create constraints with all of the constraints (and their tasks) until we reach an artificial
+            node
+        */
+        queue<variant<pair<int,ATNode>,Constraint>> temp;
+        bool end_reached = false;
+        while(!end_reached) {
+            if(holds_alternative<pair<int,ATNode>>(current_branch_nodes_stack.top())) {
+                if(get<pair<int,ATNode>>(current_branch_nodes_stack.top()).first == -1) {
+                    end_reached = true;
+                }
+            }
+
+            if(!end_reached) {
+                temp.push(current_branch_nodes_stack.top());
+                current_branch_nodes_stack.pop();
+            }
+
+            if(current_branch_nodes_stack.empty()) {
+                end_reached = true;
+            }
+        }
+
+        pair<int,ATNode> last_task = get<pair<int,ATNode>>(temp.front());
+        temp.pop();
+
+        stack<Constraint> new_constraints;
+        stack<Constraint> old_constraints;
+
+        while(!temp.empty()) {
+            if(holds_alternative<pair<int,ATNode>>(temp.front())) {
+                /*
+                    We are dealing with a task, so we need to build a constraint with it
+                */
+                Constraint c = generate_constraint(std::get<pair<int,ATNode>>(temp.front()),last_task, SEQ);
+
+                existing_constraints[c.nodes_involved.first.first].insert(c.nodes_involved.second.first);
+
+                new_constraints.push(c);
+                temp.pop();
+            } else {
+                Constraint c1, c2;
+
+                pair<pair<int,ATNode>,pair<int,ATNode>> constraint_nodes = get<Constraint>(temp.front()).nodes_involved;
+
+                c1 = generate_constraint(constraint_nodes.first, last_task, SEQ);
+                c2 = generate_constraint(constraint_nodes.second, last_task, SEQ);
+
+                if(existing_constraints[constraint_nodes.second.first].find(last_task.first) == existing_constraints[constraint_nodes.second.first].end()) {
+                    existing_constraints[constraint_nodes.second.first].insert(last_task.first);
+                    new_constraints.push(c2);
+                }
+
+                if(existing_constraints[constraint_nodes.first.first].find(last_task.first) == existing_constraints[constraint_nodes.first.first].end()) {
+                    existing_constraints[constraint_nodes.first.first].insert(last_task.first);
+                    new_constraints.push(c1);
+                }
+
+                old_constraints.push(std::get<Constraint>(temp.front()));
+                temp.pop();
+            }
+        }
+
+        while(!old_constraints.empty()) {
+            current_branch_nodes_stack.push(old_constraints.top());
+            old_constraints.pop();
+        }
+
+        while(!new_constraints.empty()) {
+            current_branch_nodes_stack.push(new_constraints.top());
+            new_constraints.pop();
+        }
+    } else { 
+        /*
+            If no operator was considered yet, we need to create a constraint with another task
+        */
+        Constraint c;
+
+        pair<int,ATNode> last_task = std::get<pair<int,ATNode>>(current_branch_nodes_stack.top());
+        current_branch_nodes_stack.pop();
+
+        pair<int,ATNode> other_task = std::get<pair<int,ATNode>>(current_branch_nodes_stack.top());
+        current_branch_nodes_stack.pop();
+
+        c = generate_constraint(other_task, last_task, SEQ);
+
+        current_branch_nodes_stack.push(c);
+        existing_constraints[c.nodes_involved.first.first].insert(c.nodes_involved.second.first);
     }
 }
 
