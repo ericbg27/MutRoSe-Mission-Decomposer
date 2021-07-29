@@ -73,11 +73,11 @@ void FileKnowledgeManager::initialize_objects(map<string,set<string>>& sorts, ve
 	BOOST_FOREACH(pt::ptree::value_type& child, worlddb_root) {
         vector<string>::iterator loc_it = std::find(high_level_loc_types.begin(), high_level_loc_types.end(), child.first);
 		if(loc_it != high_level_loc_types.end()) {
-			world_locations.insert(child.second.get<string>("name"));
+			world_locations.insert(child.second.get<string>(unique_id));
             string hddl_type;
 
             hddl_type = type_mapping[*loc_it];
-            sorts[hddl_type].insert(child.second.get<string>("name"));
+            sorts[hddl_type].insert(child.second.get<string>(unique_id));
 		}
 	}
 
@@ -98,7 +98,7 @@ void FileKnowledgeManager::initialize_objects(map<string,set<string>>& sorts, ve
 
         if(type_mapping.find(child.first) != type_mapping.end()) {
             string hddl_type = type_mapping[child.first];
-            sorts[hddl_type].insert(child.second.get<string>("name"));
+            sorts[hddl_type].insert(child.second.get<string>(unique_id));
         }
 
         string child_data = child.second.data();
@@ -157,7 +157,7 @@ void FileKnowledgeManager::initialize_attribute_mapping(SemanticMapping sm, pt::
                 if(child.first == relation_type) {
                     //Only insert the predicate if the object exists (was initialized) in the sorts map
                     string hddl_type = type_mapping[relation_type];
-                    if(sorts[hddl_type].find(child.second.get<string>("name")) != sorts[hddl_type].end()) {
+                    if(sorts[hddl_type].find(child.second.get<string>(unique_id)) != sorts[hddl_type].end()) {
                         bool val;
 
                         boost::optional attr_val = child.second.get_optional<string>(attr_name);
@@ -176,7 +176,7 @@ void FileKnowledgeManager::initialize_attribute_mapping(SemanticMapping sm, pt::
                             */
                             for(string sort_type : pred.argument_sorts) {
                                 if(sort_type == hddl_type) {
-                                    l.args.push_back(child.second.get<string>("name"));
+                                    l.args.push_back(child.second.get<string>(unique_id));
                                 }
                             }
 
@@ -234,7 +234,7 @@ void FileKnowledgeManager::initialize_attribute_mapping(SemanticMapping sm, pt::
                 if(child.first == relation_type) {
                     //Only insert the predicate if the object exists (was initialized) in the sorts map
                     string hddl_type = type_mapping[relation_type];
-                    if(sorts[hddl_type].find(child.second.get<string>("name")) != sorts[hddl_type].end()) {
+                    if(sorts[hddl_type].find(child.second.get<string>(unique_id)) != sorts[hddl_type].end()) {
                         variant<int,float> val;
 
                         boost::optional attr_value = child.second.get_optional<string>(attr_name);
@@ -271,7 +271,7 @@ void FileKnowledgeManager::initialize_attribute_mapping(SemanticMapping sm, pt::
                             */
                             for(string sort_type : pred.argument_sorts) {
                                 if(sort_type == hddl_type) {
-                                    l.args.push_back(child.second.get<string>("name"));
+                                    l.args.push_back(child.second.get<string>(unique_id));
                                 }
                             }
 
@@ -341,8 +341,8 @@ void FileKnowledgeManager::initialize_ownership_mapping(SemanticMapping sm, pt::
 
                     string owner_hddl_type = type_mapping[owner_type];
                     string owned_hddl_type = type_mapping[owned_type];
-                    if(sorts[owner_hddl_type].find(child.second.get<string>("name")) != sorts[owner_hddl_type].end()) {
-                        string owner_name = child.second.get<string>("name");
+                    if(sorts[owner_hddl_type].find(child.second.get<string>(unique_id)) != sorts[owner_hddl_type].end()) {
+                        string owner_name = child.second.get<string>(unique_id);
 
                         string relationship_type = std::get<string>(sm.get_prop(relationshiptype_key));
                         if(relationship_type == attribute_relationship_type) {
@@ -355,8 +355,8 @@ void FileKnowledgeManager::initialize_ownership_mapping(SemanticMapping sm, pt::
 
                                 BOOST_FOREACH(pt::ptree::value_type& attr_child, attr_tree) {
                                     if(attr_child.first == owned_type) {
-                                        if(sorts[owned_hddl_type].find(attr_child.second.get<string>("name")) != sorts[owned_hddl_type].end()) {
-                                            string owned_name = attr_child.second.get<string>("name");
+                                        if(sorts[owned_hddl_type].find(attr_child.second.get<string>(unique_id)) != sorts[owned_hddl_type].end()) {
+                                            string owned_name = attr_child.second.get<string>(unique_id);
                                             owned_objects.insert(owned_name);
 
                                             ground_literal l;
@@ -453,8 +453,8 @@ void FileKnowledgeManager::initialize_relationship_mapping(SemanticMapping sm, p
 
                     string main_entity_hddl_type = type_mapping[main_entity_type];
                     string related_entity_hddl_type = type_mapping[related_entity_type];
-                    if(sorts[main_entity_hddl_type].find(child.second.get<string>("name")) != sorts[main_entity_hddl_type].end()) {
-                        string owner_name = child.second.get<string>("name");
+                    if(sorts[main_entity_hddl_type].find(child.second.get<string>(unique_id)) != sorts[main_entity_hddl_type].end()) {
+                        string owner_name = child.second.get<string>(unique_id);
 
                         string relationship_type = std::get<string>(sm.get_prop(relationshiptype_key));
                         if(relationship_type == attribute_relationship_type) {

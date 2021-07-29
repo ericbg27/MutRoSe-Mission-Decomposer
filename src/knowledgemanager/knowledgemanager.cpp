@@ -9,8 +9,16 @@ void KnowledgeManager::set_knowledge_type(knowledge_type kt) {
     k_type = kt;
 }
 
+void KnowledgeManager::set_unique_id(string id) {
+	unique_id = id;
+}
+
 void KnowledgeManager::set_type_mapping(map<string,string> tm) {
 	type_mapping = tm;
+}
+
+string KnowledgeManager::get_unique_id() {
+	return unique_id;
 }
 
 knowledge_type KnowledgeManager::get_knowledge_type() {

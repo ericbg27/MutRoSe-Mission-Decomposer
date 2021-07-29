@@ -11,7 +11,7 @@
 
 class KnowledgeManagerFactory {
     public:
-        static std::shared_ptr<KnowledgeManager> create_knowledge_manager(std::map<std::string, std::variant<std::map<std::string,std::string>, std::vector<std::string>, std::vector<SemanticMapping>, std::vector<VariableMapping>, pair<std::string,std::string>>> cfg, std::map<std::string,std::string> type_mapping);
+        static std::shared_ptr<KnowledgeManager> create_knowledge_manager(std::map<std::string, std::variant<std::map<std::string,std::string>, std::vector<std::string>, std::vector<SemanticMapping>, std::vector<VariableMapping>, pair<std::string,std::string>>> cfg, std::string unique_id, std::map<std::string,std::string> type_mapping);
 };
 
 #endif

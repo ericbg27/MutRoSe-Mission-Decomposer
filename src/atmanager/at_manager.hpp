@@ -20,8 +20,8 @@ class ATManager {
     public:
         virtual std::map<std::string,std::vector<AbstractTask>> generate_at_instances(std::map<std::string, std::variant<pair<std::string,std::string>,pair<std::vector<std::string>,std::string>>>& gm_var_map, 
                                                                                         std::vector<VariableMapping> var_mapping) = 0;
-        virtual void recursive_at_instances_generation(int current, int depth, std::map<int,int>& node_depths, pt::ptree world_tree, std::vector<VariableMapping> var_mapping,
-                                                        std::map<std::string, std::variant<pair<std::string,std::string>,pair<std::vector<std::string>,std::string>>>& gm_var_map, bool insert_events) = 0;
+        void recursive_at_instances_generation(int current, int depth, std::map<int,int>& node_depths, pt::ptree world_tree, std::vector<VariableMapping> var_mapping,
+                                                        std::map<std::string, std::variant<pair<std::string,std::string>,pair<std::vector<std::string>,std::string>>>& gm_var_map, bool insert_events);
         
         virtual void query_goal_resolution(int current_node, pt::ptree world_tree, std::map<std::string, std::variant<pair<std::string,std::string>,pair<std::vector<std::string>,std::string>>>& gm_var_map) = 0;
         virtual void achieve_goal_resolution(int current_node, int depth, pt::ptree world_tree, bool insert_events, std::map<int,int>& node_depths, std::vector<VariableMapping> var_mapping,
@@ -64,8 +64,8 @@ class FileKnowledgeATManager : public ATManager {
     public:
         std::map<std::string,std::vector<AbstractTask>> generate_at_instances(std::map<std::string, std::variant<pair<std::string,std::string>,pair<std::vector<std::string>,std::string>>>& gm_var_map,
                                                                                 std::vector<VariableMapping> var_mapping);
-        void recursive_at_instances_generation(int current, int depth, std::map<int,int>& node_depths, pt::ptree world_tree, std::vector<VariableMapping> var_mapping,
-                                                std::map<std::string, std::variant<pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>>& gm_var_map, bool insert_events);
+        //void recursive_at_instances_generation(int current, int depth, std::map<int,int>& node_depths, pt::ptree world_tree, std::vector<VariableMapping> var_mapping,
+                                                //std::map<std::string, std::variant<pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>>& gm_var_map, bool insert_events);
 
         void query_goal_resolution(int current_node, pt::ptree world_tree, std::map<std::string, std::variant<std::pair<std::string,std::string>,pair<std::vector<std::string>,std::string>>>& gm_var_map);
         void achieve_goal_resolution(int current_node, int depth, pt::ptree world_tree, bool insert_events, std::map<int,int>& node_depths, std::vector<VariableMapping> var_mapping,

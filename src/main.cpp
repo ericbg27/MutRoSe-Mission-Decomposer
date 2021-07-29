@@ -69,6 +69,8 @@ map<string, task> task_name_map;
 
 map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map;
 
+const string knowledge_unique_id = "name";
+
 bool mdp = false; //Variable for checking if mdp constructs are found
 bool has_forall = false;
 bool has_when = false;
@@ -168,7 +170,7 @@ int main(int argc, char** argv) {
 
 	//Generate Knowledge Bases and Knowledge Manager
 	KnowledgeManagerFactory k_manager_factory;
-	shared_ptr<KnowledgeManager> knowledge_manager = k_manager_factory.create_knowledge_manager(cfg, type_mapping);
+	shared_ptr<KnowledgeManager> knowledge_manager = k_manager_factory.create_knowledge_manager(cfg, knowledge_unique_id, type_mapping);
 	knowledge_manager->construct_knowledge_base("world_db", cfg);
 
 	vector<string> output = std::get<vector<string>>(cfg["output"]);
