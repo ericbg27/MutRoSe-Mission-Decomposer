@@ -35,6 +35,8 @@ bool check_context(Context context, vector<ground_literal> world_state, vector<S
 				if(state.args.at(0) == var_and_pred.second.first) {
 					if(state.positive == var_and_pred.first) {
 						is_active = true;
+
+						break;
 					}
 				}
 			}
@@ -67,9 +69,22 @@ pair<bool,pair<string,predicate_definition>> get_pred_from_context(Context conte
 		string condition = context.get_condition();
 		string attr;
 
+		if(condition.find("!") != std::string::npos || condition.find("not") != std::string::npos) {
+			positive = false;
+		}
+
 		size_t cond_sep = condition.find('.');
 
 		var = condition.substr(0,cond_sep);
+		if(!positive) {
+			if(var.find(" ") != std::string::npos) { // expression has a not
+				size_t not_sep = var.find(" ");
+				var = var.substr(not_sep+1,var.size()-not_sep-1);
+			} else {
+				var = var.substr(1,var.size());
+			}
+		}
+		
 		attr = condition.substr(cond_sep+1,condition.size()-cond_sep-1);
 
 		/*
@@ -88,13 +103,9 @@ pair<bool,pair<string,predicate_definition>> get_pred_from_context(Context conte
 			}
 		}
 
-		if(!found_pred) {
+		if(!found_pred || var == " " || attr == " ") {
 			std::string predicate_not_found_err = "Could not build predicate from context: " + context.get_condition();
 			throw std::runtime_error(predicate_not_found_err);
-		}
-
-		if(condition.find("!") != std::string::npos || condition.find("not") != std::string::npos) {
-			positive = false;
 		}
 	}
 
