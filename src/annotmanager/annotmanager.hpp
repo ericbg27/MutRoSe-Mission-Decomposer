@@ -26,7 +26,7 @@ class AnnotManager {
         void expand_forall_annot(general_annot* node_annot, int generated_instances, std::string iterated_var, std::string iteration_var, std::vector<int>& vctr, int current, pt::ptree worlddb, std::map<int,AchieveCondition> valid_forAll_conditions);
 
         bool forall_goal_resolution(general_annot* node_annot, int current, int depth, std::map<int,AchieveCondition> valid_forAll_conditions, std::vector<int>& vctr, pt::ptree worlddb);
-        bool goal_node_resolution(general_annot* node_annot, int current_node, int depth, std::map<int,AchieveCondition>& valid_forAll_conditions, pt::ptree worlddb);
+        virtual bool goal_node_resolution(general_annot* node_annot, int current_node, int depth, std::map<int,AchieveCondition>& valid_forAll_conditions, pt::ptree worlddb) = 0;
 
         void expand_root_annot(general_annot* node_annot, int current_node, bool is_forAll_goal, int depth, std::vector<int>& vctr, std::map<int,AchieveCondition> valid_forAll_conditions, pt::ptree worlddb);
         void expand_non_root_annot(general_annot* node_annot, int current_node, bool is_forAll_goal, int depth, std::vector<int>& vctr, std::map<int,AchieveCondition> valid_forAll_conditions, pt::ptree worlddb);
@@ -50,6 +50,9 @@ class FileKnowledgeAnnotManager : public AnnotManager {
         general_annot* retrieve_gm_annot();
 
         void recursive_gm_annot_generation(general_annot* node_annot, std::vector<int> &vctr,  pt::ptree worlddb, int current_node, std::map<int,AchieveCondition> valid_forAll_conditions);
+        
+        bool goal_node_resolution(general_annot* node_annot, int current_node, int depth, std::map<int,AchieveCondition>& valid_forAll_conditions, pt::ptree worlddb);
+
         void set_fk_manager(FileKnowledgeManager* manager);
 
     private:

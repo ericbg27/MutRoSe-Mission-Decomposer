@@ -269,9 +269,10 @@ string recursive_rt_annot_build(general_annot* rt) {
     @ Input 3: The Goal Model as a GMGraph object
     @ Input 4: The node ID
     @ Input 5: The valid variables map
+    @ Input 6: The knowledge base unique ID name
     @ Output: Void. The valid variables map is filled with new variables
 */
-void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm, int node_id, map<string,pair<string,vector<pt::ptree>>>& valid_variables) {
+void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm, int node_id, map<string,pair<string,vector<pt::ptree>>>& valid_variables, string unique_id) {
     vector<pt::ptree> aux;
 				
 	if(!queried_tree.empty()) {
@@ -321,7 +322,6 @@ void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm
 						if(prop_val_opt) {
                             string prop_val = prop_val_opt.get();
                             
-
                             string attr_to_search = q.query.at(2);
                             std::replace(attr_to_search.begin(), attr_to_search.end(), '.', ' ');
                             
@@ -343,7 +343,7 @@ void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm
                                 
                                 bool found_attr = false;
                                 for(pt::ptree val : var_value) {
-                                    if(val.get<string>("name") == prop_val) {
+                                    if(val.get<string>(unique_id) == prop_val) {
                                         found_attr = true;
                                         
                                         break;
@@ -482,9 +482,10 @@ void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm
     @ Input 3: The valid variables map
     @ Input 4: The valid forAll conditions map
     @ Input 5: The world knowledge ptree
+    @ Input 6: The knowledge unique ID name
     @ Output: The ptree corresponding to the queried object
 */
-pt::ptree get_query_ptree(GMGraph gm, int node_id, map<string,pair<string,vector<pt::ptree>>> valid_variables, map<int,AchieveCondition> valid_forAll_conditions, pt::ptree world_tree) {
+pt::ptree get_query_ptree(GMGraph gm, int node_id, map<string,pair<string,vector<pt::ptree>>> valid_variables, map<int,AchieveCondition> valid_forAll_conditions, pt::ptree world_tree, string unique_id) {
 	pt::ptree queried_tree;
 	QueriedProperty q = std::get<QueriedProperty>(gm[node_id].custom_props[queried_property_prop]);
 
@@ -532,7 +533,7 @@ pt::ptree get_query_ptree(GMGraph gm, int node_id, map<string,pair<string,vector
 			if(valid_query) {
 				BOOST_FOREACH(pt::ptree::value_type& child, world_tree) {
 					if(child.first == var_type) {	
-						if(child.second.get<string>("name") == valid_variables[query_attrs.at(0)].second.at(0).get<string>("name")) { //Doesn't work for collection variables
+						if(child.second.get<string>(unique_id) == valid_variables[query_attrs.at(0)].second.at(0).get<string>(unique_id)) { //Doesn't work for collection variables
 							boost::optional<pt::ptree&> attr = child.second.get_child_optional(query_attrs.at(1));
 							if(!attr) {
 								valid_query = false;

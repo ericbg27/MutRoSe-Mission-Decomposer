@@ -2,7 +2,7 @@
 
 using namespace std;
 
-shared_ptr<KnowledgeManager> KnowledgeManagerFactory::create_knowledge_manager(map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> cfg, map<string,string> type_mapping) {
+shared_ptr<KnowledgeManager> KnowledgeManagerFactory::create_knowledge_manager(map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> cfg, string unique_id, map<string,string> type_mapping) {
     string dbs_type = "";
 
     vector<string> dbs = {"world_db"};
@@ -26,6 +26,7 @@ shared_ptr<KnowledgeManager> KnowledgeManagerFactory::create_knowledge_manager(m
         shared_ptr<KnowledgeManager> file_manager = std::make_shared<FileKnowledgeManager>();
 
         file_manager->set_knowledge_type(FILEKNOWLEDGE);
+        file_manager->set_unique_id(unique_id);
         file_manager->set_type_mapping(type_mapping);
 
         return file_manager;

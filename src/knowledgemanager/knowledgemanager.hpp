@@ -25,12 +25,16 @@ class KnowledgeManager {
         virtual void initialize_world_state(std::vector<ground_literal>& init, std::vector<pair<ground_literal,std::variant<int,float>>>& init_functions, std::vector<SemanticMapping> semantic_mapping, std::map<std::string,std::set<std::string>> sorts) = 0;
 
         void set_knowledge_type(knowledge_type kt);
+        void set_unique_id(std::string id);
         void set_type_mapping(std::map<std::string,std::string> tm);
+
+        std::string get_unique_id();
 
         knowledge_type get_knowledge_type();
 
     protected:
         knowledge_type k_type;
+        std::string unique_id;
         std::map<std::string,std::string> type_mapping;
 };
 

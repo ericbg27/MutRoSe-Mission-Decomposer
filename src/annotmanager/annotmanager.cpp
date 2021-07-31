@@ -264,15 +264,15 @@ bool AnnotManager::forall_goal_resolution(general_annot* node_annot, int current
     return expanded_in_forAll;
 }
 
-bool AnnotManager::goal_node_resolution(general_annot* node_annot, int current_node, int depth, map<int,AchieveCondition>& valid_forAll_conditions, pt::ptree worlddb) {
+bool FileKnowledgeAnnotManager::goal_node_resolution(general_annot* node_annot, int current_node, int depth, map<int,AchieveCondition>& valid_forAll_conditions, pt::ptree worlddb) {
     bool is_forAll_goal = false;
 
     if(std::get<string>(gm[current_node].custom_props[goal_type_prop]) == query_goal_type) {
         QueriedProperty q = std::get<QueriedProperty>(gm[current_node].custom_props[queried_property_prop]);
 
-        pt::ptree query_ptree = get_query_ptree(gm, current_node, valid_variables, valid_forAll_conditions, worlddb);
+        pt::ptree query_ptree = get_query_ptree(gm, current_node, valid_variables, valid_forAll_conditions, worlddb, fk_manager->get_unique_id());
 
-        solve_query_statement(query_ptree,q,gm,current_node,valid_variables);
+        solve_query_statement(query_ptree,q,gm,current_node,valid_variables, fk_manager->get_unique_id());
     } else if(std::get<string>(gm[current_node].custom_props[goal_type_prop]) == achieve_goal_type) {
         is_forAll_goal = true;
         AchieveCondition a = std::get<AchieveCondition>(gm[current_node].custom_props[achieve_condition_prop]);

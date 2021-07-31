@@ -238,7 +238,7 @@ map<string,vector<AbstractTask>> FileKnowledgeATManager::generate_at_instances(m
 	
     @ Output: Void. The AT instances attribute is populated
 */
-void FileKnowledgeATManager::recursive_at_instances_generation(int current, int depth, map<int,int>& node_depths, pt::ptree world_tree, vector<VariableMapping> var_mapping,
+void ATManager::recursive_at_instances_generation(int current, int depth, map<int,int>& node_depths, pt::ptree world_tree, vector<VariableMapping> var_mapping,
 																map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map, bool insert_events) {	
 	if(gm[current].parent != -1) {
 		depth = node_depths[gm[current].parent] + 1;
@@ -258,13 +258,14 @@ void FileKnowledgeATManager::recursive_at_instances_generation(int current, int 
 
 	parent_annot = retrieve_runtime_annot(parent_text);
 	if(parent_annot->type != OPERATOR) {
-		string except = "[AT_MANAGER] Invalid runtime annotation for node: " + gm[current].text;
+		string invalid_runtime_annotation_error = "[AT_MANAGER] Invalid runtime annotation for node: " + gm[current].text;
 			
-		throw std::runtime_error(except);
+		throw std::runtime_error(invalid_runtime_annotation_error);
 	}
+
 	if(parent_annot->content == sequential_op) {
 		insert_events = false;
-	} else if(parent_annot->content == parallel_op || parent_annot->content == "") {
+	} else if(parent_annot->content == parallel_op || parent_annot->content == "" || parent_annot->content == fallback_op) {
 		insert_events = true;
 	}
 
@@ -323,7 +324,7 @@ void FileKnowledgeATManager::recursive_at_instances_generation(int current, int 
 }
 
 void FileKnowledgeATManager::query_goal_resolution(int current_node, pt::ptree world_tree, map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map) {
-	pt::ptree queried_tree = get_query_ptree(gm, current_node, valid_variables, valid_forAll_conditions, world_tree);
+	pt::ptree queried_tree = get_query_ptree(gm, current_node, valid_variables, valid_forAll_conditions, world_tree, fk_manager->get_unique_id());
 	QueriedProperty q = std::get<QueriedProperty>(gm[current_node].custom_props[queried_property_prop]);
 
 	solve_query_statement(queried_tree, q, gm, current_node, valid_variables, gm_var_map);
@@ -351,7 +352,7 @@ void FileKnowledgeATManager::achieve_goal_resolution(int current_node, int depth
 		for(unsigned int i = 0; i < iterated_var_value.size(); i++) {
 			gm_var_map[a.get_iteration_var()] = make_pair(iterated_var_value.at(i),iterated_var_type);
 			for(pt::ptree aux : valid_variables[a.get_iterated_var()].second) {
-				if(aux.get<string>("name") == iterated_var_value.at(i)) {
+				if(aux.get<string>(fk_manager->get_unique_id()) == iterated_var_value.at(i)) {
 					vector<pt::ptree> iterated_var_ptree;
 					iterated_var_ptree.push_back(aux);
 
