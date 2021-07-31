@@ -463,9 +463,8 @@ int main(int argc, char** argv) {
 
 		FileKnowledgeManager* aux = dynamic_cast<FileKnowledgeManager*>(knowledge_manager.get());
 		mission_decomposer->set_fk_manager(aux);
-		std::cout << "Building AT Graph..." << std::endl;
+
 		mission_decomposition = mission_decomposer->build_at_graph(gm_var_map, semantic_mapping);
-		std::cout << "Finished" << std::endl;
 	}
 
 	if(verbose) {
