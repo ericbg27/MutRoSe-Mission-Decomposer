@@ -44,6 +44,9 @@ const std::string ocl_gt = ">";
 const std::string ocl_lt = "<";
 const std::string ocl_geq = ">=";
 const std::string ocl_leq = "<=";
+
+const std::string select_regex_exp = "[a-zA-Z]{1}[\\w.]*(->select)[(][a-zA-Z]{1}[\\w.]*[:][a-zA-Z]+[\\w.]+[ ]*[|][ ]*";
+const std::string end_select_regex_exp = "[)]";
 //**********************************************************************************************************************************
 
 class AchieveCondition : public Condition {
