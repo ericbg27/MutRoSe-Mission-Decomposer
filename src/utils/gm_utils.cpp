@@ -161,13 +161,6 @@ IterationRule parse_iterate_expr(string expr) {
 QueriedProperty parse_select_expr(string expr) {
     bool error = false;
 
-    //Put condition strings here
-    string var_attr_condition = "[!]?[a-zA-Z]+[\\w.]*";
-    string equal_diff_condition = "[a-zA-Z]+[\\w.]*[ ]+((=)|(<>)){1}[ ]+([a-zA-Z]+[a-zA-Z0-9]+|\"[a-zA-Z]+[a-zA-Z0-9]+\"|([\\d]*[.])?[\\d]+)";
-    string comparison_condition = "[a-zA-Z]+[\\w.]*[ ]+((>)|(<)|(>=)|(<=)){1}[ ]+([\\d]*[.])?[\\d]+";
-    string in_condition = "[a-zA-Z]+[\\w.]*[ ]+(in)[ ]+[a-zA-Z]+[\\w.]*";
-    string blank_condition = "";
-
     string regex1 = select_regex_exp + var_attr_condition + end_select_regex_exp;
     string regex2 = select_regex_exp + equal_diff_condition + end_select_regex_exp;
     string regex3 = select_regex_exp + comparison_condition + end_select_regex_exp;
@@ -386,9 +379,13 @@ vector<string> parse_forAll_expr(string expr) {
 
     vector<string> res;
 
-    std::regex forall_reg1("[a-zA-Z]+[\\w.]*(->forAll)[(][a-zA-Z]+[\\w.]*[ ]*[|][ ]*([a-zA-Z]+[\\w.]*)?[)]");
-    std::regex forall_reg2("[a-zA-Z]+[\\w.]*(->forAll)[(][a-zA-Z]+[\\w.]*[ ]*[|][ ]*([A-Za-z]+[\\w]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+([0-9]*[.])?[0-9]+))[)]");
-    std::regex forall_reg3("[a-zA-Z]+[\\w.]*(->forAll)[(][a-zA-Z]+[\\w.]*[ ]*[|][ ]*([a-zA-Z]+[\\w.]*[ ]+((>)|(<)|(>=)|(<=)){1}[ ]+([0-9]*[.])?[0-9]+)[)]");
+    string regex1 = forall_regex_exp + var_attr_condition + end_forall_regex_exp;
+    string regex2 = forall_regex_exp + equal_diff_number_condition + end_forall_regex_exp;
+    string regex3 = forall_regex_exp + comparison_condition + end_forall_regex_exp;
+
+    std::regex forall_reg1(regex1);
+    std::regex forall_reg2(regex2);
+    std::regex forall_reg3(regex3);
     
     if(!std::regex_match(expr, forall_reg1) && !std::regex_match(expr, forall_reg2) && !std::regex_match(expr, forall_reg3)) {
         error = true;

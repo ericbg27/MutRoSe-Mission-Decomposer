@@ -47,6 +47,15 @@ const std::string ocl_leq = "<=";
 
 const std::string select_regex_exp = "[a-zA-Z]{1}[\\w.]*(->select)[(][a-zA-Z]{1}[\\w.]*[:][a-zA-Z]+[\\w.]+[ ]*[|][ ]*";
 const std::string end_select_regex_exp = "[)]";
+const std::string forall_regex_exp = "[a-zA-Z]+[\\w.]*(->forAll)[(][a-zA-Z]+[\\w.]*[ ]*[|][ ]*";
+const std::string end_forall_regex_exp = "[)]";
+
+const std::string var_attr_condition = "[!]?[a-zA-Z]+[\\w.]*";
+const std::string equal_diff_condition = "[a-zA-Z]+[\\w.]*[ ]+((=)|(<>)){1}[ ]+([a-zA-Z]+[a-zA-Z0-9]+|\"[a-zA-Z]+[a-zA-Z0-9]+\"|([\\d]*[.])?[\\d]+)";
+const std::string equal_diff_number_condition = "[A-Za-z]+[\\w]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+([0-9]*[.])?[0-9]+)";
+const std::string comparison_condition = "[a-zA-Z]+[\\w.]*[ ]+((>)|(<)|(>=)|(<=)){1}[ ]+([\\d]*[.])?[\\d]+";
+const std::string in_condition = "[a-zA-Z]+[\\w.]*[ ]+(in)[ ]+[a-zA-Z]+[\\w.]*";
+const std::string blank_condition = "";
 //**********************************************************************************************************************************
 
 class AchieveCondition : public Condition {
