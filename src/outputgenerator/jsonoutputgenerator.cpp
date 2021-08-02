@@ -14,7 +14,7 @@ void JSONOutputGenerator::generate_instances_output(vector<SemanticMapping> sema
     // With the final constraints and the mission decomposition graph we generate our output
     pt::ptree output_file;
 
-    ValidMissionGenerator valid_missions_generator(mission_decomposition, gm, mission_constraints, world_state, world_state_functions, semantic_mapping, gm_var_map, verbose, robot_related_sorts);
+    ValidMissionGenerator valid_missions_generator(mission_decomposition, gm, mission_constraints, world_state, world_state_functions, semantic_mapping, gm_var_map, verbose, robot_related_sorts, pretty_print);
     pair<vector<vector<pair<int,ATNode>>>,set<Decomposition>> valid_mission_decompositions_and_expanded_decompositions = valid_missions_generator.generate_valid_mission_decompositions();
 
     vector<vector<pair<int,ATNode>>> valid_mission_decompositions = valid_mission_decompositions_and_expanded_decompositions.first;

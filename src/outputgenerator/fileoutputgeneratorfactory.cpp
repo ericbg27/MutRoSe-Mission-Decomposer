@@ -2,7 +2,7 @@
 
 using namespace std;
 
-shared_ptr<FileOutputGenerator> FileOutputGeneratorFactory::create_file_output_generator(GMGraph gm, ATGraph mission_decomposition, vector<ground_literal> world_state, vector<pair<ground_literal,variant<int,float>>> world_state_functions, pair<string,string> output, bool verbose) {
+shared_ptr<FileOutputGenerator> FileOutputGeneratorFactory::create_file_output_generator(GMGraph gm, ATGraph mission_decomposition, vector<ground_literal> world_state, vector<pair<ground_literal,variant<int,float>>> world_state_functions, pair<string,string> output, bool verbose, bool pretty_print) {
     shared_ptr<FileOutputGenerator> file_output_gen;
 
     if(output.second == "XML") {
@@ -19,6 +19,7 @@ shared_ptr<FileOutputGenerator> FileOutputGeneratorFactory::create_file_output_g
     file_output_gen->set_world_state_functions(world_state_functions);  
     file_output_gen->set_output(output);
     file_output_gen->set_verbose(verbose);
+    file_output_gen->set_pretty_print(pretty_print);
 
     return file_output_gen;
 }
