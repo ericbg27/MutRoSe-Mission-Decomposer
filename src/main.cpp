@@ -42,7 +42,8 @@
 
 using namespace std;
 
-string verbose_command = "-v";
+const string verbose_command = "-v";
+const string pretty_print_command = "-p";
 
 // declare parser function manually
 void run_parser_on_file(FILE* f, char* filename);
@@ -76,6 +77,7 @@ bool has_forall = false;
 bool has_when = false;
 bool has_capabilities_definitions = false;
 bool verbose = false;
+bool pretty_print = false;
 
 int main(int argc, char** argv) {
 	cin.sync_with_stdio(false);
@@ -101,6 +103,8 @@ int main(int argc, char** argv) {
 
 		if(opt == verbose_command) {
 			verbose = true;
+		} else if(opt == pretty_print_command) {
+			pretty_print = true;
 		} else {
 			if(!option_not_found) {
 				std::cout << std::endl;
@@ -108,6 +112,11 @@ int main(int argc, char** argv) {
 			std::cout << "Unknown option [" + opt + "]" << std::endl;
 			option_not_found = true;
 		}
+	}
+
+	if(verbose && pretty_print) {
+		std::cout << "Options -v and -p cannot be used together!" << std::endl;
+		return 1;
 	}
 
 	if(option_not_found) {
@@ -475,7 +484,7 @@ int main(int argc, char** argv) {
 		FileOutputGeneratorFactory output_gen_factory;
 
 		pair<string,string> file_output_data = std::make_pair(output.at(1),output.at(2));
-		std::shared_ptr<FileOutputGenerator> output_generator_ptr = output_gen_factory.create_file_output_generator(gm, mission_decomposition, init, init_functions, file_output_data, verbose);
+		std::shared_ptr<FileOutputGenerator> output_generator_ptr = output_gen_factory.create_file_output_generator(gm, mission_decomposition, init, init_functions, file_output_data, verbose, pretty_print);
 
 		if(output_generator_ptr->get_file_output_generator_type() == XMLFILEOUTGEN) {
 			XMLOutputGenerator* output_generator = dynamic_cast<XMLOutputGenerator*>(output_generator_ptr.get());

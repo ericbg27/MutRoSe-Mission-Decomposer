@@ -8,6 +8,10 @@ void OutputGenerator::set_verbose(bool verb) {
     verbose = verb;
 }
 
+void OutputGenerator::set_pretty_print(bool pretty) {
+    pretty_print = pretty;
+}
+
 void OutputGenerator::set_mission_decomposition(ATGraph md) {
     mission_decomposition = md;
 }
