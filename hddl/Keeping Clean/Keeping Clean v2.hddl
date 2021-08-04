@@ -1,0 +1,122 @@
+(define (domain hospital)
+    (:types room - object)
+    (:predicates
+        (equipmentok ?r - robot)
+        (occupied ?rm - room)
+    )
+    (:functions
+        (staphylococcus ?rm - room)
+    )
+    (:capabilities organization equipmentsearch sndmessage)
+
+    (:task AbortMission :parameters (?r - robot ?rm - room))
+    (:method abort-mission
+       :parameters (?r - robot ?rm - room)
+       :task (AbortMission ?r ?rm)
+       :precondition (and
+                  (occupied ?rm)
+       )
+       :subtasks (and
+ 	        (msg-to-mgr ?r ?rm)
+	    )
+    )
+    (:action msg-to-mgr
+        :parameters (?r - robot ?rm - room)
+        :required-capabilities (sndmessage)
+        :effect ()
+    )
+     
+    (:task FindEquipment :parameters (?r - robot ?eqrm - room))
+    (:method find-equipment
+        :parameters (?r - robot ?eqrm - room)
+        :task (FindEquipment ?r ?eqrm)
+        :precondition (and
+            (not (equipmentok ?r))    
+        )
+        :subtasks (and
+            (get-equipment ?r ?eqrm)
+        )
+    )
+    (:action get-equipment
+        :parameters (?r - robot ?eqrm - room)
+        :required-capabilities (equipmentsearch)
+        :effect (and
+            (equipmentok ?r)
+        )
+    )
+
+    (:task EnterRoom :parameters (?r - robot ?rm - room))
+    (:method enter-room
+       :parameters (?r - robot ?rm - room)
+       :task (EnterRoom ?r ?rm)
+       :precondition (and
+                  (not (occupied ?rm))
+       )
+       :subtasks (and
+ 	        (mark-room ?r ?rm)
+	    )
+    )
+    (:action mark-room
+        :parameters (?r - robot ?rm - room)
+        :required-capabilities (sndmessage)
+        :effect (and
+            (occupied ?rm)
+        )
+    )
+
+    (:task ChangeCovers :parameters (?r - robot ?rm - room))
+    (:method covers-change
+        :parameters (?r - robot ?rm - room)
+        :task (ChangeCovers ?r ?rm)
+        :precondition ()
+        :subtasks (and
+            (change-covers ?r ?rm)
+        )
+    )
+    (:action change-covers
+        :parameters (?r - robot ?rm - room)
+        :required-capabilities (organization)
+    )
+
+    (:task VacuumFloor :parameters (?r - robot ?rm - room))
+    (:method floor-vacuum
+        :parameters (?r - robot ?rm - room)
+        :task (VacuumFloor ?r ?rm)
+        :subtasks (and
+            (vacuum-floor ?r ?rm)
+        )
+    )
+    (:action vacuum-floor
+        :parameters (?r - robot ?rm - room)
+        :required-capabilities (organization)
+    )
+
+    (:task WipeFloor :parameters (?r - robot ?rm - room))
+    (:method floor-wiping
+        :parameters (?r - robot ?rm - room)
+        :task (WipeFloor ?r ?rm)
+        :subtasks (and
+            (wipe-floor ?r ?rm)
+        )
+    )
+    (:action wipe-floor
+        :parameters (?r - robot ?rm - room)
+        :required-capabilities (organization)
+    )
+
+    (:task SterilizeRoom :parameters (?r - robot ?rm - room))
+    (:method room-sterilization
+        :parameters (?r - robot ?rm - room)
+        :task (SterilizeRoom ?r ?rm)
+        :subtasks (and
+            (sterilize-room ?r ?rm)
+        )
+    )
+    (:action sterilize-room
+        :parameters (?r - robot ?rm - room)
+        :required-capabilities (organization)
+        :effect (and
+            (assign (staphylococcus ?rm) 0)
+        )
+    )
+)
