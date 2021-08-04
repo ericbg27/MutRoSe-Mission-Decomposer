@@ -848,46 +848,53 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 			*/
 			bool resolved_context = check_context_dependency(parent, node_id, context, instantiated_vars, semantic_mapping);
 
-			if(!resolved_context) {
+			active_context = resolved_context;
+
+			/*if(!resolved_context) {
 				string bad_context_err = "COULD NOT RESOLVE CONTEXT FOR NODE: " + gm_node.text;
 
 				throw std::runtime_error(bad_context_err);
+			}*/
+		}
+
+		if(active_context) {
+			if(!non_coop) {
+				non_coop = node.non_coop;
 			}
-		}
+			/*
+				If the node is non cooperative (non-group or non-divisible group) we create non coop links between AT's that are children of it.
 
-		if(!non_coop) {
-			non_coop = node.non_coop;
-		}
-		/*
-			If the node is non cooperative (non-group or non-divisible group) we create non coop links between AT's that are children of it.
+				-> We just create these links at the last child AT
+			*/
+			unsigned int child_index = 0;
+			if(is_forAll) {
+				int value_index = 0;
+				for(general_annot* child : rannot->children) {
+					pair<vector<string>,string> var_map = std::get<pair<vector<string>,string>>(gm_vars_map[iterated_var.first]);
 
-			-> We just create these links at the last child AT
-		*/
-		unsigned int child_index = 0;
-		if(is_forAll) {
-			int value_index = 0;
-			for(general_annot* child : rannot->children) {
-				pair<vector<string>,string> var_map = std::get<pair<vector<string>,string>>(gm_vars_map[iterated_var.first]);
+					instantiated_vars[iteration_var.first] = var_map.first.at(value_index);
+					value_index++;
 
-				instantiated_vars[iteration_var.first] = var_map.first.at(value_index);
-				value_index++;
-
-				if(child_index < rannot->children.size()-1) {
-					recursive_at_graph_build(node_id, child, false, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
-				} else {
-					recursive_at_graph_build(node_id, child, non_coop, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
+					if(child_index < rannot->children.size()-1) {
+						recursive_at_graph_build(node_id, child, false, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
+					} else {
+						recursive_at_graph_build(node_id, child, non_coop, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
+					}
+					child_index++;
 				}
-				child_index++;
+			} else {
+				for(general_annot* child : rannot->children) {
+					if(child_index < rannot->children.size()-1) {
+						recursive_at_graph_build(node_id, child, false, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
+					} else {
+						recursive_at_graph_build(node_id, child, non_coop, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
+					}
+					child_index++;
+				}
 			}
 		} else {
-			for(general_annot* child : rannot->children) {
-				if(child_index < rannot->children.size()-1) {
-					recursive_at_graph_build(node_id, child, false, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
-				} else {
-					recursive_at_graph_build(node_id, child, non_coop, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
-				}
-				child_index++;
-			}
+			boost::clear_vertex(node_id, mission_decomposition);
+			boost::remove_vertex(node_id, mission_decomposition);
 		}
 	} else if(rannot->type == TASK) {
 		//Find AT instance that corresponds to this node and put it in the content
