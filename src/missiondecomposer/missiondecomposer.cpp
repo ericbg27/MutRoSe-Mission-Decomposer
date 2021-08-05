@@ -809,6 +809,23 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 
 			if(std::get<string>(gm_node.custom_props[goal_type_prop]) == achieve_goal_type) {
 				is_achieve = true;
+
+				AchieveCondition a = std::get<AchieveCondition>(gm_node.custom_props[achieve_condition_prop]);
+
+				if(a.has_forAll_expr) {
+					for(pair<string,string> var : std::get<vector<pair<string,string>>>(gm_node.custom_props[monitors_prop])) {
+						if(var.first == a.get_iterated_var()) {
+							iterated_var = var;
+							break;
+						}
+					}
+					for(pair<string,string> var : std::get<vector<pair<string,string>>>(gm_node.custom_props[controls_prop])) {
+						if(var.first == a.get_iteration_var()) {
+							iteration_var = var;
+							break;
+						}
+					}
+				}
 			}
 		} else {
 			/*
@@ -880,6 +897,14 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 				child_index++;
 			}
 		} else {
+			if(is_achieve) {
+				pair<vector<string>,string> var_map = std::get<pair<vector<string>,string>>(gm_vars_map[iterated_var.first]);
+
+				if(var_map.first.size() == 1) {
+					instantiated_vars[iteration_var.first] = var_map.first.at(0);
+				}
+			}
+
 			for(general_annot* child : rannot->children) {
 				if(child_index < rannot->children.size()-1) {
 					recursive_at_graph_build(node_id, child, false, gm_vars_map, world_db, semantic_mapping, instantiated_vars);

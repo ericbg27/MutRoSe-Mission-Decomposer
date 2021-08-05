@@ -327,7 +327,25 @@ void FileKnowledgeATManager::query_goal_resolution(int current_node, pt::ptree w
 	pt::ptree queried_tree = get_query_ptree(gm, current_node, valid_variables, valid_forAll_conditions, world_tree, fk_manager->get_unique_id());
 	QueriedProperty q = std::get<QueriedProperty>(gm[current_node].custom_props[queried_property_prop]);
 
-	solve_query_statement(queried_tree, q, gm, current_node, valid_variables, gm_var_map);
+	pair<vector<pt::ptree>,set<string>> query_result = solve_query_statement(queried_tree, q, gm, current_node, valid_variables, gm_var_map);
+
+	string var_name = std::get<vector<pair<string,string>>>(gm[current_node].custom_props[controls_prop]).at(0).first;
+	string var_type = std::get<vector<pair<string,string>>>(gm[current_node].custom_props[controls_prop]).at(0).second;
+
+	valid_variables[var_name] = make_pair(var_type,query_result.first);
+				
+	string gm_var_type = parse_gm_var_type(var_type);
+	if(gm_var_type == "VALUE") {
+		//We assume everything has a name attribute
+		gm_var_map[var_name] = make_pair(query_result.first.at(0).get<string>("name"),var_type); 
+	} else if(gm_var_type == "COLLECTION") {
+		vector<string> var_value;
+		for(pt::ptree t : query_result.first) {
+			var_value.push_back(t.get<string>("name"));
+		}
+
+		gm_var_map[var_name] = make_pair(var_value,var_type);
+	}
 }
 
 void FileKnowledgeATManager::achieve_goal_resolution(int current_node, int depth, pt::ptree world_tree, bool insert_events, map<int,int>& node_depths,

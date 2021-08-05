@@ -26,7 +26,7 @@ bool check_context(Context context, vector<ground_literal> world_state, vector<S
 					map<string, variant<string,vector<string>>> instantiated_vars) {
 	pair<bool,pair<string,predicate_definition>> var_and_pred = get_pred_from_context(context, semantic_mapping);
 
-	var_and_pred.second.first = get<string>(instantiated_vars[var_and_pred.second.first]);
+	var_and_pred.second.first = std::get<string>(instantiated_vars[var_and_pred.second.first]);
 
 	bool is_active = false;
 	for(ground_literal state : world_state) {

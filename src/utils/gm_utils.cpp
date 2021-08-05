@@ -4,7 +4,13 @@
 #include <regex>
 #include <iostream>
 
+#include "../queryparser/queryparser.hpp"
+
 using namespace std;
+
+int parse_query(const char* in);
+
+extern Query* parsed_query;
 
 string AchieveCondition::get_iterated_var() {
     if(has_forAll_expr) {
@@ -161,19 +167,9 @@ IterationRule parse_iterate_expr(string expr) {
 QueriedProperty parse_select_expr(string expr) {
     bool error = false;
 
-    string regex1 = select_regex_exp + var_attr_condition + end_select_regex_exp;
-    string regex2 = select_regex_exp + equal_diff_condition + end_select_regex_exp;
-    string regex3 = select_regex_exp + comparison_condition + end_select_regex_exp;
-    string regex4 = select_regex_exp + in_condition + end_select_regex_exp;
-    string regex5 = select_regex_exp + blank_condition + end_select_regex_exp;
+    std::regex select_reg(select_regex_exp);
 
-    std::regex select_reg1(regex1);
-    std::regex select_reg2(regex2);
-    std::regex select_reg3(regex3);
-    std::regex select_reg4(regex4);
-    std::regex select_reg5(regex5);
-
-    if(!std::regex_match(expr, select_reg1) && !std::regex_match(expr, select_reg2) && !std::regex_match(expr, select_reg3) && !std::regex_match(expr, select_reg4) && !std::regex_match(expr, select_reg5)) {
+    if(!std::regex_match(expr, select_reg)) {
         error = true;
     }
 
@@ -201,82 +197,10 @@ QueriedProperty parse_select_expr(string expr) {
         q.query_var.second = m[0];
     }
 
-    /* 
-        HERE IS WHERE WE NEED TO DEAL WITH 'AND' AND 'OR' STATEMENTS
+    getline(ss,aux,')');
+    parse_query(aux.c_str());
 
-        -> How to deal with this?
-        -> Maybe a loop while the string has the && and || operators
-        -> The query will be a vector<vector<string>>
-    */
-
-    regex e2("[!a-zA-Z]{1}[\\w.]*");
-    regex e3("[a-zA-Z]{1}[\\w.]*");
-    regex num("[0-9]+");
-    if((ss.str().find(ocl_equal) == string::npos) && (ss.str().find(ocl_different) == string::npos) && (ss.str().find(spaced_ocl_in) == string::npos) && 
-        (ss.str().substr(ss.str().find("(")).find(ocl_gt) == string::npos) && (ss.str().find(ocl_lt) == string::npos) && (ss.str().find(ocl_geq) == string::npos) && (ss.str().find(ocl_leq) == string::npos)) {
-        getline(ss, aux, ')');
-        if(regex_search(aux,m,e2)) {
-            q.query.push_back(m[0]);
-        } else {
-            regex_search(aux,m,e3);
-            q.query.push_back(m[0]);
-        }
-    } else {
-        if(ss.str().find(ocl_equal) != string::npos || ss.str().find(ocl_different) != string::npos) {
-            getline(ss,aux,'=');
-            regex_search(aux,m,e3);
-            q.query.push_back(m[0]);
-            
-            if(ss.str().find(ocl_equal) != string::npos) {
-                q.query.push_back(ocl_equal);
-            } else {
-                q.query.push_back(ocl_different);
-            }
-
-            getline(ss,aux,')');
-            regex_search(aux,m,e3);
-            q.query.push_back(m[0]);
-        } else if(ss.str().find(spaced_ocl_in) != string::npos) {
-            vector<string> split_query;
-
-            string temp;
-            while(ss >> temp) {
-                split_query.push_back(temp);
-            }
-
-            regex_search(split_query.at(0),m,e3);
-            q.query.push_back(m[0]);
-
-            q.query.push_back(split_query.at(1));
-
-            regex_search(split_query.at(2),m,e3);
-            q.query.push_back(m[0]);
-        } else {
-            getline(ss,aux,'(');
-            char op;
-
-            if(ss.str().substr(ss.str().find("(")).find(ocl_gt) != string::npos) {
-                op = ocl_gt[0];
-            } else if(ss.str().find(ocl_lt) != string::npos) {
-                op = ocl_lt[0];
-            } else if(ss.str().find(ocl_geq) != string::npos) {
-                op = ocl_geq[0];
-            } else if(ss.str().find(ocl_leq) != string::npos) {
-                op = ocl_leq[0];
-            }
-
-            getline(ss,aux,op);
-            regex_search(aux,m,e3);
-            q.query.push_back(m[0]);
-
-            string op_str(1, op);
-            q.query.push_back(op_str);
-            
-            getline(ss,aux,')');
-            regex_search(aux,m,num);
-            q.query.push_back(m[0]);
-        }
-    }
+    q.query = parsed_query;
 
     if(error == true) {
         string select_err = "Invalid select statement " + expr + " in GM.";
@@ -359,6 +283,7 @@ vector<pair<string,string>> parse_vars(string var_decl) {
 
         if(var_name == "") {
             string var_err = "Invalid variable declaration " + substr + " in GM.";
+            
             throw std::runtime_error(var_err);
         }
     }

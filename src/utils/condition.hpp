@@ -8,6 +8,15 @@
 #include "parsetree.hpp"
 #include "../config/config.hpp"
 
+const std::string ocl_equal = "=";
+const std::string ocl_different = "<>";
+const std::string ocl_in = "in";
+const std::string spaced_ocl_in = " in ";
+const std::string ocl_gt = ">";
+const std::string ocl_lt = "<";
+const std::string ocl_geq = ">=";
+const std::string ocl_leq = "<=";
+
 class Condition {
     public:
         std::string get_condition();
