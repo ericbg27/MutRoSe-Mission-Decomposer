@@ -48,7 +48,14 @@ ConditionEvaluation* AchieveCondition::evaluate_condition(vector<SemanticMapping
 
         vector<string> iterated_var_values = std::get<pair<vector<string>,string>>(gm_var_map[iterated_var]).first;
 
-        ConditionEvaluation* evaluation = Condition::evaluate_condition(make_pair(iterated_var_values,iteration_var_type), semantic_mapping);
+        string var_attr_regex = "([!]?[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}";
+        string var_attr_regex2 = "(((\\bnot\\b)[ ]+){1}[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}";
+        string number_compare_regex = "[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+([0-9]*[.])?[0-9]+){1}"; 
+        string number_compare_regex2 = "[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((>)|(<)|(>=)|(<=)){1}[ ]+([0-9]*[.])?[0-9]+){1}";
+
+        set<string> accepted_regex_patterns = {var_attr_regex, var_attr_regex2, number_compare_regex, number_compare_regex2};
+
+        ConditionEvaluation* evaluation = Condition::evaluate_condition(make_pair(iterated_var_values,iteration_var_type), semantic_mapping, accepted_regex_patterns);
 
         return evaluation;
     } else {
@@ -73,7 +80,14 @@ ConditionEvaluation* AchieveCondition::evaluate_condition(vector<SemanticMapping
 
         variant<pair<string,string>,pair<vector<string>,string>> var_value_and_type = get_var_value_and_type(gm_var_map, variable);
 
-        ConditionEvaluation* evaluation = Condition::evaluate_condition(var_value_and_type,semantic_mapping);
+        string var_attr_regex = "([!]?[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}";
+        string var_attr_regex2 = "(((\\bnot\\b)[ ]+){1}[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}";
+        string number_compare_regex = "[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+([0-9]*[.])?[0-9]+){1}"; 
+        string number_compare_regex2 = "[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((>)|(<)|(>=)|(<=)){1}[ ]+([0-9]*[.])?[0-9]+){1}";
+
+        set<string> accepted_regex_patterns = {var_attr_regex, var_attr_regex2, number_compare_regex, number_compare_regex2};
+
+        ConditionEvaluation* evaluation = Condition::evaluate_condition(var_value_and_type,semantic_mapping, accepted_regex_patterns);
 
         return evaluation;
     }
@@ -312,17 +326,16 @@ vector<string> parse_forAll_expr(string expr) {
 
     vector<string> res;
 
-    string regex1 = forall_regex_exp + var_attr_condition + end_forall_regex_exp;
-    string regex2 = forall_regex_exp + equal_diff_number_condition + end_forall_regex_exp;
-    string regex3 = forall_regex_exp + comparison_condition + end_forall_regex_exp;
-
-    std::regex forall_reg1(regex1);
-    std::regex forall_reg2(regex2);
-    std::regex forall_reg3(regex3);
+    string overall_forall_regex = forall_regex_exp + "(.)*" + end_forall_regex_exp;
+    std::regex general_forall(overall_forall_regex);
     
     /*if(!std::regex_match(expr, forall_reg1) && !std::regex_match(expr, forall_reg2) && !std::regex_match(expr, forall_reg3)) {
         error = true;
     }*/
+
+    if(!std::regex_match(expr, general_forall)) {
+        error = true;
+    }
 
     if(!error) {
         try {

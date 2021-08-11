@@ -415,12 +415,18 @@ bool Condition::get_is_and() {
     return is_and;
 }
 
-ConditionEvaluation* Condition::evaluate_condition(variant<pair<string,string>,pair<vector<string>,string>> var_value_and_type, vector<SemanticMapping> semantic_mapping) {
-    //regex r1("(((\\bnot\\b)[ ]+)?[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}"); // (not) [VAR].[ATTR]
-    regex r1("([!]?[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}"); // ![VAR].[ATTR]
-    regex r2("[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+[\"][A-Za-z0-9]*[\"]){1}"); // [VAR].[ATTR] = "[VALUE]" || [VAR].[ATTR] <> "[VALUE]"
-    regex r3("[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+([0-9]*[.])?[0-9]+){1}"); // [VAR].[ATTR] = [INTVALUE | FLOATVALUE] || [VAR].[ATTR] <> [INTVALUE | FLOATVALUE]
-    regex r4("[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((>)|(<)|(>=)|(<=)){1}[ ]+([0-9]*[.])?[0-9]+){1}"); // [VAR].[ATTR] > [INTVALUE | FLOATVALUE] || [VAR].[ATTR] < [INTVALUE | FLOATVALUE] || [VAR].[ATTR] >= [INTVALUE | FLOATVALUE] || [VAR].[ATTR] <= [INTVALUE | FLOATVALUE]
+ConditionEvaluation* Condition::evaluate_condition(variant<pair<string,string>,pair<vector<string>,string>> var_value_and_type, vector<SemanticMapping> semantic_mapping, set<string> accepted_regex_patterns) {
+    string var_attr_regex = "([!]?[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}"; // ![VAR].[ATTR]
+    string var_attr_regex2 = "(((\\bnot\\b)[ ]+){1}[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}"; // not [VAR].[ATTR]
+    string string_compare_regex = "[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+[\"][A-Za-z0-9]*[\"]){1}"; // [VAR].[ATTR] = "[VALUE]" || [VAR].[ATTR] <> "[VALUE]"
+    string number_compare_regex = "[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+([0-9]*[.])?[0-9]+){1}"; // [VAR].[ATTR] = [INTVALUE | FLOATVALUE] || [VAR].[ATTR] <> [INTVALUE | FLOATVALUE]
+    string number_compare_regex2 = "[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((>)|(<)|(>=)|(<=)){1}[ ]+([0-9]*[.])?[0-9]+){1}"; // [VAR].[ATTR] > [INTVALUE | FLOATVALUE] || [VAR].[ATTR] < [INTVALUE | FLOATVALUE] || [VAR].[ATTR] >= [INTVALUE | FLOATVALUE] || [VAR].[ATTR] <= [INTVALUE | FLOATVALUE]
+
+    regex r1(var_attr_regex); 
+    regex r2(string_compare_regex); 
+    regex r3(number_compare_regex); 
+    regex r4(number_compare_regex2);
+    regex r5(var_attr_regex2); 
     //TODO: insert expressions using the in operator
     
     bool invalid_condition = false; 
@@ -428,8 +434,8 @@ ConditionEvaluation* Condition::evaluate_condition(variant<pair<string,string>,p
     if(holds_alternative<pair<Condition*,Condition*>>(condition)) {
         pair<Condition*,Condition*> cond = std::get<pair<Condition*,Condition*>>(condition);
 
-        ConditionEvaluation* eval1 = cond.first->evaluate_condition(var_value_and_type, semantic_mapping);
-        ConditionEvaluation* eval2 = cond.second->evaluate_condition(var_value_and_type, semantic_mapping);
+        ConditionEvaluation* eval1 = cond.first->evaluate_condition(var_value_and_type, semantic_mapping, accepted_regex_patterns);
+        ConditionEvaluation* eval2 = cond.second->evaluate_condition(var_value_and_type, semantic_mapping, accepted_regex_patterns);
 
         ConditionEvaluation* final_eval = new ConditionEvaluation();
         final_eval->set_evaluation(make_pair(eval1,eval2));
@@ -440,7 +446,7 @@ ConditionEvaluation* Condition::evaluate_condition(variant<pair<string,string>,p
     } else {
         string cond = std::get<string>(condition);
 
-        if(regex_match(cond, r1)) {
+        if((regex_match(cond, r1) && accepted_regex_patterns.find(var_attr_regex) != accepted_regex_patterns.end()) || (regex_match(cond, r5) && accepted_regex_patterns.find(var_attr_regex2) != accepted_regex_patterns.end())) {
             predicate_definition map_pred;
             vector<string> pred_args;
 
@@ -456,10 +462,15 @@ ConditionEvaluation* Condition::evaluate_condition(variant<pair<string,string>,p
 
             bool negative_condition = false;
             string variable, attribute;
-            if(split_cond.at(0).find("!") == 0) {
+            if(split_cond.at(0).find("!") == 0 || split_cond.at(0) == "not") {
                 negative_condition = true;
-                variable = split_cond.at(0).substr(1);
-                attribute = split_cond.at(1);
+                if(split_cond.at(0).find("!") == 0) {
+                    variable = split_cond.at(0).substr(1);
+                    attribute = split_cond.at(1);
+                } else {
+                    variable = split_cond.at(1);
+                    attribute = split_cond.at(2);
+                }
             } else {
                 variable = split_cond.at(0);
                 attribute = split_cond.at(1);
@@ -524,7 +535,7 @@ ConditionEvaluation* Condition::evaluate_condition(variant<pair<string,string>,p
 
                 return eval;
             }
-        } else if(regex_match(cond, r2)) {
+        } else if(regex_match(cond, r2) && accepted_regex_patterns.find(string_compare_regex) != accepted_regex_patterns.end()) {
             // TO CHANGE
             /*std::replace(cond.begin(), cond.end(), '.', ' ');
 
@@ -548,7 +559,7 @@ ConditionEvaluation* Condition::evaluate_condition(variant<pair<string,string>,p
 
             return true;*/
             invalid_condition = true;
-        } else if(regex_match(cond, r3)) {
+        } else if(regex_match(cond, r3) && accepted_regex_patterns.find(number_compare_regex) != accepted_regex_patterns.end()) {
             std::replace(cond.begin(), cond.end(), '.', ' ');
 
             vector<string> split_cond;
@@ -638,7 +649,7 @@ ConditionEvaluation* Condition::evaluate_condition(variant<pair<string,string>,p
 
                 return eval;
             }
-        } else if(regex_match(cond, r4)) {
+        } else if(regex_match(cond, r4) && accepted_regex_patterns.find(number_compare_regex2) != accepted_regex_patterns.end()) {
             std::replace(cond.begin(), cond.end(), '.', ' ');
 
             vector<string> split_cond;

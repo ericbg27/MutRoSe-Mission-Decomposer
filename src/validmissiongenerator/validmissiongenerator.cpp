@@ -838,9 +838,9 @@ void ValidMissionGenerator::check_conditions(map<int,pair<vector<variant<ground_
         for(auto decomposition : valid_mission_decompositions) {
             vector<ground_literal> ws = apply_pred_effects(pred_effs, decomposition.second);
             vector<pair<ground_literal,variant<int,float>>> wsf = apply_func_effects(func_effs, decomposition.second);
-            std::cout << "Evaluating expression" << std::endl;
+
             bool valid_achieve_condition = eval_result->evaluate_expression(ws, wsf);
-            std::cout << "Finished" << std::endl;
+            
             if(!valid_achieve_condition) {
                 decompositions_to_erase.push_back(decomposition_index);
             }
