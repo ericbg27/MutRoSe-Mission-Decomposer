@@ -66,7 +66,7 @@ pair<bool,pair<string,predicate_definition>> get_pred_from_context(Context conte
 	bool positive = true;
 
 	if(context.get_context_type() == condition_context_type) {
-		string condition = context.get_condition();
+		string condition = std::get<string>(context.get_condition());
 		string attr;
 
 		if(condition.find("!") != std::string::npos || condition.find("not") != std::string::npos) {
@@ -104,7 +104,8 @@ pair<bool,pair<string,predicate_definition>> get_pred_from_context(Context conte
 		}
 
 		if(!found_pred || var == " " || attr == " ") {
-			std::string predicate_not_found_err = "Could not build predicate from context: " + context.get_condition();
+			std::string predicate_not_found_err = "Could not build predicate from context: " + condition;
+			
 			throw std::runtime_error(predicate_not_found_err);
 		}
 	}

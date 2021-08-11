@@ -5,12 +5,15 @@
 #include <iostream>
 
 #include "../queryparser/queryparser.hpp"
+#include "../conditionparser/conditionparser.hpp"
 
 using namespace std;
 
 int parse_query(const char* in);
+int parse_condition(const char* in);
 
 extern Query* parsed_query;
+extern Condition* parsed_condition;
 
 string AchieveCondition::get_iterated_var() {
     if(has_forAll_expr) {
@@ -36,7 +39,7 @@ void AchieveCondition::set_iteration_var(std::string itvar) {
     iteration_var = itvar;
 }
 
-variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<variant<int,float>,variant<bool,string>>>,bool> AchieveCondition::evaluate_condition(vector<SemanticMapping> semantic_mapping, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
+ConditionEvaluation* AchieveCondition::evaluate_condition(vector<SemanticMapping> semantic_mapping, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
     if(has_forAll_expr) {
         string iteration_var_type;
         if(holds_alternative<pair<string,string>>(gm_var_map[iteration_var])) { // For now, the only valid condition
@@ -45,11 +48,11 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate
 
         vector<string> iterated_var_values = std::get<pair<vector<string>,string>>(gm_var_map[iterated_var]).first;
 
-        variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<variant<int,float>,variant<bool,string>>>,bool> evaluation = Condition::evaluate_condition(make_pair(iterated_var_values,iteration_var_type), semantic_mapping);
+        ConditionEvaluation* evaluation = Condition::evaluate_condition(make_pair(iterated_var_values,iteration_var_type), semantic_mapping);
 
         return evaluation;
     } else {
-        string cond = condition;
+        string cond = std::get<string>(condition);
 
         std::replace(cond.begin(), cond.end(), '.', ' ');
 
@@ -70,7 +73,7 @@ variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate
 
         variant<pair<string,string>,pair<vector<string>,string>> var_value_and_type = get_var_value_and_type(gm_var_map, variable);
 
-        variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<variant<int,float>,variant<bool,string>>>,bool> evaluation = Condition::evaluate_condition(var_value_and_type,semantic_mapping);
+        ConditionEvaluation* evaluation = Condition::evaluate_condition(var_value_and_type,semantic_mapping);
 
         return evaluation;
     }
@@ -97,9 +100,14 @@ AchieveCondition parse_achieve_condition(string cond) {
 
         a.set_iterated_var(forAll_vars.at(0));
         a.set_iteration_var(forAll_vars.at(1));
-        a.set_condition(forAll_vars.at(2));
+
+        parse_condition(forAll_vars.at(2).c_str()); //In parser we are considering leading and trailing spaces!
+
+        a.set_condition(parsed_condition->get_condition());
     } else {
-        a.set_condition(cond);
+        parse_condition(cond.c_str());
+
+        a.set_condition(parsed_condition->get_condition());
     }
 
     return a;
@@ -312,9 +320,9 @@ vector<string> parse_forAll_expr(string expr) {
     std::regex forall_reg2(regex2);
     std::regex forall_reg3(regex3);
     
-    if(!std::regex_match(expr, forall_reg1) && !std::regex_match(expr, forall_reg2) && !std::regex_match(expr, forall_reg3)) {
+    /*if(!std::regex_match(expr, forall_reg1) && !std::regex_match(expr, forall_reg2) && !std::regex_match(expr, forall_reg3)) {
         error = true;
-    }
+    }*/
 
     if(!error) {
         try {
@@ -334,8 +342,9 @@ vector<string> parse_forAll_expr(string expr) {
             res.push_back(m[0]);
 
             getline(ss, aux, ')');
-            regex_search(aux,m,e1);
-            res.push_back(m[0]);
+            //regex_search(aux,m,e1);
+            //res.push_back(m[0]);
+            res.push_back(aux);
         } catch(...) {
             error = true;
         }

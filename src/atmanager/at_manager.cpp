@@ -178,7 +178,11 @@ bool ATManager::check_trigger_ctx(int current_node, int depth) {
 		Context c = std::get<Context>(gm[current_node].custom_props[context_prop]);
 		
 		if(c.get_context_type() == trigger_context_type) {
-			valid_events[depth].push_back(c.get_condition());
+			if(holds_alternative<string>(c.get_condition())) {
+				valid_events[depth].push_back(std::get<string>(c.get_condition()));
+			} else {
+				// This probably can't happen, needs checking!
+			}
 			insert_events = true;
 		}
 	}

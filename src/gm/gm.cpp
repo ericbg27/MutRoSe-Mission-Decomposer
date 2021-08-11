@@ -510,7 +510,7 @@ void print_gm_nodes_info(GMGraph gm) {
 			c = get<Context>(node.custom_props[context_prop]);
 
 			std::cout << "\tType: " << c.get_context_type() << std::endl;
-			std::cout << "\tCondition: " << c.get_condition() << std::endl;
+			//std::cout << "\tCondition: " << c.get_condition() << std::endl;
 		} else {
 			std::cout << "\tNo Context" << std::endl;
 		}
