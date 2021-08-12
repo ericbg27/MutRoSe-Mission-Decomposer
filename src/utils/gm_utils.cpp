@@ -4,9 +4,16 @@
 #include <regex>
 #include <iostream>
 
-#include <boost/algorithm/string.hpp>
+#include "../queryparser/queryparser.hpp"
+#include "../conditionparser/conditionparser.hpp"
 
 using namespace std;
+
+int parse_query(const char* in);
+int parse_condition(const char* in);
+
+extern Query* parsed_query;
+extern Condition* parsed_condition;
 
 string AchieveCondition::get_iterated_var() {
     if(has_forAll_expr) {
@@ -32,41 +39,34 @@ void AchieveCondition::set_iteration_var(std::string itvar) {
     iteration_var = itvar;
 }
 
-variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<variant<int,float>,variant<bool,string>>>,bool> AchieveCondition::evaluate_condition(vector<SemanticMapping> semantic_mapping, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
+ConditionEvaluation* AchieveCondition::evaluate_condition(vector<SemanticMapping> semantic_mapping, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
     if(has_forAll_expr) {
-        string iteration_var_type;
+        /*string iteration_var_type;
         if(holds_alternative<pair<string,string>>(gm_var_map[iteration_var])) { // For now, the only valid condition
             iteration_var_type = std::get<pair<string,string>>(gm_var_map[iteration_var]).second;
         }
 
-        vector<string> iterated_var_values = std::get<pair<vector<string>,string>>(gm_var_map[iterated_var]).first;
+        vector<string> iterated_var_values = std::get<pair<vector<string>,string>>(gm_var_map[iterated_var]).first;*/
 
-        variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<variant<int,float>,variant<bool,string>>>,bool> evaluation = Condition::evaluate_condition(make_pair(iterated_var_values,iteration_var_type), semantic_mapping);
+        string var_attr_regex = "([!]?[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}";
+        string var_attr_regex2 = "(((\\bnot\\b)[ ]+){1}[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}";
+        string number_compare_regex = "[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+([0-9]*[.])?[0-9]+){1}"; 
+        string number_compare_regex2 = "[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((>)|(<)|(>=)|(<=)){1}[ ]+([0-9]*[.])?[0-9]+){1}";
+
+        set<string> accepted_regex_patterns = {var_attr_regex, var_attr_regex2, number_compare_regex, number_compare_regex2};
+
+        ConditionEvaluation* evaluation = Condition::evaluate_condition(gm_var_map, semantic_mapping, accepted_regex_patterns);
 
         return evaluation;
     } else {
-        string cond = condition;
+        string var_attr_regex = "([!]?[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}";
+        string var_attr_regex2 = "(((\\bnot\\b)[ ]+){1}[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}";
+        string number_compare_regex = "[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+([0-9]*[.])?[0-9]+){1}"; 
+        string number_compare_regex2 = "[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((>)|(<)|(>=)|(<=)){1}[ ]+([0-9]*[.])?[0-9]+){1}";
 
-        std::replace(cond.begin(), cond.end(), '.', ' ');
+        set<string> accepted_regex_patterns = {var_attr_regex, var_attr_regex2, number_compare_regex, number_compare_regex2};
 
-        vector<string> split_cond;
-                                
-        stringstream ss(cond);
-        string temp;
-        while(ss >> temp) {
-            split_cond.push_back(temp);
-        }
-
-        string variable;
-        if(split_cond.at(0) == "not") {
-            variable = split_cond.at(1);
-        } else {
-            variable = split_cond.at(0);
-        }
-
-        variant<pair<string,string>,pair<vector<string>,string>> var_value_and_type = get_var_value_and_type(gm_var_map, variable);
-
-        variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<variant<int,float>,variant<bool,string>>>,bool> evaluation = Condition::evaluate_condition(var_value_and_type,semantic_mapping);
+        ConditionEvaluation* evaluation = Condition::evaluate_condition(gm_var_map,semantic_mapping, accepted_regex_patterns);
 
         return evaluation;
     }
@@ -93,9 +93,15 @@ AchieveCondition parse_achieve_condition(string cond) {
 
         a.set_iterated_var(forAll_vars.at(0));
         a.set_iteration_var(forAll_vars.at(1));
-        a.set_condition(forAll_vars.at(2));
+
+        parse_condition(forAll_vars.at(2).c_str()); //In parser we are considering leading and trailing spaces!
+
+        a.set_condition(parsed_condition->get_condition());
     } else {
-        a.set_condition(cond);
+        parse_condition(cond.c_str());
+
+        a.set_condition(parsed_condition->get_condition());
+        a.set_is_and(parsed_condition->get_is_and());
     }
 
     return a;
@@ -106,7 +112,7 @@ IterationRule parse_iterate_expr(string expr) {
     stringstream ss(expr);
     string aux;
 
-    regex e1("[a-zA-Z]+[a-zA-z_.0-9]*");
+    regex e1("[a-zA-Z]+[\\w.]*");
     smatch m;
 
     getline(ss, aux, '>');
@@ -133,7 +139,7 @@ IterationRule parse_iterate_expr(string expr) {
         it.result_var.second = m[0];
     }
 
-    regex e2("[a-zA-Z]+[a-zA-Z_.0-9]*");
+    regex e2("[a-zA-Z]+[\\w.]*");
     getline(ss, aux, '|');
     regex_search(aux,m,e2);
     it.result_init = m[0];
@@ -163,13 +169,9 @@ IterationRule parse_iterate_expr(string expr) {
 QueriedProperty parse_select_expr(string expr) {
     bool error = false;
 
-    std::regex select_reg1("[a-zA-Z]{1}[a-zA-z_.0-9]*(->select)[(][a-zA-Z]{1}[a-zA-z_.0-9]*[:][a-zA-z]+[a-zA-Z0-9]+[ ]*[|][ ]*([!]?[a-zA-Z]+[a-zA-z_.0-9]*)[)]");
-    std::regex select_reg2("[a-zA-Z]{1}[a-zA-z_.0-9]*(->select)[(][a-zA-Z]{1}[a-zA-z_.0-9]*[:][a-zA-z]+[a-zA-Z0-9]+[ ]*[|][ ]*([a-zA-Z]+[a-zA-z_.0-9]*[ ]+((=)|(<>)){1}[ ]+([a-zA-z]+[a-zA-Z0-9]+|\"[a-zA-z]+[a-zA-Z0-9]+\"|([0-9]*[.])?[0-9]+))[)]");
-    std::regex select_reg3("[a-zA-Z]{1}[a-zA-z_.0-9]*(->select)[(][a-zA-Z]{1}[a-zA-z_.0-9]*[:][a-zA-z]+[a-zA-Z0-9]+[ ]*[|][ ]*([a-zA-Z]+[a-zA-z_.0-9]*[ ]+((>)|(<)|(>=)|(<=)){1}[ ]+([0-9]*[.])?[0-9]+)[)]");
-    std::regex select_reg4("[a-zA-Z]{1}[a-zA-z_.0-9]*(->select)[(][a-zA-Z]{1}[a-zA-z_.0-9]*[:][a-zA-z]+[a-zA-Z0-9]+[ ]*[|][ ]*([a-zA-Z]+[a-zA-z_.0-9]*[ ]+(in)[ ]+[a-zA-Z]+[a-zA-z_.0-9]*)[)]");
-    std::regex select_reg5("[a-zA-Z]{1}[a-zA-z_.0-9]*(->select)[(][a-zA-Z]{1}[a-zA-z_.0-9]*[:][a-zA-z]+[a-zA-Z0-9]+[ ]*[|][ ]*[)]");
+    std::regex select_reg(select_regex_exp);
 
-    if(!std::regex_match(expr, select_reg1) && !std::regex_match(expr, select_reg2) && !std::regex_match(expr, select_reg3) && !std::regex_match(expr, select_reg4) && !std::regex_match(expr, select_reg5)) {
+    if(!std::regex_match(expr, select_reg)) {
         error = true;
     }
 
@@ -177,7 +179,7 @@ QueriedProperty parse_select_expr(string expr) {
     stringstream ss(expr);
     string aux;
 
-    regex e1("[a-zA-Z]+[a-zA-z_.0-9]*");
+    regex e1("[a-zA-Z]+[\\w.]*");
     smatch m;
 
     getline(ss, aux, '>');
@@ -197,74 +199,10 @@ QueriedProperty parse_select_expr(string expr) {
         q.query_var.second = m[0];
     }
 
-    regex e2("[!a-zA-Z]{1}[a-zA-Z_.0-9]*");
-    regex e3("[a-zA-Z]{1}[a-zA-Z_.0-9]*");
-    regex num("[0-9]+");
-    if((ss.str().find(ocl_equal) == string::npos) && (ss.str().find(ocl_different) == string::npos) && (ss.str().find(spaced_ocl_in) == string::npos) && 
-        (ss.str().substr(ss.str().find("(")).find(ocl_gt) == string::npos) && (ss.str().find(ocl_lt) == string::npos) && (ss.str().find(ocl_geq) == string::npos) && (ss.str().find(ocl_leq) == string::npos)) {
-        getline(ss, aux, ')');
-        if(regex_search(aux,m,e2)) {
-            q.query.push_back(m[0]);
-        } else {
-            regex_search(aux,m,e3);
-            q.query.push_back(m[0]);
-        }
-    } else {
-        if(ss.str().find(ocl_equal) != string::npos || ss.str().find(ocl_different) != string::npos) {
-            getline(ss,aux,'=');
-            regex_search(aux,m,e3);
-            q.query.push_back(m[0]);
-            
-            if(ss.str().find(ocl_equal) != string::npos) {
-                q.query.push_back(ocl_equal);
-            } else {
-                q.query.push_back(ocl_different);
-            }
+    getline(ss,aux,')');
+    parse_query(aux.c_str());
 
-            getline(ss,aux,')');
-            regex_search(aux,m,e3);
-            q.query.push_back(m[0]);
-        } else if(ss.str().find(spaced_ocl_in) != string::npos) {
-            vector<string> split_query;
-
-            string temp;
-            while(ss >> temp) {
-                split_query.push_back(temp);
-            }
-
-            regex_search(split_query.at(0),m,e3);
-            q.query.push_back(m[0]);
-
-            q.query.push_back(split_query.at(1));
-
-            regex_search(split_query.at(2),m,e3);
-            q.query.push_back(m[0]);
-        } else {
-            getline(ss,aux,'(');
-            char op;
-
-            if(ss.str().substr(ss.str().find("(")).find(ocl_gt) != string::npos) {
-                op = ocl_gt[0];
-            } else if(ss.str().find(ocl_lt) != string::npos) {
-                op = ocl_lt[0];
-            } else if(ss.str().find(ocl_geq) != string::npos) {
-                op = ocl_geq[0];
-            } else if(ss.str().find(ocl_leq) != string::npos) {
-                op = ocl_leq[0];
-            }
-
-            getline(ss,aux,op);
-            regex_search(aux,m,e3);
-            q.query.push_back(m[0]);
-
-            string op_str(1, op);
-            q.query.push_back(op_str);
-            
-            getline(ss,aux,')');
-            regex_search(aux,m,num);
-            q.query.push_back(m[0]);
-        }
-    }
+    q.query = parsed_query;
 
     if(error == true) {
         string select_err = "Invalid select statement " + expr + " in GM.";
@@ -273,6 +211,29 @@ QueriedProperty parse_select_expr(string expr) {
     }
 
     return q;
+}
+
+Context parse_context_condition(string condition) {
+    Context c;
+    size_t pos1 = condition.find('\"');
+    size_t pos2 = condition.find('\"',pos1+1);
+    string cond = condition.substr(pos1+1,pos2); 
+
+    string aux = condition;
+    std::transform(aux.begin(),aux.end(),aux.begin(),::tolower);  
+    if(aux.find(trigger_context_type) != string::npos) {
+        c.set_context_type(trigger_context_type);
+        c.set_condition(cond.substr(0,cond.size()-1));
+    } else if(aux.find(condition_context_type) != string::npos) {
+        c.set_context_type(condition_context_type);
+
+        parse_condition(cond.substr(0,cond.size()-1).c_str());
+
+        c.set_condition(parsed_condition->get_condition());
+        c.set_is_and(parsed_condition->get_is_and());
+    }
+
+    return c;
 }
 
 /*
@@ -347,6 +308,7 @@ vector<pair<string,string>> parse_vars(string var_decl) {
 
         if(var_name == "") {
             string var_err = "Invalid variable declaration " + substr + " in GM.";
+            
             throw std::runtime_error(var_err);
         }
     }
@@ -367,11 +329,14 @@ vector<string> parse_forAll_expr(string expr) {
 
     vector<string> res;
 
-    std::regex forall_reg1("[a-zA-Z]+[a-zA-Z_.0-9]*(->forAll)[(][a-zA-Z]+[a-zA-z_.0-9]*[ ]*[|][ ]*([a-zA-Z]+[a-zA-z_.0-9]*)?[)]");
-    std::regex forall_reg2("[a-zA-Z]+[a-zA-Z_.0-9]*(->forAll)[(][a-zA-Z]+[a-zA-z_.0-9]*[ ]*[|][ ]*([A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+([0-9]*[.])?[0-9]+))[)]");
-    std::regex forall_reg3("[a-zA-Z]+[a-zA-Z_.0-9]*(->forAll)[(][a-zA-Z]+[a-zA-z_.0-9]*[ ]*[|][ ]*([a-zA-Z]+[a-zA-z_.0-9]*[ ]+((>)|(<)|(>=)|(<=)){1}[ ]+([0-9]*[.])?[0-9]+)[)]");
+    string overall_forall_regex = forall_regex_exp + "(.)*" + end_forall_regex_exp;
+    std::regex general_forall(overall_forall_regex);
     
-    if(!std::regex_match(expr, forall_reg1) && !std::regex_match(expr, forall_reg2) && !std::regex_match(expr, forall_reg3)) {
+    /*if(!std::regex_match(expr, forall_reg1) && !std::regex_match(expr, forall_reg2) && !std::regex_match(expr, forall_reg3)) {
+        error = true;
+    }*/
+
+    if(!std::regex_match(expr, general_forall)) {
         error = true;
     }
 
@@ -380,7 +345,7 @@ vector<string> parse_forAll_expr(string expr) {
             stringstream ss(expr);
             string aux;
 
-            regex e1("[a-zA-Z]+[a-zA-z_.0-9]*(([ ]+((=)|(<>)){1}[ ]+[0-9]+)|([ ]+((>)|(<)|(>=)|(<=)){1}[ ]+([0-9]*[.])?[0-9]+))?");
+            regex e1("[a-zA-Z]+[\\w.]*(([ ]+((=)|(<>)){1}[ ]+[0-9]+)|([ ]+((>)|(<)|(>=)|(<=)){1}[ ]+([0-9]*[.])?[0-9]+))?");
             smatch m;
 
             getline(ss, aux, '>');
@@ -393,8 +358,9 @@ vector<string> parse_forAll_expr(string expr) {
             res.push_back(m[0]);
 
             getline(ss, aux, ')');
-            regex_search(aux,m,e1);
-            res.push_back(m[0]);
+            //regex_search(aux,m,e1);
+            //res.push_back(m[0]);
+            res.push_back(aux);
         } catch(...) {
             error = true;
         }
@@ -476,37 +442,21 @@ pair<string,string> parse_goal_text(string text) {
     @ Input: The string representing the text of the RobotNumber attribute in the form "[n1,n2]"
     @ Output: A pair representing the lower and upper bounds
 */ 
-variant<int,pair<int,int>> parse_robot_number(string text) {
-    regex robot_num_range("\\[\\d+,\\d+\\]");
-    regex robot_num_fixed("\\d+");
+pair<int,int> parse_robot_number(string text) {
+    size_t begin, sep, end;
 
-    if(std::regex_match(text,robot_num_range)) {
-        size_t begin, sep, end;
+    begin = text.find("[");
+    sep = text.find(",");
+    end = text.find("]");
 
-        begin = text.find("[");
-        sep = text.find(",");
-        end = text.find("]");
+    int lower_bound, upper_bound;
 
-        int lower_bound, upper_bound;
+    stringstream ss;
+    ss << text.substr(begin+1,sep);
+    ss >> lower_bound;
+    ss.str("");
+    ss << text.substr(sep+1,end-sep-1);
+    ss >> upper_bound;
 
-        stringstream ss;
-        ss << text.substr(begin+1,sep);
-        ss >> lower_bound;
-        ss.str("");
-        ss << text.substr(sep+1,end-sep-1);
-        ss >> upper_bound;
-
-        return make_pair(lower_bound, upper_bound);
-    } else if(std::regex_match(text,robot_num_fixed)) {
-        stringstream ss(text);
-
-        int robot_num;
-        ss >> robot_num;
-
-        return robot_num;
-    } else {
-        string invalid_robot_num_err = "Invalid declaration of robot number: " + text;
-
-        throw std::runtime_error(invalid_robot_num_err);
-    }
+    return make_pair(lower_bound, upper_bound);
 }

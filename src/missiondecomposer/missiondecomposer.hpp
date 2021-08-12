@@ -31,9 +31,9 @@ class MissionDecomposer {
                                                 pt::ptree world_db, std::vector<SemanticMapping> semantic_mapping, std::map<std::string, std::variant<std::string,std::vector<std::string>>> instantiated_vars) = 0;
         void final_context_dependency_links_generation();
 
-        bool check_context_dependency(int parent_node, int context_node, Context context, std::map<std::string, std::variant<std::string,std::vector<std::string>>> instantiated_vars,
+        bool check_context_dependency(int parent_node, int context_node, Context context, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> vars_map,
                                     std::vector<SemanticMapping> semantic_mapping);
-        bool recursive_context_dependency_checking(int current_node, int context_node, std::pair<bool,std::pair<std::string,predicate_definition>> var_and_pred, std::map<std::string, std::variant<std::string,std::vector<std::string>>> instantiated_vars, 
+        bool recursive_context_dependency_checking(int current_node, int context_node, ConditionExpression* inactive_ctx_predicates, std::map<std::string, std::variant<std::string,std::vector<std::string>>> instantiated_vars, 
                                                     std::vector<SemanticMapping> semantic_mapping, std::vector<int>& visited_nodes, bool parallel_checking, bool is_sequential);
         
         void create_execution_constraint_edges();

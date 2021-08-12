@@ -1,1 +1,0 @@
-./MRSDecomposer hddl/Keeping\ Clean/Keeping\ Clean\ v2.hddl gm/Keeping\ Clean/Keeping\ Clean\ v2.txt configs/JSON/Keeping\ Clean/configuration2.json -p

@@ -1,0 +1,252 @@
+Grammar
+
+    0 $accept: input $end
+
+    1 input: expr-or-null
+
+    2 expr-or-null: expr
+    3             | %empty
+
+    4 expr: '(' expr-no-pt ')'
+    5     | expr-no-pt
+    6     | '(' name-no-pt ')'
+    7     | name-no-pt
+
+    8 expr-no-pt: expr-and
+    9           | expr-or
+
+   10 expr-and: expr KEY_AND_1 expr
+
+   11 expr-or: expr KEY_OR_1 expr
+
+   12 name-no-pt: STRNAME1
+
+
+Terminals, with rules where they appear
+
+    $end (0) 0
+    '(' (40) 4 6
+    ')' (41) 4 6
+    error (256)
+    STRNAME1 <sval> (258) 12
+    KEY_AND_1 <sval> (259) 10
+    KEY_OR_1 <sval> (260) 11
+
+
+Nonterminals, with rules where they appear
+
+    $accept (8)
+        on left: 0
+    input <condition> (9)
+        on left: 1
+        on right: 0
+    expr-or-null <condition> (10)
+        on left: 2 3
+        on right: 1
+    expr <condition> (11)
+        on left: 4 5 6 7
+        on right: 2 10 11
+    expr-no-pt <condition> (12)
+        on left: 8 9
+        on right: 4 5
+    expr-and <condition> (13)
+        on left: 10
+        on right: 8
+    expr-or <condition> (14)
+        on left: 11
+        on right: 9
+    name-no-pt <condition> (15)
+        on left: 12
+        on right: 6 7
+
+
+State 0
+
+    0 $accept: • input $end
+
+    STRNAME1  shift, and go to state 1
+    '('       shift, and go to state 2
+
+    $default  reduce using rule 3 (expr-or-null)
+
+    input         go to state 3
+    expr-or-null  go to state 4
+    expr          go to state 5
+    expr-no-pt    go to state 6
+    expr-and      go to state 7
+    expr-or       go to state 8
+    name-no-pt    go to state 9
+
+
+State 1
+
+   12 name-no-pt: STRNAME1 •
+
+    $default  reduce using rule 12 (name-no-pt)
+
+
+State 2
+
+    4 expr: '(' • expr-no-pt ')'
+    6     | '(' • name-no-pt ')'
+
+    STRNAME1  shift, and go to state 1
+    '('       shift, and go to state 2
+
+    expr        go to state 10
+    expr-no-pt  go to state 11
+    expr-and    go to state 7
+    expr-or     go to state 8
+    name-no-pt  go to state 12
+
+
+State 3
+
+    0 $accept: input • $end
+
+    $end  shift, and go to state 13
+
+
+State 4
+
+    1 input: expr-or-null •
+
+    $default  reduce using rule 1 (input)
+
+
+State 5
+
+    2 expr-or-null: expr •
+   10 expr-and: expr • KEY_AND_1 expr
+   11 expr-or: expr • KEY_OR_1 expr
+
+    KEY_AND_1  shift, and go to state 14
+    KEY_OR_1   shift, and go to state 15
+
+    $default  reduce using rule 2 (expr-or-null)
+
+
+State 6
+
+    5 expr: expr-no-pt •
+
+    $default  reduce using rule 5 (expr)
+
+
+State 7
+
+    8 expr-no-pt: expr-and •
+
+    $default  reduce using rule 8 (expr-no-pt)
+
+
+State 8
+
+    9 expr-no-pt: expr-or •
+
+    $default  reduce using rule 9 (expr-no-pt)
+
+
+State 9
+
+    7 expr: name-no-pt •
+
+    $default  reduce using rule 7 (expr)
+
+
+State 10
+
+   10 expr-and: expr • KEY_AND_1 expr
+   11 expr-or: expr • KEY_OR_1 expr
+
+    KEY_AND_1  shift, and go to state 14
+    KEY_OR_1   shift, and go to state 15
+
+
+State 11
+
+    4 expr: '(' expr-no-pt • ')'
+    5     | expr-no-pt •
+
+    ')'  shift, and go to state 16
+
+    $default  reduce using rule 5 (expr)
+
+
+State 12
+
+    6 expr: '(' name-no-pt • ')'
+    7     | name-no-pt •
+
+    ')'  shift, and go to state 17
+
+    $default  reduce using rule 7 (expr)
+
+
+State 13
+
+    0 $accept: input $end •
+
+    $default  accept
+
+
+State 14
+
+   10 expr-and: expr KEY_AND_1 • expr
+
+    STRNAME1  shift, and go to state 1
+    '('       shift, and go to state 2
+
+    expr        go to state 18
+    expr-no-pt  go to state 6
+    expr-and    go to state 7
+    expr-or     go to state 8
+    name-no-pt  go to state 9
+
+
+State 15
+
+   11 expr-or: expr KEY_OR_1 • expr
+
+    STRNAME1  shift, and go to state 1
+    '('       shift, and go to state 2
+
+    expr        go to state 19
+    expr-no-pt  go to state 6
+    expr-and    go to state 7
+    expr-or     go to state 8
+    name-no-pt  go to state 9
+
+
+State 16
+
+    4 expr: '(' expr-no-pt ')' •
+
+    $default  reduce using rule 4 (expr)
+
+
+State 17
+
+    6 expr: '(' name-no-pt ')' •
+
+    $default  reduce using rule 6 (expr)
+
+
+State 18
+
+   10 expr-and: expr • KEY_AND_1 expr
+   10         | expr KEY_AND_1 expr •
+   11 expr-or: expr • KEY_OR_1 expr
+
+    KEY_OR_1  shift, and go to state 15
+
+    $default  reduce using rule 10 (expr-and)
+
+
+State 19
+
+   10 expr-and: expr • KEY_AND_1 expr
+   11 expr-or: expr • KEY_OR_1 expr
+   11        | expr KEY_OR_1 expr •
+
+    $default  reduce using rule 11 (expr-or)

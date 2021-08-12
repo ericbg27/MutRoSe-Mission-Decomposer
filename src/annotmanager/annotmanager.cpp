@@ -272,7 +272,12 @@ bool FileKnowledgeAnnotManager::goal_node_resolution(general_annot* node_annot, 
 
         pt::ptree query_ptree = get_query_ptree(gm, current_node, valid_variables, valid_forAll_conditions, worlddb, fk_manager->get_unique_id());
 
-        solve_query_statement(query_ptree,q,gm,current_node,valid_variables, fk_manager->get_unique_id());
+        pair<vector<pt::ptree>,set<string>> query_result =  solve_query_statement(query_ptree,q,gm,current_node,valid_variables, fk_manager->get_unique_id());
+
+        string var_name = std::get<vector<pair<string,string>>>(gm[current_node].custom_props[controls_prop]).at(0).first;
+        string var_type = std::get<vector<pair<string,string>>>(gm[current_node].custom_props[controls_prop]).at(0).second;
+
+        valid_variables[var_name] = make_pair(var_type,query_result.first);
     } else if(std::get<string>(gm[current_node].custom_props[goal_type_prop]) == achieve_goal_type) {
         is_forAll_goal = true;
         AchieveCondition a = std::get<AchieveCondition>(gm[current_node].custom_props[achieve_condition_prop]);

@@ -251,213 +251,294 @@ bool check_path_validity(vector<task> path, vector<ground_literal> world_state, 
 	return valid_path;
 }
 
-void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm, int node_id, map<string,pair<string,vector<pt::ptree>>>& valid_variables, 
+pair<vector<pt::ptree>,set<string>> solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm, int node_id, map<string,pair<string,vector<pt::ptree>>>& valid_variables, 
 							map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map) {
-	vector<pt::ptree> aux;
-				
-	if(!queried_tree.empty()) {
-		BOOST_FOREACH(pt::ptree::value_type& child, queried_tree) {
-			if(child.first == q.query_var.second) {
-				if(q.query.size() == 1) {
-					if(q.query.at(0) != "") {
-						string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
+	if(holds_alternative<pair<Query*,Query*>>(q.query->query)) {
+        pair<Query*,Query*> query_items = std::get<pair<Query*,Query*>>(q.query->query);
 
-						boost::optional prop_val_opt = child.second.get_optional<string>(prop);
+        QueriedProperty aux1;
+        aux1.queried_var = q.queried_var;
+        aux1.query_var = q.query_var;
+        aux1.query = query_items.first;
 
-						if(prop_val_opt) {
-							bool prop_val;
+        pair<vector<pt::ptree>,set<string>> valid_query1 = solve_query_statement(queried_tree, aux1, gm, node_id, valid_variables, gm_var_map);
 
-							istringstream(boost::to_lower_copy(prop_val_opt.get())) >> std::boolalpha >> prop_val;
-							if(q.query.at(0).find('!') != string::npos) {
-								prop_val = !prop_val;
+        QueriedProperty aux2;
+        aux2.queried_var = q.queried_var;
+        aux2.query_var = q.query_var;
+        aux2.query = query_items.second;
+
+        pair<vector<pt::ptree>,set<string>> valid_query2 = solve_query_statement(queried_tree, aux2, gm, node_id, valid_variables, gm_var_map);
+
+		pair<vector<pt::ptree>,set<string>> final_result = valid_query1;
+
+        if(q.query->is_and) {
+            set<string> aux;
+
+            std::set_difference(valid_query1.second.begin(), valid_query1.second.end(), valid_query2.second.begin(), valid_query2.second.end(), std::inserter(aux, aux.end()));
+
+            for(string elem : aux) {
+                set<string>::iterator pos = final_result.second.find(elem);
+                if(pos != final_result.second.end()) {
+                    final_result.second.erase(pos);
+                }
+            }
+
+            vector<pt::ptree>::iterator result_it;
+            for(result_it = final_result.first.begin(); result_it != final_result.first.end(); ) {
+                string result_val = result_it->get<string>("name");
+
+                if(final_result.second.find(result_val) == final_result.second.end()) {
+                    final_result.first.erase(result_it);
+                } else {
+                    result_it++;
+                }
+            }
+        } else {
+            set<string> aux;
+
+            std::set_difference(valid_query1.second.begin(), valid_query1.second.end(), valid_query2.second.begin(), valid_query2.second.end(), std::inserter(aux, aux.end()));
+
+            for(string elem : aux) {
+                set<string>::iterator pos = final_result.second.find(elem);
+                if(pos == final_result.second.end()) {
+                    final_result.second.insert(elem);
+                }
+            }
+
+			for(pt::ptree res : valid_query2.first) {
+				if(aux.find(res.get<string>("name")) != aux.end()) {
+					final_result.first.push_back(res);
+				}
+			}
+        }
+
+		return final_result;
+    } else {
+		vector<pt::ptree> aux;
+		set<string> accepted_records;
+
+		vector<string> query_item = std::get<vector<string>>(q.query->query);
+					
+		if(!queried_tree.empty()) {
+			BOOST_FOREACH(pt::ptree::value_type& child, queried_tree) {
+				if(child.first == q.query_var.second) {
+					if(query_item.size() == 1) {
+						if(query_item.at(0) != "") {
+							string prop = query_item.at(0).substr(query_item.at(0).find('.')+1);
+
+							boost::optional prop_val_opt = child.second.get_optional<string>(prop);
+
+							if(prop_val_opt) {
+								bool prop_val;
+
+								istringstream(boost::to_lower_copy(prop_val_opt.get())) >> std::boolalpha >> prop_val;
+								if(query_item.at(0).find('!') != string::npos) {
+									prop_val = !prop_val;
+								}
+								if(prop_val) {
+									aux.push_back(child.second);
+									accepted_records.insert(child.second.get<string>("name"));
+								}
 							}
-							if(prop_val) aux.push_back(child.second);
+						} else {
+							aux.push_back(child.second);
+							accepted_records.insert(child.second.get<string>("name"));
 						}
 					} else {
-						aux.push_back(child.second);
-					}
-				} else {
-					if(q.query.at(1) == ocl_equal || q.query.at(1) == ocl_different) {
-						string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
+						if(query_item.at(1) == ocl_equal || query_item.at(1) == ocl_different) {
+							string prop = query_item.at(0).substr(query_item.at(0).find('.')+1);
 
-						boost::optional prop_val_opt = child.second.get_optional<string>(prop);
+							boost::optional prop_val_opt = child.second.get_optional<string>(prop);
 
-						if(prop_val_opt) {
-							string prop_val = prop_val_opt.get();
+							if(prop_val_opt) {
+								string prop_val = prop_val_opt.get();
 
-							bool result;
-							if(q.query.at(1) == ocl_equal) {
-								result = (prop_val == q.query.at(2));
-							} else {
-								result = (prop_val != q.query.at(2));
-							}
-							if(result) aux.push_back(child.second);
-						}
-					} else if(q.query.at(1) == ocl_in) {
-						string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
-
-						boost::optional prop_val_opt = child.second.get_optional<string>(prop);
-
-						if(prop_val_opt) {
-							string prop_val = prop_val_opt.get();
-
-							string attr_to_search = q.query.at(2);
-							std::replace(attr_to_search.begin(), attr_to_search.end(), '.', ' ');
-							
-							vector<string> split_attr;
-							
-							stringstream ss(attr_to_search);
-							string tmp;
-							while(ss >> tmp) {
-								split_attr.push_back(tmp);
-							}
-
-							/*
-								If we have [VAR].[ATTR] in [VAR].[ÁTTR] we search in the ptree
-
-								If we have [VAR].[ATTR] in [VAR], where VAR is a collection variable, we search in the variable value
-							*/
-							if(split_attr.size() == 1) {
-								if(holds_alternative<pair<vector<string>,string>>(gm_var_map[split_attr.at(0)])) {
-									pair<vector<string>,string> var_value_and_type = std::get<pair<vector<string>,string>>(gm_var_map[split_attr.at(0)]);
-
-									if(std::find(var_value_and_type.first.begin(), var_value_and_type.first.end(), prop_val) != var_value_and_type.first.end()) {
-										aux.push_back(child.second);
-									}
+								bool result;
+								if(query_item.at(1) == ocl_equal) {
+									result = (prop_val == query_item.at(2));
 								} else {
-									string query_statement_non_collection_var_error = "Wrong query statement in Goal " + get_node_name(gm[node_id].text) + ". Usage of in statement in non-collection variable.";
-
-									throw std::runtime_error(query_statement_non_collection_var_error);
+									result = (prop_val != query_item.at(2));
 								}
-							} else if(split_attr.size() == 2) {
-								// Here we need to get the query ptree for the second attribute
-								pt::ptree attr_tree = valid_variables[split_attr.at(0)].second.at(0).get_child(split_attr.at(1));
+								if(result) {
+									aux.push_back(child.second);
+									accepted_records.insert(child.second.get<string>("name"));
+								}
+							}
+						} else if(query_item.at(1) == ocl_in) {
+							string prop = query_item.at(0).substr(query_item.at(0).find('.')+1);
 
-								string attr_data = attr_tree.data();
-								boost::trim(attr_data);
-								if(attr_tree.empty() && attr_data != "") {
-									vector<string> attr_values;
+							boost::optional prop_val_opt = child.second.get_optional<string>(prop);
 
-									stringstream ss(attr_data);
-									string tmp;
-									while(ss >> tmp) {
-										attr_values.push_back(tmp);
-									}
+							if(prop_val_opt) {
+								string prop_val = prop_val_opt.get();
 
-									if(std::find(attr_values.begin(), attr_values.end(), prop_val) != attr_values.end()) {
-										aux.push_back(child.second);
-									}
-								} else if(!attr_tree.empty() && attr_data == "") {
-									BOOST_FOREACH(pt::ptree::value_type val, attr_tree) {
-										if(prop_val == val.second.data()) {
+								string attr_to_search = query_item.at(2);
+								std::replace(attr_to_search.begin(), attr_to_search.end(), '.', ' ');
+								
+								vector<string> split_attr;
+								
+								stringstream ss(attr_to_search);
+								string tmp;
+								while(ss >> tmp) {
+									split_attr.push_back(tmp);
+								}
+
+								/*
+									If we have [VAR].[ATTR] in [VAR].[ÁTTR] we search in the ptree
+
+									If we have [VAR].[ATTR] in [VAR], where VAR is a collection variable, we search in the variable value
+								*/
+								if(split_attr.size() == 1) {
+									if(holds_alternative<pair<vector<string>,string>>(gm_var_map[split_attr.at(0)])) {
+										pair<vector<string>,string> var_value_and_type = std::get<pair<vector<string>,string>>(gm_var_map[split_attr.at(0)]);
+
+										if(std::find(var_value_and_type.first.begin(), var_value_and_type.first.end(), prop_val) != var_value_and_type.first.end()) {
 											aux.push_back(child.second);
-
-											break;
+											accepted_records.insert(child.second.get<string>("name"));
 										}
+									} else {
+										string query_statement_non_collection_var_error = "Wrong query statement in Goal " + get_node_name(gm[node_id].text) + ". Usage of in statement in non-collection variable.";
+
+										throw std::runtime_error(query_statement_non_collection_var_error);
+									}
+								} else if(split_attr.size() == 2) {
+									// Here we need to get the query ptree for the second attribute
+									pt::ptree attr_tree = valid_variables[split_attr.at(0)].second.at(0).get_child(split_attr.at(1));
+
+									string attr_data = attr_tree.data();
+									boost::trim(attr_data);
+									if(attr_tree.empty() && attr_data != "") {
+										vector<string> attr_values;
+
+										stringstream ss(attr_data);
+										string tmp;
+										while(ss >> tmp) {
+											attr_values.push_back(tmp);
+										}
+
+										if(std::find(attr_values.begin(), attr_values.end(), prop_val) != attr_values.end()) {
+											aux.push_back(child.second);
+											accepted_records.insert(child.second.get<string>("name"));
+										}
+									} else if(!attr_tree.empty() && attr_data == "") {
+										BOOST_FOREACH(pt::ptree::value_type val, attr_tree) {
+											if(prop_val == val.second.data()) {
+												aux.push_back(child.second);
+												accepted_records.insert(child.second.get<string>("name"));
+
+												break;
+											}
+										}
+									} else {
+										string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
+
+										throw std::runtime_error(bad_condition);
 									}
 								} else {
 									string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
 
 									throw std::runtime_error(bad_condition);
 								}
-							} else {
-								string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
-
-								throw std::runtime_error(bad_condition);
 							}
-						}
-					} else if(q.query.at(1) == ocl_gt || q.query.at(1) == ocl_lt || q.query.at(1) == ocl_geq || q.query.at(1) == ocl_leq) {
-						string prop = q.query.at(0).substr(q.query.at(0).find('.')+1);
+						} else if(query_item.at(1) == ocl_gt || query_item.at(1) == ocl_lt || query_item.at(1) == ocl_geq || query_item.at(1) == ocl_leq) {
+							string prop = query_item.at(0).substr(query_item.at(0).find('.')+1);
 
-						boost::optional prop_val_opt = child.second.get_optional<string>(prop);
+							boost::optional prop_val_opt = child.second.get_optional<string>(prop);
 
-						if(prop_val_opt) {
-							string prop_val = prop_val_opt.get();
+							if(prop_val_opt) {
+								string prop_val = prop_val_opt.get();
 
-							std::regex integer("[0-9]+");
+								std::regex integer("[0-9]+");
 
-							bool result = false;
-							if(std::regex_match(q.query.at(2), integer)) {
-								int q_val = stoi(q.query.at(2));
+								bool result = false;
+								if(std::regex_match(query_item.at(2), integer)) {
+									int q_val = stoi(query_item.at(2));
 
-								if(prop_val.find(".") == string::npos) {
-									int val = stoi(prop_val);
+									if(prop_val.find(".") == string::npos) {
+										int val = stoi(prop_val);
 
-									if(q.query.at(1) == ocl_gt) {
-										result = (val > q_val);
-									} else if(q.query.at(1) == ocl_lt) {
-										result = (val < q_val);
-									} else if(q.query.at(1) == ocl_geq) {
-										result = (val >= q_val);
-									} else if(q.query.at(1) == ocl_leq) {
-										result = (val <= q_val);
+										if(query_item.at(1) == ocl_gt) {
+											result = (val > q_val);
+										} else if(query_item.at(1) == ocl_lt) {
+											result = (val < q_val);
+										} else if(query_item.at(1) == ocl_geq) {
+											result = (val >= q_val);
+										} else if(query_item.at(1) == ocl_leq) {
+											result = (val <= q_val);
+										}
+									} else {
+										float val = static_cast<float>(::atof(prop_val.c_str()));
+
+										if(query_item.at(1) == ocl_gt) {
+											result = greater_than_float_and_int(q_val, val);
+										} else if(query_item.at(1) == ocl_lt) {
+											result = greater_than_int_and_float(q_val, val);
+										} else if(query_item.at(1) == ocl_geq) {
+											result = !greater_than_int_and_float(q_val, val);
+										} else if(query_item.at(1) == ocl_leq) {
+											result = !greater_than_float_and_int(q_val, val);
+										}
 									}
 								} else {
-									float val = static_cast<float>(::atof(prop_val.c_str()));
+									float q_val = static_cast<float>(::atof(query_item.at(2).c_str()));
 
-									if(q.query.at(1) == ocl_gt) {
-										result = greater_than_float_and_int(q_val, val);
-									} else if(q.query.at(1) == ocl_lt) {
-										result = greater_than_int_and_float(q_val, val);
-									} else if(q.query.at(1) == ocl_geq) {
-										result = !greater_than_int_and_float(q_val, val);
-									} else if(q.query.at(1) == ocl_leq) {
-										result = !greater_than_float_and_int(q_val, val);
+									if(prop_val.find(".") == string::npos) {
+										int val = stoi(prop_val);
+
+										if(query_item.at(1) == ocl_gt) {
+											result = greater_than_int_and_float(val, q_val);
+										} else if(query_item.at(1) == ocl_lt) {
+											result = greater_than_float_and_int(val, q_val);
+										} else if(query_item.at(1) == ocl_geq) {
+											result = !greater_than_float_and_int(val, q_val);
+										} else if(query_item.at(1) == ocl_leq) {
+											result = !greater_than_int_and_float(val, q_val);
+										}
+									} else {
+										float val = static_cast<float>(::atof(prop_val.c_str()));
+
+										if(query_item.at(1) == ocl_gt) {
+											result = greater_than_floats(val, q_val);
+										} else if(query_item.at(1) == ocl_lt) {
+											result = greater_than_floats(q_val, val);
+										} else if(query_item.at(1) == ocl_geq) {
+											result = !greater_than_floats(q_val, val);
+										} else if(query_item.at(1) == ocl_leq) {
+											result = !greater_than_floats(val, q_val);
+										}
 									}
 								}
-							} else {
-								float q_val = static_cast<float>(::atof(q.query.at(2).c_str()));
 
-								if(prop_val.find(".") == string::npos) {
-									int val = stoi(prop_val);
-
-									if(q.query.at(1) == ocl_gt) {
-										result = greater_than_int_and_float(val, q_val);
-									} else if(q.query.at(1) == ocl_lt) {
-										result = greater_than_float_and_int(val, q_val);
-									} else if(q.query.at(1) == ocl_geq) {
-										result = !greater_than_float_and_int(val, q_val);
-									} else if(q.query.at(1) == ocl_leq) {
-										result = !greater_than_int_and_float(val, q_val);
-									}
-								} else {
-									float val = static_cast<float>(::atof(prop_val.c_str()));
-
-									if(q.query.at(1) == ocl_gt) {
-										result = greater_than_floats(val, q_val);
-									} else if(q.query.at(1) == ocl_lt) {
-										result = greater_than_floats(q_val, val);
-									} else if(q.query.at(1) == ocl_geq) {
-										result = !greater_than_floats(q_val, val);
-									} else if(q.query.at(1) == ocl_leq) {
-										result = !greater_than_floats(val, q_val);
-									}
+								if(result) {
+									aux.push_back(child.second);
+									accepted_records.insert(child.second.get<string>("name"));
 								}
 							}
-
-							if(result) aux.push_back(child.second);
 						}
 					}
 				}
 			}
+
+			/*string var_name = std::get<vector<pair<string,string>>>(gm[node_id].custom_props[controls_prop]).at(0).first;
+			string var_type = std::get<vector<pair<string,string>>>(gm[node_id].custom_props[controls_prop]).at(0).second;
+
+			valid_variables[var_name] = make_pair(var_type,aux);
+						
+			string gm_var_type = parse_gm_var_type(var_type);
+			if(gm_var_type == "VALUE") {
+				//We assume everything has a name attribute
+				gm_var_map[var_name] = make_pair(aux.at(0).get<string>("name"),var_type); 
+			} else if(gm_var_type == "COLLECTION") {
+				vector<string> var_value;
+				for(pt::ptree t : aux) {
+					var_value.push_back(t.get<string>("name"));
+				}
+
+				gm_var_map[var_name] = make_pair(var_value,var_type);
+			}*/
 		}
 
-		string var_name = std::get<vector<pair<string,string>>>(gm[node_id].custom_props[controls_prop]).at(0).first;
-		string var_type = std::get<vector<pair<string,string>>>(gm[node_id].custom_props[controls_prop]).at(0).second;
-
-		valid_variables[var_name] = make_pair(var_type,aux);
-					
-		string gm_var_type = parse_gm_var_type(var_type);
-		if(gm_var_type == "VALUE") {
-			//We assume everything has a name attribute
-			gm_var_map[var_name] = make_pair(aux.at(0).get<string>("name"),var_type); 
-		} else if(gm_var_type == "COLLECTION") {
-			vector<string> var_value;
-			for(pt::ptree t : aux) {
-				var_value.push_back(t.get<string>("name"));
-			}
-
-			gm_var_map[var_name] = make_pair(var_value,var_type);
-		}
+		return make_pair(aux,accepted_records);
 	}
 }

@@ -19,7 +19,7 @@ using namespace std;
     @ Input 7: The Goal Model variable mappings (between them and their values)
     @ Input 8: The verbose flag
 */
-ValidMissionGenerator::ValidMissionGenerator(ATGraph md, GMGraph g, vector<Constraint> mc, vector<ground_literal> ws, vector<pair<ground_literal,variant<int,float>>> wsf, vector<SemanticMapping> sm, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gmvmap, bool verb, set<string> r_srts, bool pretty) {
+ValidMissionGenerator::ValidMissionGenerator(ATGraph md, GMGraph g, vector<Constraint> mc, vector<ground_literal> ws, vector<pair<ground_literal,variant<int,float>>> wsf, vector<SemanticMapping> sm, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gmvmap, bool verb, set<string> r_srts) {
     mission_decomposition = md;
     gm = g;
     mission_constraints = mc;
@@ -29,7 +29,6 @@ ValidMissionGenerator::ValidMissionGenerator(ATGraph md, GMGraph g, vector<Const
     gm_var_map = gmvmap;
     verbose = verb;
     robot_related_sorts = r_srts;
-    pretty_print = pretty;
 }
 
 /*
@@ -81,78 +80,6 @@ pair<vector<vector<pair<int,ATNode>>>,set<Decomposition>> ValidMissionGenerator:
             }
             std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl << std::endl;
         }
-    } else if(pretty_print) {
-        std::cout << "-------------------------------------- POSSIBLE MISSION DECOMPOSITIONS --------------------------------------" << std::endl;
-        unsigned int mission_index = 1;
-        for(auto mission_decomposition : final_valid_mission_decompositions) {
-            unsigned int index = 1;
-            for(pair<int,ATNode> node : mission_decomposition) {
-                Decomposition d = std::get<Decomposition>(node.second.content);
-
-                set<string> required_capabilities;
-                for(task t : d.path.decomposition) {
-                    for(string cap : t.required_capabilities) {
-                        required_capabilities.insert(cap);
-                    }
-                }
-
-                variant<vector<string>,string> location = d.at.location.first;
-
-                std::cout << "Task [" + d.id << "] ";
-                if(required_capabilities.size() > 0) {
-                    if(required_capabilities.size() > 1) {
-                        std::cout << "with required capabilities [";
-                    } else {
-                        std::cout << "with required capability [";
-                    }
-
-                    int cap_size = required_capabilities.size();
-                    int cap_index = 0;
-                    for(string cap : required_capabilities) {
-                        if(cap_index < cap_size-1) {
-                            std::cout << cap << ", ";
-                        } else {
-                            std::cout << cap << "] ";
-                        }
-
-                        cap_index++;
-                    }
-                }
-                if(holds_alternative<vector<string>>(location)) {
-                    vector<string> loc = std::get<vector<string>>(location);
-                    std::cout << "at locations [";
-
-                    int loc_size = loc.size();
-                    int loc_index = 0;
-                    for(string l : loc) {
-                        if(loc_index < loc_size-1) {
-                            std::cout << l << ", ";
-                        } else {
-                            std::cout << l << "]";
-                        }
-
-                        loc_index++;
-                    }
-                } else {
-                    string loc = std::get<string>(location);
-                    std::cout << "at location [" + loc + "]";
-                }
-                if(index == mission_decomposition.size()) {
-                    std::cout << std::endl;
-                } else {
-                    std::cout << " AND" << std::endl;
-                }
-
-                index++;
-            }
-
-            if(mission_index < final_valid_mission_decompositions.size()) {
-                std::cout << std::endl;
-            }
-
-            mission_index++;
-        }
-        std::cout << "-------------------------------------------------------------------------------------------------------------" << std::endl;
     }
 
     return make_pair(final_valid_mission_decompositions,expanded_decompositions);
@@ -667,9 +594,7 @@ void ValidMissionGenerator::check_parallel_op_children(queue<pair<int,ATNode>>& 
         }
     }
 
-    if(!is_or) {
-        solve_conflicts(children_effects);
-    }
+    solve_conflicts(children_effects);
 }
 
 void ValidMissionGenerator::check_fallback_op_children(queue<pair<int,ATNode>>& mission_queue, map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>>& children_effects, int depth, pair<int,ATNode> current_node) {
@@ -744,7 +669,7 @@ void ValidMissionGenerator::check_fallback_op_children(queue<pair<int,ATNode>>& 
 
         if(is_child) {
             map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>> child_effects;
-            child_effects = recursive_valid_mission_decomposition("FALLBACK", mission_queue, depth, child_effects);
+            child_effects = recursive_valid_mission_decomposition("#", mission_queue, depth, child_effects);
 
             map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>>::iterator ceff_it;
             for(ceff_it = child_effects.begin(); ceff_it != child_effects.end(); ++ceff_it) {
@@ -890,229 +815,37 @@ void ValidMissionGenerator::check_conditions(map<int,pair<vector<variant<ground_
 
         AchieveCondition achieve_condition = get<AchieveCondition>(gm[gm_node_id].custom_props[achieve_condition_prop]);
 
-        vector<ground_literal> achieve_condition_predicates;
-        vector<pair<ground_literal,variant<pair<bool,variant<int,float>>,pair<string,variant<int,float>>>>> achieve_condition_func_predicates;
-
-        variant<pair<pair<predicate_definition,vector<string>>,bool>,pair<pair<predicate_definition,vector<string>>,pair<variant<int,float>,variant<bool,string>>>,bool> evaluation = achieve_condition.evaluate_condition(semantic_mapping, gm_var_map);
-
-        bool need_predicate_checking = false;
-        bool need_function_predicate_checking = false;
-        if(holds_alternative<pair<pair<predicate_definition,vector<string>>,bool>>(evaluation)) {
-            pair<pair<predicate_definition,vector<string>>,bool> eval = std::get<pair<pair<predicate_definition,vector<string>>,bool>>(evaluation);
-
-            for(string value : eval.first.second) {
-                ground_literal aux;
-
-                aux.predicate = eval.first.first.name;
-                aux.positive = !eval.second;
-                aux.args.push_back(value);
-
-                achieve_condition_predicates.push_back(aux);
-            } 
-
-            need_predicate_checking = true;
-        } else if(holds_alternative<pair<pair<predicate_definition,vector<string>>,pair<variant<int,float>,variant<bool,string>>>>(evaluation)) {
-            pair<pair<predicate_definition,vector<string>>,pair<variant<int,float>,variant<bool,string>>> eval = std::get<pair<pair<predicate_definition,vector<string>>,pair<variant<int,float>,variant<bool,string>>>>(evaluation);
-
-            for(string value : eval.first.second) {
-                ground_literal aux;
-
-                aux.predicate = eval.first.first.name;
-                aux.args.push_back(value);
-
-                if(holds_alternative<bool>(eval.second.second)) {
-                    pair<bool,variant<int,float>> val_and_flag = make_pair(std::get<bool>(eval.second.second), eval.second.first);
-
-                    achieve_condition_func_predicates.push_back(make_pair(aux,val_and_flag));
-                } else {
-                    pair<string,variant<int,float>> op_and_val = make_pair(std::get<string>(eval.second.second), eval.second.first);
-
-                    achieve_condition_func_predicates.push_back(make_pair(aux,op_and_val));
-                }
-            }
-
-            need_function_predicate_checking = true;
-        }
+        ConditionEvaluation* evaluation = achieve_condition.evaluate_condition(semantic_mapping, gm_var_map);
+        ConditionExpression* eval_result = evaluation->get_evaluation_predicates();
 
         vector<int> decompositions_to_erase;
-        if(need_predicate_checking) {  
-            map<int,std::vector<ground_literal>> pred_effs;
+        
+        map<int,std::vector<ground_literal>> pred_effs;
+        map<int,vector<pair<ground_literal,variant<int,float>>>> func_effs;
 
-            map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>>::iterator eff_it;
-            for(eff_it = effects_to_apply.begin(); eff_it != effects_to_apply.end(); ++eff_it) {
-                for(auto eff : eff_it->second.first) {
-                    if(holds_alternative<ground_literal>(eff)) {
-                        pred_effs[eff_it->first].push_back(std::get<ground_literal>(eff));
-                    }
+        map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>>::iterator eff_it;
+        for(eff_it = effects_to_apply.begin(); eff_it != effects_to_apply.end(); ++eff_it) {
+            for(auto eff : eff_it->second.first) {
+                if(holds_alternative<ground_literal>(eff)) {
+                    pred_effs[eff_it->first].push_back(std::get<ground_literal>(eff));
+                } else {
+                    func_effs[eff_it->first].push_back(std::get<pair<ground_literal,variant<int,float>>>(eff));
                 }
             }
+        }
 
-            int decomposition_index = 0;
-            for(auto decomposition : valid_mission_decompositions) {
-                vector<ground_literal> ws = apply_pred_effects(pred_effs, decomposition.second);
+        int decomposition_index = 0;
+        for(auto decomposition : valid_mission_decompositions) {
+            vector<ground_literal> ws = apply_pred_effects(pred_effs, decomposition.second);
+            vector<pair<ground_literal,variant<int,float>>> wsf = apply_func_effects(func_effs, decomposition.second);
 
-                bool valid_achieve_condition = true;
-                for(ground_literal forAll_pred : achieve_condition_predicates) {
-                    for(ground_literal state : ws) {
-                        bool same_predicate = is_same_predicate(state, forAll_pred);
-                              
-                        if(!same_predicate) {
-                            break;
-                        }
-
-                        if(state.positive != forAll_pred.positive) {
-                            valid_achieve_condition = false;
-                            break;
-                        }
-                    }
-
-                    if(!valid_achieve_condition) {
-                        break;
-                    }
-                }
-
-                if(!valid_achieve_condition) {
-                    decompositions_to_erase.push_back(decomposition_index);
-                }
-
-                decomposition_index++;
-            }
-        } else if(need_function_predicate_checking) {
-            map<int,vector<pair<ground_literal,variant<int,float>>>> func_effs;
-
-            map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>>::iterator eff_it;
-            for(eff_it = effects_to_apply.begin(); eff_it != effects_to_apply.end(); ++eff_it) {
-                for(auto eff : eff_it->second.first) {
-                    if(holds_alternative<pair<ground_literal,variant<int,float>>>(eff)) {
-                        func_effs[eff_it->first].push_back(std::get<pair<ground_literal,variant<int,float>>>(eff));
-                    }
-                }
+            bool valid_achieve_condition = eval_result->evaluate_expression(ws, wsf);
+            
+            if(!valid_achieve_condition) {
+                decompositions_to_erase.push_back(decomposition_index);
             }
 
-            int decomposition_index = 0;
-            for(auto decomposition : valid_mission_decompositions) {
-                vector<pair<ground_literal,variant<int,float>>> wsf = apply_func_effects(func_effs, decomposition.second);
-
-                bool valid_achieve_condition = true;
-                for(pair<ground_literal,variant<pair<bool,variant<int,float>>,pair<string,variant<int,float>>>> forAll_pred : achieve_condition_func_predicates) {
-                    for(pair<ground_literal,variant<int,float>> state : wsf) {
-                        bool same_predicate = is_same_predicate(state.first, forAll_pred.first);
-                                        
-                        if(!same_predicate) {
-                            break;
-                        }
-
-                        if(holds_alternative<pair<bool,variant<int,float>>>(forAll_pred.second)) {
-                            pair<bool,variant<int,float>> val_and_flag = std::get<pair<bool,variant<int,float>>>(forAll_pred.second);
-                            if(val_and_flag.first) {
-                                if(holds_alternative<int>(state.second)) {
-                                    int state_val = std::get<int>(state.second);
-
-                                    if(holds_alternative<int>(val_and_flag.second)) {
-                                        valid_achieve_condition = (state_val != std::get<int>(val_and_flag.second));
-                                    } else {
-                                        valid_achieve_condition = !compare_int_and_float(state_val, std::get<float>(val_and_flag.second));
-                                    }
-                                } else {
-                                    float state_val = std::get<float>(state.second);
-
-                                    if(holds_alternative<int>(val_and_flag.second)) {
-                                        valid_achieve_condition = !compare_int_and_float(std::get<int>(val_and_flag.second), state_val);
-                                    } else {
-                                        valid_achieve_condition = !compare_floats(state_val, std::get<float>(val_and_flag.second));
-                                    }
-                                }
-
-                                if(!valid_achieve_condition) {
-                                    break;
-                                }
-                            } else {
-                                if(holds_alternative<int>(state.second)) {
-                                    int state_val = std::get<int>(state.second);
-
-                                    if(holds_alternative<int>(val_and_flag.second)) {
-                                        valid_achieve_condition = (state_val == std::get<int>(val_and_flag.second));
-                                    } else {
-                                        valid_achieve_condition = compare_int_and_float(state_val, std::get<float>(val_and_flag.second));
-                                    }
-                                } else {
-                                    float state_val = std::get<float>(state.second);
-
-                                    if(holds_alternative<int>(val_and_flag.second)) {
-                                        valid_achieve_condition = compare_int_and_float(std::get<int>(val_and_flag.second), state_val);
-                                    } else {
-                                        valid_achieve_condition = compare_floats(state_val, std::get<float>(val_and_flag.second));
-                                    }
-                                }
-                            }
-                        } else {
-                            pair<string,variant<int,float>> op_and_val = std::get<pair<string,variant<int,float>>>(forAll_pred.second);
-
-                            if(holds_alternative<int>(state.second)) {
-                                int state_val = std::get<int>(state.second);
-
-                                if(holds_alternative<int>(op_and_val.second)) {
-                                    if(op_and_val.first == ocl_gt) {
-                                        valid_achieve_condition = state_val > std::get<int>(op_and_val.second);
-                                    } else if(op_and_val.first == ocl_lt) {
-                                        valid_achieve_condition = state_val < std::get<int>(op_and_val.second);
-                                    } else if(op_and_val.first == ocl_geq) {
-                                        valid_achieve_condition = state_val >= std::get<int>(op_and_val.second);
-                                    } else if(op_and_val.first == ocl_leq) {
-                                        valid_achieve_condition = state_val <= std::get<int>(op_and_val.second);
-                                    }
-                                } else {
-                                    if(op_and_val.first == ocl_gt) {
-                                        valid_achieve_condition = greater_than_int_and_float(state_val, std::get<float>(op_and_val.second));
-                                    } else if(op_and_val.first == ocl_lt) {
-                                        valid_achieve_condition = greater_than_float_and_int(state_val, std::get<float>(op_and_val.second));
-                                    } else if(op_and_val.first == ocl_geq) {
-                                        valid_achieve_condition = !greater_than_float_and_int(state_val, std::get<float>(op_and_val.second));
-                                    } else if(op_and_val.first == ocl_leq) {
-                                        valid_achieve_condition = !greater_than_int_and_float(state_val, std::get<float>(op_and_val.second));
-                                    }
-                                }
-                            } else {
-                                float state_val = std::get<float>(state.second);
-
-                                if(holds_alternative<int>(op_and_val.second)) {
-                                    if(op_and_val.first == ocl_gt) {
-                                        valid_achieve_condition = greater_than_float_and_int(std::get<int>(op_and_val.second), state_val);
-                                    } else if(op_and_val.first == ocl_lt) {
-                                        valid_achieve_condition = greater_than_int_and_float(std::get<int>(op_and_val.second), state_val);
-                                    } else if(op_and_val.first == ocl_geq) {
-                                        valid_achieve_condition = !greater_than_int_and_float(std::get<int>(op_and_val.second), state_val);
-                                    } else if(op_and_val.first == ocl_leq) {
-                                        valid_achieve_condition = !greater_than_float_and_int(std::get<int>(op_and_val.second), state_val);
-                                    }
-                                } else {
-                                    if(op_and_val.first == ocl_gt) {
-                                        valid_achieve_condition = greater_than_floats(state_val, std::get<float>(op_and_val.second));
-                                    } else if(op_and_val.first == ocl_lt) {
-                                        valid_achieve_condition = greater_than_floats(std::get<float>(op_and_val.second), state_val);
-                                    } else if(op_and_val.first == ocl_geq) {
-                                        valid_achieve_condition = !greater_than_floats(std::get<float>(op_and_val.second), state_val);
-                                    } else if(op_and_val.first == ocl_leq) {
-                                        valid_achieve_condition = !greater_than_floats(state_val, std::get<float>(op_and_val.second));
-                                    }
-                                }
-                            }
-
-                            if(!valid_achieve_condition) break;
-                        }
-                    }
-
-                    if(!valid_achieve_condition) {
-                        break;
-                    }
-                }
-
-                if(!valid_achieve_condition) {
-                    decompositions_to_erase.push_back(decomposition_index);
-                }
-
-                decomposition_index++;
-            }
+            decomposition_index++;
         }
 
         std::sort(decompositions_to_erase.begin(), decompositions_to_erase.end());

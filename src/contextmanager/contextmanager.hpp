@@ -18,12 +18,14 @@ class Context : public Condition {
 
         void set_context_type(std::string tp);
 
+        bool check_context(std::vector<ground_literal> world_state, std::vector<SemanticMapping> semantic_mapping, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> var_maps);
+
+        ConditionExpression* get_inactive_predicates(std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> var_maps, pred_vector world_state, std::vector<SemanticMapping> semantic_mapping);
+
     private:
         std::string type;
 };
 
-bool check_context(Context context, std::vector<ground_literal> world_state, std::vector<SemanticMapping> semantic_mapping, 
-                        std::map<std::string, std::variant<std::string,std::vector<std::string>>> instantiated_vars);
-
 std::pair<bool,std::pair<std::string,predicate_definition>> get_pred_from_context(Context context, std::vector<SemanticMapping> semantic_mapping);
+
 #endif
