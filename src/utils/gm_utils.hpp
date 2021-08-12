@@ -103,6 +103,6 @@ std::vector<std::string> parse_forAll_expr(std::string expr);
 std::pair<std::string,std::string> parse_at_text(std::string text);
 std::pair<std::string,std::string> parse_goal_text(std::string text);
 
-std::variant<int,std::pair<int,int>> parse_robot_number(std::string text);
+std::pair<int,int> parse_robot_number(std::string text);
 
 #endif

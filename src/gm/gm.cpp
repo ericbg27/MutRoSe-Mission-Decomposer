@@ -191,46 +191,22 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
         } else if(cp_it->first == "Group") {
             string aux = cp_it->second;
             transform(aux.begin(), aux.end(), aux.begin(), ::tolower);
-            if(aux == "true" || aux == "false") {
-                istringstream(aux) >> std::boolalpha >> v.group;
-            } else {
-                v.group = true;
-            }
+            istringstream(aux) >> std::boolalpha >> v.group;
         } else if(cp_it->first == "Divisible") {
             string aux = cp_it->second;
             transform(aux.begin(), aux.end(), aux.begin(), ::tolower);
-            if(aux == "true" || aux == "false") {
-                istringstream(aux) >> std::boolalpha >> v.divisible;
-            } else {
-                v.divisible = true;
-            }
+            istringstream(aux) >> std::boolalpha >> v.divisible;
         } else if(cp_it->first == controls_prop || cp_it->first == monitors_prop) {
-            boost::trim(cp_it->second);
-            if(cp_it->second != "") {
-                v.custom_props[cp_it->first] = parse_vars(cp_it->second);
-            }
+            v.custom_props[cp_it->first] = parse_vars(cp_it->second);
         } else if(cp_it->first == context_prop) {
             Context c = parse_context_condition(cp_it->second);
             
             v.custom_props[cp_it->first] = c;
         } else if(cp_it->first == location_prop) {
-            boost::trim(cp_it->second);
-            if(cp_it->second != "") {
-                v.custom_props[cp_it->first] = cp_it->second;
-            }
+            v.custom_props[cp_it->first] = cp_it->second;
         } else if(cp_it->first == robot_number_prop) {
-            boost::trim(cp_it->second);
-            if(cp_it->second != "") {
-                v.robot_num = parse_robot_number(cp_it->second);
-
-                if(holds_alternative<int>(v.robot_num)) {
-                    v.fixed_robot_num = true;
-                } else {
-                    v.fixed_robot_num = false;
-                }
-
-                v.custom_props[robot_number_prop] = cp_it->second;
-            }
+            v.fixed_robot_num = false;
+            v.robot_num = parse_robot_number(cp_it->second);
         } else if(cp_it->first == params_prop) {
             vector<string> params;
 
@@ -302,8 +278,6 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
 vector<pair<int,VertexData>> parse_gm_nodes(pt::ptree nodes) {
     vector<pair<int,VertexData>> vertex;
 
-    set<int> goal_ids, task_ids;
-
     int cnt = 0;
     BOOST_FOREACH(pt::ptree::value_type& node, nodes) {
         VertexData v;
@@ -331,24 +305,6 @@ vector<pair<int,VertexData>> parse_gm_nodes(pt::ptree nodes) {
             stringstream ss(m[0]);
             int id = 0;
             ss >> id;
-
-            if(v.type == istar_goal) {
-                if(goal_ids.find(id) != goal_ids.end()) {
-                    string repeated_goal_id_error = "Goal with ID G" + to_string(id) + " was declared twice";
-
-                    throw std::runtime_error(repeated_goal_id_error);
-                } else {
-                    goal_ids.insert(id);
-                }
-            } else {
-                if(task_ids.find(id) != task_ids.end()) {
-                    string repeated_task_id_error = "Task with ID AT" + to_string(id) + " was declared twice";
-
-                    throw std::runtime_error(repeated_task_id_error);
-                } else {
-                    task_ids.insert(id);
-                }
-            }
 
             vertex.push_back(make_pair(id,v));
         } else {
@@ -477,7 +433,7 @@ void check_undefined_number_of_robots(GMGraph& gm, vector<task> abstract_tasks, 
 
     for(int gm_index = 0;gm_index < graph_size;gm_index++) {
         VertexData vertex = gm[gm_index];
-        if(vertex.type == istar_task && vertex.custom_props.find(robot_number_prop) == vertex.custom_props.end()) {
+        if(vertex.type == istar_task && vertex.fixed_robot_num) {
             pair<string,string> at_id_name = parse_at_text(vertex.text);
 
             int robot_number = 0;
