@@ -34,7 +34,7 @@
             "GoalType": "Achieve",
             "Controls": "current_room : Room",
             "Monitors": "rooms",
-            "AchieveCondition": "rooms->forAll(current_room | r.staphylococcus = 0)"
+            "AchieveCondition": "rooms->forAll(current_room | current_room.staphylococcus = 0)"
           }
         },
         {
