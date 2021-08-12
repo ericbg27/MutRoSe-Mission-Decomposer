@@ -26,7 +26,7 @@ ConditionExpression::ConditionExpression(variant<pred_vector,func_pred_vector,Co
     this->is_and = is_and;
 }
 
-bool ConditionExpression::evaluate_expression(std::vector<ground_literal> world_state, std::vector<std::pair<ground_literal,std::variant<int,float>>> world_state_functions) {
+bool ConditionExpression::evaluate_expression(vector<ground_literal> world_state, vector<pair<ground_literal,variant<int,float>>> world_state_functions) {
     bool left_res = true, right_res = true;
     
     if(holds_alternative<ConditionExpression*>(left_expr)) {
@@ -44,6 +44,8 @@ bool ConditionExpression::evaluate_expression(std::vector<ground_literal> world_
                     if(same_predicate) {
                         if(state.positive != forAll_pred.positive) {
                             left_res = false;
+                            break;
+                        } else {
                             break;
                         }
                     }
@@ -318,6 +320,120 @@ bool ConditionExpression::evaluate_expression(std::vector<ground_literal> world_
     }
 }
 
+bool ConditionExpression::is_empty_expression() {
+    if(holds_alternative<ConditionExpression*>(left_expr) && holds_alternative<ConditionExpression*>(right_expr)) {
+        ConditionExpression* left = std::get<ConditionExpression*>(left_expr);
+        ConditionExpression* right = std::get<ConditionExpression*>(right_expr);
+
+        return (left == NULL && right == NULL);
+    }
+
+    return false;
+}
+
+// Here we have to take into consideration && and || operators. How to express them in the output?
+ConditionExpression* ConditionExpression::check_non_active_predicates(vector<ground_literal> world_state, vector<pair<ground_literal,variant<int,float>>> world_state_functions, std::vector<SemanticMapping> semantic_mapping) {
+    ConditionExpression* left_res;
+    ConditionExpression* right_res;
+    
+    if(holds_alternative<ConditionExpression*>(left_expr)) {
+        if(std::get<ConditionExpression*>(left_expr) != NULL) {
+            left_res = std::get<ConditionExpression*>(left_expr)->check_non_active_predicates(world_state, world_state_functions, semantic_mapping);
+        } else {
+            ConditionExpression* empty_expr = new ConditionExpression();
+            left_res = empty_expr;
+        }
+    } else {
+        if(holds_alternative<pred_vector>(left_expr)) {
+            pred_vector inactive_preds;
+
+            for(ground_literal forAll_pred : std::get<pred_vector>(left_expr)) {
+                bool active = true;
+                for(ground_literal state : world_state) {
+                    bool same_predicate = is_same_predicate(state, forAll_pred);
+                            
+                    if(same_predicate) {
+                        if(state.positive != forAll_pred.positive) {
+                            active = false;
+                            break;
+                        }
+                    }
+                }
+
+                if(!active) {
+                    inactive_preds.push_back(forAll_pred);
+                }
+            }
+
+            ConditionExpression* empty_expr = new ConditionExpression();
+            if(inactive_preds.size() > 0) {
+                left_res = new ConditionExpression(inactive_preds, empty_expr, true);
+            } else {
+                left_res = empty_expr;
+            }
+        } else {
+            //TODO: check for functions
+            ConditionExpression* empty_expr = new ConditionExpression();
+            left_res = empty_expr;
+        }
+    }
+
+    if(holds_alternative<ConditionExpression*>(right_expr)) {
+        if(std::get<ConditionExpression*>(right_expr) != NULL) {
+            right_res = std::get<ConditionExpression*>(right_expr)->check_non_active_predicates(world_state, world_state_functions, semantic_mapping);
+        } else {
+            ConditionExpression* empty_expr = new ConditionExpression();
+            right_res = empty_expr;
+        }
+    } else {
+        if(holds_alternative<pred_vector>(right_expr)) {
+            pred_vector inactive_preds;
+
+            for(ground_literal forAll_pred : std::get<pred_vector>(right_expr)) {
+                bool active = true;
+
+                for(ground_literal state : world_state) {
+                    bool same_predicate = is_same_predicate(state, forAll_pred);
+                            
+                    if(same_predicate) {
+                        if(state.positive != forAll_pred.positive) {
+                            active = false;
+                            break;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+
+                if(!active) {
+                    inactive_preds.push_back(forAll_pred);
+                }
+            }
+
+            ConditionExpression* empty_expr = new ConditionExpression();
+            if(inactive_preds.size() > 0) {
+                right_res = new ConditionExpression(inactive_preds, empty_expr, true);
+            } else {
+                right_res = empty_expr;
+            }
+        } else {
+            //TODO: check for functions
+            ConditionExpression* empty_expr = new ConditionExpression();
+            right_res = empty_expr;
+        }
+    }
+
+    if(!left_res->is_empty_expression() && !right_res->is_empty_expression()) {
+        return new ConditionExpression(left_res, right_res, is_and);
+    } else {
+        if(left_res->is_empty_expression()) {
+            return right_res;
+        } else {
+            return left_res;
+        }
+    }
+}
+
 ConditionExpression* ConditionEvaluation::get_evaluation_predicates() {
     if(holds_alternative<pair<ConditionEvaluation*,ConditionEvaluation*>>(evaluation)) {
         pair<ConditionEvaluation*,ConditionEvaluation*> eval = std::get<pair<ConditionEvaluation*,ConditionEvaluation*>>(evaluation);
@@ -415,7 +531,8 @@ bool Condition::get_is_and() {
     return is_and;
 }
 
-ConditionEvaluation* Condition::evaluate_condition(variant<pair<string,string>,pair<vector<string>,string>> var_value_and_type, vector<SemanticMapping> semantic_mapping, set<string> accepted_regex_patterns) {
+// Here instead of var value and type we must receive a map with var values and types
+ConditionEvaluation* Condition::evaluate_condition(map<string, variant<pair<string,string>,pair<vector<string>,string>>> var_maps, vector<SemanticMapping> semantic_mapping, set<string> accepted_regex_patterns) {
     string var_attr_regex = "([!]?[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}"; // ![VAR].[ATTR]
     string var_attr_regex2 = "(((\\bnot\\b)[ ]+){1}[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}"; // not [VAR].[ATTR]
     string string_compare_regex = "[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+[\"][A-Za-z0-9]*[\"]){1}"; // [VAR].[ATTR] = "[VALUE]" || [VAR].[ATTR] <> "[VALUE]"
@@ -434,8 +551,8 @@ ConditionEvaluation* Condition::evaluate_condition(variant<pair<string,string>,p
     if(holds_alternative<pair<Condition*,Condition*>>(condition)) {
         pair<Condition*,Condition*> cond = std::get<pair<Condition*,Condition*>>(condition);
 
-        ConditionEvaluation* eval1 = cond.first->evaluate_condition(var_value_and_type, semantic_mapping, accepted_regex_patterns);
-        ConditionEvaluation* eval2 = cond.second->evaluate_condition(var_value_and_type, semantic_mapping, accepted_regex_patterns);
+        ConditionEvaluation* eval1 = cond.first->evaluate_condition(var_maps, semantic_mapping, accepted_regex_patterns);
+        ConditionEvaluation* eval2 = cond.second->evaluate_condition(var_maps, semantic_mapping, accepted_regex_patterns);
 
         ConditionEvaluation* final_eval = new ConditionEvaluation();
         final_eval->set_evaluation(make_pair(eval1,eval2));
@@ -474,7 +591,9 @@ ConditionEvaluation* Condition::evaluate_condition(variant<pair<string,string>,p
             } else {
                 variable = split_cond.at(0);
                 attribute = split_cond.at(1);
-            }
+            }  
+
+            variant<pair<string,string>,pair<vector<string>,string>> var_value_and_type = get_var_value_and_type(var_maps, variable);
 
             if(holds_alternative<pair<vector<string>,string>>(var_value_and_type)) { // Collection type variables
                 pair<vector<string>,string> value_and_type = std::get<pair<vector<string>,string>>(var_value_and_type);
@@ -581,6 +700,8 @@ ConditionEvaluation* Condition::evaluate_condition(variant<pair<string,string>,p
             vector<string> pred_args;
             predicate_definition map_pred;
 
+            variant<pair<string,string>,pair<vector<string>,string>> var_value_and_type = get_var_value_and_type(var_maps, variable);
+
             if(holds_alternative<pair<vector<string>,string>>(var_value_and_type)) {
                 pair<vector<string>,string> value_and_type = std::get<pair<vector<string>,string>>(var_value_and_type);
 
@@ -666,6 +787,8 @@ ConditionEvaluation* Condition::evaluate_condition(variant<pair<string,string>,p
 
             vector<string> pred_args;
             predicate_definition map_pred;
+
+            variant<pair<string,string>,pair<vector<string>,string>> var_value_and_type = get_var_value_and_type(var_maps, variable);
 
             if(holds_alternative<pair<vector<string>,string>>(var_value_and_type)) {
                 pair<vector<string>,string> value_and_type = std::get<pair<vector<string>,string>>(var_value_and_type);

@@ -105,14 +105,14 @@ void MissionDecomposer::final_context_dependency_links_generation() {
 	@ Input 6: The semantic mapping vector
     @ Output: A boolean flag indicating if the context of the node was satisfied with some abstract task
 */
-bool MissionDecomposer::check_context_dependency(int parent_node, int context_node, Context context, map<string, variant<string,vector<string>>> instantiated_vars, 
-													vector<SemanticMapping> semantic_mapping) {
+bool MissionDecomposer::check_context_dependency(int parent_node, int context_node, Context context, map<string, variant<pair<string,string>,pair<vector<string>,string>>> vars_map, vector<SemanticMapping> semantic_mapping) {
 	/*
 		Go through the goal model and verify effects of abstract tasks that are children of it
 
 		-> If any effects corresponds to the given context we link this node with the node that has the context
 	*/
-	pair<bool,pair<string,predicate_definition>> var_and_pred = get_pred_from_context(context, semantic_mapping);
+	//pair<bool,pair<string,predicate_definition>> var_and_pred = get_pred_from_context(context, semantic_mapping);
+	ConditionExpression* inactive_ctx_predicates = context.get_inactive_predicates(vars_map, world_state, semantic_mapping);
 	
 	vector<int> visited_nodes;
 
@@ -125,7 +125,18 @@ bool MissionDecomposer::check_context_dependency(int parent_node, int context_no
 		}
 	}
 
-	bool found_at = recursive_context_dependency_checking(parent_node, context_node, var_and_pred, instantiated_vars, semantic_mapping, visited_nodes, false, is_sequential);
+	map<string,variant<string,vector<string>>> instantiated_vars;
+
+	map<string, variant<pair<string,string>,pair<vector<string>,string>>>::iterator vars_map_it;
+	for(vars_map_it = vars_map.begin(); vars_map_it != vars_map.end(); ++vars_map_it) {
+		if(holds_alternative<pair<string,string>>(vars_map_it->second)) {
+			instantiated_vars[vars_map_it->first] = std::get<pair<string,string>>(vars_map_it->second).first;
+		} else {
+			instantiated_vars[vars_map_it->first] = std::get<pair<vector<string>,string>>(vars_map_it->second).first;
+		}
+	}
+
+	bool found_at = recursive_context_dependency_checking(parent_node, context_node, inactive_ctx_predicates, instantiated_vars, semantic_mapping, visited_nodes, false, is_sequential);
 
 	return found_at;
 }
@@ -134,7 +145,6 @@ bool MissionDecomposer::check_context_dependency(int parent_node, int context_no
 	-> This recursion will go from bottom to top
 
 	- Stop conditions:
-		* If the context condition involves a forAll iterated var we stop when we reach the Achieve Goal that controls this variable
 		* If we check all children of the root of the GM
 
 	-> Idea: Search in children of parent_node if this is not an OR decomposition. 
@@ -147,8 +157,12 @@ bool MissionDecomposer::check_context_dependency(int parent_node, int context_no
 
 		- If we find the task that solves the context condition we create the context dependency 
 */
-bool MissionDecomposer::recursive_context_dependency_checking(int current_node, int context_node, pair<bool,pair<string,predicate_definition>> var_and_pred, map<string, variant<string,vector<string>>> instantiated_vars, vector<SemanticMapping> semantic_mapping,
+bool MissionDecomposer::recursive_context_dependency_checking(int current_node, int context_node, ConditionExpression* inactive_ctx_predicates, map<string, variant<string,vector<string>>> instantiated_vars, vector<SemanticMapping> semantic_mapping,
 																vector<int>& visited_nodes, bool parallel_checking, bool is_sequential) {	
+	if(current_node == -1) {
+		return false;
+	}
+	
 	bool is_or = false;
 	ATGraph::out_edge_iterator ei, ei_end;
 	for(boost::tie(ei,ei_end) = out_edges(current_node,mission_decomposition);ei != ei_end;++ei) {
@@ -164,22 +178,6 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 	if(mission_decomposition[current_node].node_type == GOALNODE) {
 		int node_gm_id = find_gm_node_by_id(std::get<string>(mission_decomposition[current_node].content), gm);
 
-		vector<pair<string,string>> controlled_vars;
-		if(gm[node_gm_id].custom_props.find(controls_prop) != gm[node_gm_id].custom_props.end()) {
-			controlled_vars = std::get<vector<pair<string,string>>>(gm[node_gm_id].custom_props[controls_prop]);
-		}
-
-		bool finished_search = false;
-		for(pair<string,string> iteration_var : controlled_vars) {
-			if(iteration_var.first == var_and_pred.second.first) { // Current parent node is the forAll goal that controls the variable in the condition
-				if(is_or) {
-					return false;
-				} else {
-					finished_search = true;
-				}
-			}
-		}
-
 		bool found_at = false;
 		ATGraph::out_edge_iterator ei, ei_end;
 		for(boost::tie(ei,ei_end) = out_edges(current_node,mission_decomposition);ei != ei_end;++ei) {
@@ -187,18 +185,18 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 			ATEdge e = mission_decomposition[*ei];
 
 			if(e.edge_type == NORMALAND && std::find(visited_nodes.begin(),visited_nodes.end(),target) == visited_nodes.end()) {
-				found_at = recursive_context_dependency_checking(target, context_node, var_and_pred, instantiated_vars, semantic_mapping, visited_nodes, parallel_checking, is_sequential);
+				found_at = recursive_context_dependency_checking(target, context_node, inactive_ctx_predicates, instantiated_vars, semantic_mapping, visited_nodes, parallel_checking, is_sequential);
 
 				visited_nodes.push_back(target);
 			}
 		}
 
-		if(found_at || finished_search) {
+		if(found_at) {
 			return found_at;
 		} else {
 			visited_nodes.push_back(current_node);
 
-			return recursive_context_dependency_checking(mission_decomposition[current_node].parent, context_node, var_and_pred, instantiated_vars, semantic_mapping, visited_nodes, false, is_sequential);
+			return recursive_context_dependency_checking(mission_decomposition[current_node].parent, context_node, inactive_ctx_predicates, instantiated_vars, semantic_mapping, visited_nodes, false, is_sequential);
 		}
 	}
 
@@ -206,7 +204,7 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 		if(current_node != 0) {
 			visited_nodes.push_back(current_node);
 
-			return recursive_context_dependency_checking(mission_decomposition[current_node].parent, context_node, var_and_pred, instantiated_vars, semantic_mapping, visited_nodes, false, false);
+			return recursive_context_dependency_checking(mission_decomposition[current_node].parent, context_node, inactive_ctx_predicates, instantiated_vars, semantic_mapping, visited_nodes, false, false);
 		} else {
 			return false;
 		}
@@ -225,7 +223,7 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 				ATEdge e = mission_decomposition[*ei];
 
 				if(e.edge_type == NORMALAND && target != context_node && (std::find(visited_nodes.begin(), visited_nodes.end(), target) == visited_nodes.end())) {
-					found_at = recursive_context_dependency_checking(target, context_node, var_and_pred, instantiated_vars, semantic_mapping, visited_nodes, true, false);
+					found_at = recursive_context_dependency_checking(target, context_node, inactive_ctx_predicates, instantiated_vars, semantic_mapping, visited_nodes, true, false);
 
 					visited_nodes.push_back(target);
 				}
@@ -239,7 +237,7 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 				ATEdge e = mission_decomposition[*ei];
 
 				if(e.edge_type == NORMALAND && target != context_node && (std::find(visited_nodes.begin(), visited_nodes.end(), target) == visited_nodes.end())) {
-					found_at = recursive_context_dependency_checking(target, context_node, var_and_pred, instantiated_vars, semantic_mapping, visited_nodes, true, true);
+					found_at = recursive_context_dependency_checking(target, context_node, inactive_ctx_predicates, instantiated_vars, semantic_mapping, visited_nodes, true, true);
 
 					visited_nodes.push_back(target);
 				}
@@ -253,7 +251,7 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 		} else {
 			visited_nodes.push_back(current_node);
 
-			return recursive_context_dependency_checking(mission_decomposition[current_node].parent, context_node, var_and_pred, instantiated_vars, semantic_mapping, visited_nodes, false, is_sequential);
+			return recursive_context_dependency_checking(mission_decomposition[current_node].parent, context_node, inactive_ctx_predicates, instantiated_vars, semantic_mapping, visited_nodes, false, is_sequential);
 		}
 	} else if(mission_decomposition[current_node].node_type == ATASK) {
 		AbstractTask at = std::get<AbstractTask>(mission_decomposition[current_node].content);
@@ -287,23 +285,9 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 			vector<ground_literal> world_state_copy = world_state;
 			update_world_state(world_state_copy, path, at); //Is this a MissionDecomposer method?
 
-			/*
-				Build a ground literal from the predicate definition
-			*/
-			ground_literal context_pred;
-			context_pred.predicate = var_and_pred.second.second.name;
-			string var_name = std::get<string>(instantiated_vars[var_and_pred.second.first]);
-			context_pred.args.push_back(var_name);
-			context_pred.positive = var_and_pred.first;
+			vector<pair<ground_literal,variant<int,float>>> world_state_functions_copy; //Empty for now
 
-			for(ground_literal state : world_state_copy) {
-				bool same_predicate = is_same_predicate(state, context_pred);
-
-				if(same_predicate && (context_pred.positive == state.positive)) {
-					context_satisfied = true;
-					break;
-				}
-			}
+			context_satisfied = inactive_ctx_predicates->evaluate_expression(world_state_copy, world_state_functions_copy);
 
 			//If context is satisfied, insert a ContextDependency edge
 			if(context_satisfied && !is_sequential) {
@@ -803,7 +787,22 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 				context = std::get<Context>(gm_node.custom_props[context_prop]);
 
 				if(context.get_context_type() == condition_context_type) {
-					active_context = check_context(context, world_state, semantic_mapping, instantiated_vars);
+					//active_context = check_context(context, world_state, semantic_mapping, instantiated_vars);
+					map<string, variant<pair<string,string>,pair<vector<string>,string>>> vars_map;
+
+					map<string, variant<string,vector<string>>>::iterator instantiated_vars_it;
+					for(instantiated_vars_it = instantiated_vars.begin(); instantiated_vars_it != instantiated_vars.end(); ++instantiated_vars_it) {
+						if(holds_alternative<string>(instantiated_vars_it->second)) {
+							string var_type = std::get<pair<string,string>>(gm_vars_map[instantiated_vars_it->first]).second;
+
+							vars_map[instantiated_vars_it->first] = make_pair(std::get<string>(instantiated_vars_it->second),var_type);
+						} else {
+							string var_type = std::get<pair<vector<string>,string>>(gm_vars_map[instantiated_vars_it->first]).second;
+
+							vars_map[instantiated_vars_it->first] = make_pair(std::get<vector<string>>(instantiated_vars_it->second),var_type);
+						}
+					}
+					active_context = context.check_context(world_state, semantic_mapping, vars_map);
 				}
 			}
 
@@ -863,7 +862,22 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 
 				-> Contexts are currently in the format [variable].[attribute]
 			*/
-			bool resolved_context = check_context_dependency(parent, node_id, context, instantiated_vars, semantic_mapping);
+			map<string, variant<pair<string,string>,pair<vector<string>,string>>> vars_map;
+
+			map<string, variant<string,vector<string>>>::iterator instantiated_vars_it;
+			for(instantiated_vars_it = instantiated_vars.begin(); instantiated_vars_it != instantiated_vars.end(); ++instantiated_vars_it) {
+				if(holds_alternative<string>(instantiated_vars_it->second)) {
+					string var_type = std::get<pair<string,string>>(gm_vars_map[instantiated_vars_it->first]).second;
+
+					vars_map[instantiated_vars_it->first] = make_pair(std::get<string>(instantiated_vars_it->second),var_type);
+				} else {
+					string var_type = std::get<pair<vector<string>,string>>(gm_vars_map[instantiated_vars_it->first]).second;
+
+					vars_map[instantiated_vars_it->first] = make_pair(std::get<vector<string>>(instantiated_vars_it->second),var_type);
+				}
+			}
+
+			bool resolved_context = check_context_dependency(parent, node_id, context, vars_map, semantic_mapping);
 
 			if(!resolved_context) {
 				string bad_context_err = "COULD NOT RESOLVE CONTEXT FOR NODE: " + gm_node.text;

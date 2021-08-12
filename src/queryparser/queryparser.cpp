@@ -1780,7 +1780,7 @@ yyreduce:
     (yyval.query) = new Query();
     std::vector<std::string> v;
 
-    std::string aux (yyvsp[0].sval);
+    std::string aux = (yyvsp[0].sval);
 
     smatch m;
 
@@ -1839,25 +1839,26 @@ yyreduce:
                 op = ocl_leq[0];
             }
 
-            aux = aux.substr(aux.find(op)+1);
-            std::regex_search(aux,m,e3);
+            string var = aux.substr(0,aux.find(op));
+            std::regex_search(var,m,e3);
             v.push_back(m[0]);
 
             string op_str(1, op);
             v.push_back(op_str);
             
-            std::regex_search(aux,m,num);
+            string number = aux.substr(aux.find(op)+1);
+            std::regex_search(number,m,num);
             v.push_back(m[0]);
         }
     }
 
     (yyval.query)->query = v;
 }
-#line 1857 "src/queryparser/queryparser.cpp"
+#line 1858 "src/queryparser/queryparser.cpp"
     break;
 
 
-#line 1861 "src/queryparser/queryparser.cpp"
+#line 1862 "src/queryparser/queryparser.cpp"
 
         default: break;
       }
@@ -2098,7 +2099,7 @@ yyreturn:
   return yyresult;
 }
 
-#line 176 "src/queryparser/queryparser.y"
+#line 177 "src/queryparser/queryparser.y"
 
 
 void set_input_query(const char* in);

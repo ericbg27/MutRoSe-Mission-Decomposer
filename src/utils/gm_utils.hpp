@@ -9,6 +9,7 @@
 
 #include "condition.hpp"
 #include "query.hpp"
+#include "../contextmanager/contextmanager.hpp"
 
 //************************************************* CONSTANTS DECLARATION **********************************************************
 const std::string goal_type_prop = "GoalType";
@@ -88,6 +89,8 @@ IterationRule parse_iterate_expr(std::string expr);
 AchieveCondition parse_achieve_condition(std::string cond);
 
 QueriedProperty parse_select_expr(std::string expr);
+
+Context parse_context_condition(std::string condition);
 
 std::string get_node_name(std::string node_text);
 std::string parse_gm_var_type(std::string var_type);

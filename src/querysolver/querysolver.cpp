@@ -1,6 +1,7 @@
 #include "querysolver.hpp"
 
 #include <regex>
+#include <iostream>
 
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>

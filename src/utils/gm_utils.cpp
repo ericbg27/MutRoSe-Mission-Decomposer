@@ -41,12 +41,12 @@ void AchieveCondition::set_iteration_var(std::string itvar) {
 
 ConditionEvaluation* AchieveCondition::evaluate_condition(vector<SemanticMapping> semantic_mapping, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
     if(has_forAll_expr) {
-        string iteration_var_type;
+        /*string iteration_var_type;
         if(holds_alternative<pair<string,string>>(gm_var_map[iteration_var])) { // For now, the only valid condition
             iteration_var_type = std::get<pair<string,string>>(gm_var_map[iteration_var]).second;
         }
 
-        vector<string> iterated_var_values = std::get<pair<vector<string>,string>>(gm_var_map[iterated_var]).first;
+        vector<string> iterated_var_values = std::get<pair<vector<string>,string>>(gm_var_map[iterated_var]).first;*/
 
         string var_attr_regex = "([!]?[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}";
         string var_attr_regex2 = "(((\\bnot\\b)[ ]+){1}[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}";
@@ -55,31 +55,10 @@ ConditionEvaluation* AchieveCondition::evaluate_condition(vector<SemanticMapping
 
         set<string> accepted_regex_patterns = {var_attr_regex, var_attr_regex2, number_compare_regex, number_compare_regex2};
 
-        ConditionEvaluation* evaluation = Condition::evaluate_condition(make_pair(iterated_var_values,iteration_var_type), semantic_mapping, accepted_regex_patterns);
+        ConditionEvaluation* evaluation = Condition::evaluate_condition(gm_var_map, semantic_mapping, accepted_regex_patterns);
 
         return evaluation;
     } else {
-        string cond = std::get<string>(condition);
-
-        std::replace(cond.begin(), cond.end(), '.', ' ');
-
-        vector<string> split_cond;
-                                
-        stringstream ss(cond);
-        string temp;
-        while(ss >> temp) {
-            split_cond.push_back(temp);
-        }
-
-        string variable;
-        if(split_cond.at(0) == "not") {
-            variable = split_cond.at(1);
-        } else {
-            variable = split_cond.at(0);
-        }
-
-        variant<pair<string,string>,pair<vector<string>,string>> var_value_and_type = get_var_value_and_type(gm_var_map, variable);
-
         string var_attr_regex = "([!]?[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}";
         string var_attr_regex2 = "(((\\bnot\\b)[ ]+){1}[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}";
         string number_compare_regex = "[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+([0-9]*[.])?[0-9]+){1}"; 
@@ -87,7 +66,7 @@ ConditionEvaluation* AchieveCondition::evaluate_condition(vector<SemanticMapping
 
         set<string> accepted_regex_patterns = {var_attr_regex, var_attr_regex2, number_compare_regex, number_compare_regex2};
 
-        ConditionEvaluation* evaluation = Condition::evaluate_condition(var_value_and_type,semantic_mapping, accepted_regex_patterns);
+        ConditionEvaluation* evaluation = Condition::evaluate_condition(gm_var_map,semantic_mapping, accepted_regex_patterns);
 
         return evaluation;
     }
@@ -122,6 +101,7 @@ AchieveCondition parse_achieve_condition(string cond) {
         parse_condition(cond.c_str());
 
         a.set_condition(parsed_condition->get_condition());
+        a.set_is_and(parsed_condition->get_is_and());
     }
 
     return a;
@@ -231,6 +211,29 @@ QueriedProperty parse_select_expr(string expr) {
     }
 
     return q;
+}
+
+Context parse_context_condition(string condition) {
+    Context c;
+    size_t pos1 = condition.find('\"');
+    size_t pos2 = condition.find('\"',pos1+1);
+    string cond = condition.substr(pos1+1,pos2); 
+
+    string aux = condition;
+    std::transform(aux.begin(),aux.end(),aux.begin(),::tolower);  
+    if(aux.find(trigger_context_type) != string::npos) {
+        c.set_context_type(trigger_context_type);
+        c.set_condition(cond.substr(0,cond.size()-1));
+    } else if(aux.find(condition_context_type) != string::npos) {
+        c.set_context_type(condition_context_type);
+
+        parse_condition(cond.substr(0,cond.size()-1).c_str());
+
+        c.set_condition(parsed_condition->get_condition());
+        c.set_is_and(parsed_condition->get_is_and());
+    }
+
+    return c;
 }
 
 /*

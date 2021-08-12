@@ -199,19 +199,8 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
         } else if(cp_it->first == controls_prop || cp_it->first == monitors_prop) {
             v.custom_props[cp_it->first] = parse_vars(cp_it->second);
         } else if(cp_it->first == context_prop) {
-            Context c;
-            size_t pos1 = cp_it->second.find('\"');
-            size_t pos2 = cp_it->second.find('\"',pos1+1);
-            string cond = cp_it->second.substr(pos1+1,pos2);
-            c.set_condition(cond.substr(0,cond.size()-1)); 
-
-            string aux = cp_it->second;
-            std::transform(aux.begin(),aux.end(),aux.begin(),::tolower);  
-            if(aux.find(trigger_context_type) != string::npos) {
-                c.set_context_type(trigger_context_type);
-            } else if(aux.find(condition_context_type) != string::npos) {
-                c.set_context_type(condition_context_type);
-            }
+            Context c = parse_context_condition(cp_it->second);
+            
             v.custom_props[cp_it->first] = c;
         } else if(cp_it->first == location_prop) {
             v.custom_props[cp_it->first] = cp_it->second;

@@ -100,7 +100,7 @@ name-no-pt: STRNAME {
     $$ = new Query();
     std::vector<std::string> v;
 
-    std::string aux $1;
+    std::string aux = $1;
 
     smatch m;
 
@@ -159,14 +159,15 @@ name-no-pt: STRNAME {
                 op = ocl_leq[0];
             }
 
-            aux = aux.substr(aux.find(op)+1);
-            std::regex_search(aux,m,e3);
+            string var = aux.substr(0,aux.find(op));
+            std::regex_search(var,m,e3);
             v.push_back(m[0]);
 
             string op_str(1, op);
             v.push_back(op_str);
             
-            std::regex_search(aux,m,num);
+            string number = aux.substr(aux.find(op)+1);
+            std::regex_search(number,m,num);
             v.push_back(m[0]);
         }
     }
