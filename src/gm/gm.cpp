@@ -313,6 +313,8 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
 vector<pair<int,VertexData>> parse_gm_nodes(pt::ptree nodes) {
     vector<pair<int,VertexData>> vertex;
 
+    set<int> goal_ids, task_ids;
+
     int cnt = 0;
     BOOST_FOREACH(pt::ptree::value_type& node, nodes) {
         VertexData v;
@@ -340,6 +342,24 @@ vector<pair<int,VertexData>> parse_gm_nodes(pt::ptree nodes) {
             stringstream ss(m[0]);
             int id = 0;
             ss >> id;
+
+            if(v.type == istar_goal) {
+                if(goal_ids.find(id) != goal_ids.end()) {
+                    string repeated_goal_id_error = "Goal with ID G" + to_string(id) + " was declared twice";
+
+                    throw std::runtime_error(repeated_goal_id_error);
+                } else {
+                    goal_ids.insert(id);
+                }
+            } else {
+                if(task_ids.find(id) != task_ids.end()) {
+                    string repeated_task_id_error = "Task with ID AT" + to_string(id) + " was declared twice";
+
+                    throw std::runtime_error(repeated_task_id_error);
+                } else {
+                    task_ids.insert(id);
+                }
+            }
 
             vertex.push_back(make_pair(id,v));
         } else {
