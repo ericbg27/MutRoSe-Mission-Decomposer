@@ -14,7 +14,7 @@
 
 class ValidMissionGenerator {
     public:
-        ValidMissionGenerator(ATGraph md, GMGraph g, std::vector<Constraint> mc, std::vector<ground_literal> ws, std::vector<std::pair<ground_literal,std::variant<int,float>>> wsf, std::vector<SemanticMapping> sm, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gmvmap, bool verb, std::set<std::string> r_srts);
+        ValidMissionGenerator(ATGraph md, GMGraph g, std::vector<Constraint> mc, std::vector<ground_literal> ws, std::vector<std::pair<ground_literal,std::variant<int,float>>> wsf, std::vector<SemanticMapping> sm, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gmvmap, bool verb, std::set<std::string> r_srts, bool pretty);
 
         std::pair<std::vector<std::vector<std::pair<int,ATNode>>>,std::set<Decomposition>> generate_valid_mission_decompositions();
 
@@ -39,6 +39,7 @@ class ValidMissionGenerator {
 
     private:
         bool verbose;
+        bool pretty_print;
         ATGraph mission_decomposition;
         GMGraph gm;
         std::set<Decomposition> expanded_decompositions;
