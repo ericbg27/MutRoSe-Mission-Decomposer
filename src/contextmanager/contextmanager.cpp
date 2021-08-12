@@ -22,30 +22,58 @@ void Context::set_context_type(string tp) {
 	@ Input 4: The map of OCL goal model instantiated variables
     @ Output: A boolean value indicating if the context is true or not
 */
-bool check_context(Context context, vector<ground_literal> world_state, vector<SemanticMapping> semantic_mapping,
-					map<string, variant<string,vector<string>>> instantiated_vars) {
-	pair<bool,pair<string,predicate_definition>> var_and_pred = get_pred_from_context(context, semantic_mapping);
-
-	var_and_pred.second.first = get<string>(instantiated_vars[var_and_pred.second.first]);
-
+bool Context::check_context(vector<ground_literal> world_state, vector<SemanticMapping> semantic_mapping, map<string, variant<pair<string,string>,pair<vector<string>,string>>> var_maps) {	
 	bool is_active = false;
-	for(ground_literal state : world_state) {
-		if(state.predicate == var_and_pred.second.second.name) {
-			if(state.args.size() == 1) { //We have an attribute of one variable only
-				if(state.args.at(0) == var_and_pred.second.first) {
-					if(state.positive == var_and_pred.first) {
-						is_active = true;
+	/*if(holds_alternative<string>(condition)) { // This probably isn't possible
+		//pair<bool,pair<string,predicate_definition>> var_and_pred = get_pred_from_context(std::get<string>(condition), semantic_mapping);
 
-						break;
+		var_and_pred.second.first = std::get<pair<string,string>>(var_maps[var_and_pred.second.first]).first;
+		
+		for(ground_literal state : world_state) {
+			if(state.predicate == var_and_pred.second.second.name) {
+				if(state.args.size() == 1) { //We have an attribute of one variable only
+					if(state.args.at(0) == var_and_pred.second.first) {
+						if(state.positive == var_and_pred.first) {
+							is_active = true;
+
+							break;
+						}
 					}
 				}
 			}
 		}
-	}
+	} else {
+		//TODO
+	}*/
+
+	string var_attr_regex = "([!]?[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}";
+	string var_attr_regex2 = "(((\\bnot\\b)[ ]+){1}[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}";
+
+	set<string> accepted_regex_patterns = {var_attr_regex, var_attr_regex2};
+
+	ConditionEvaluation* evaluation = Condition::evaluate_condition(var_maps, semantic_mapping, accepted_regex_patterns);
+	ConditionExpression* eval_result = evaluation->get_evaluation_predicates();
+
+	vector<pair<ground_literal,variant<int,float>>> world_state_functions; // Empty for now
+
+	is_active = eval_result->evaluate_expression(world_state, world_state_functions);
 
 	return is_active;
 }
 
+ConditionExpression* Context::get_inactive_predicates(map<string, variant<pair<string,string>,pair<vector<string>,string>>> var_maps, pred_vector world_state, vector<SemanticMapping> semantic_mapping) {
+	string var_attr_regex = "([!]?[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}";
+	string var_attr_regex2 = "(((\\bnot\\b)[ ]+){1}[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}";
+
+	set<string> accepted_regex_patterns = {var_attr_regex, var_attr_regex2};
+
+	ConditionEvaluation* evaluation = Condition::evaluate_condition(var_maps, semantic_mapping, accepted_regex_patterns);
+	ConditionExpression* eval_result = evaluation->get_evaluation_predicates();
+
+	vector<pair<ground_literal,variant<int,float>>> world_state_functions; // Empty for now
+
+	return eval_result->check_non_active_predicates(world_state, world_state_functions, semantic_mapping);
+}
 /*
     Function: get_pred_from_context
     Objective: Return a predicate definition from a context based on the existing semantic mappings
@@ -66,7 +94,7 @@ pair<bool,pair<string,predicate_definition>> get_pred_from_context(Context conte
 	bool positive = true;
 
 	if(context.get_context_type() == condition_context_type) {
-		string condition = context.get_condition();
+		string condition = std::get<string>(context.get_condition());
 		string attr;
 
 		if(condition.find("!") != std::string::npos || condition.find("not") != std::string::npos) {
@@ -104,7 +132,8 @@ pair<bool,pair<string,predicate_definition>> get_pred_from_context(Context conte
 		}
 
 		if(!found_pred || var == " " || attr == " ") {
-			std::string predicate_not_found_err = "Could not build predicate from context: " + context.get_condition();
+			std::string predicate_not_found_err = "Could not build predicate from context: " + condition;
+			
 			throw std::runtime_error(predicate_not_found_err);
 		}
 	}
