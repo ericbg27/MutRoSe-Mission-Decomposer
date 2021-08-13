@@ -913,7 +913,6 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 					}
 					child_index++;
 				}
-				child_index++;
 			} else {
 				if(is_achieve) {
 					pair<vector<string>,string> var_map = std::get<pair<vector<string>,string>>(gm_vars_map[iterated_var.first]);
@@ -929,6 +928,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 					} else {
 						recursive_at_graph_build(node_id, child, non_coop, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
 					}
+					child_index++;
 				}
 			}
 		} else {

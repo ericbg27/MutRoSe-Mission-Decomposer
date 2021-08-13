@@ -443,21 +443,37 @@ pair<string,string> parse_goal_text(string text) {
     @ Input: The string representing the text of the RobotNumber attribute in the form "[n1,n2]"
     @ Output: A pair representing the lower and upper bounds
 */ 
-pair<int,int> parse_robot_number(string text) {
-    size_t begin, sep, end;
+variant<int,pair<int,int>> parse_robot_number(string text) {
+    regex robot_num_range("\\[\\d+,\\d+\\]");
+    regex robot_num_fixed("\\d+");
 
-    begin = text.find("[");
-    sep = text.find(",");
-    end = text.find("]");
+    if(std::regex_match(text,robot_num_range)) {
+        size_t begin, sep, end;
 
-    int lower_bound, upper_bound;
+        begin = text.find("[");
+        sep = text.find(",");
+        end = text.find("]");
 
-    stringstream ss;
-    ss << text.substr(begin+1,sep);
-    ss >> lower_bound;
-    ss.str("");
-    ss << text.substr(sep+1,end-sep-1);
-    ss >> upper_bound;
+        int lower_bound, upper_bound;
 
-    return make_pair(lower_bound, upper_bound);
+        stringstream ss;
+        ss << text.substr(begin+1,sep);
+        ss >> lower_bound;
+        ss.str("");
+        ss << text.substr(sep+1,end-sep-1);
+        ss >> upper_bound;
+
+        return make_pair(lower_bound, upper_bound);
+    } else if(std::regex_match(text,robot_num_fixed)) {
+        stringstream ss(text);
+
+        int robot_num;
+        ss >> robot_num;
+
+        return robot_num;
+    } else {
+        string invalid_robot_num_err = "Invalid declaration of robot number: " + text;
+
+        throw std::runtime_error(invalid_robot_num_err);
+    }
 }
