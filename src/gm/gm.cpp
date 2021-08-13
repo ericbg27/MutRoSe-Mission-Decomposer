@@ -191,22 +191,46 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
         } else if(cp_it->first == "Group") {
             string aux = cp_it->second;
             transform(aux.begin(), aux.end(), aux.begin(), ::tolower);
-            istringstream(aux) >> std::boolalpha >> v.group;
+            if(aux == "true" || aux == "false") {
+                istringstream(aux) >> std::boolalpha >> v.group;
+            } else {
+                v.group = true;
+            }
         } else if(cp_it->first == "Divisible") {
             string aux = cp_it->second;
             transform(aux.begin(), aux.end(), aux.begin(), ::tolower);
-            istringstream(aux) >> std::boolalpha >> v.divisible;
+            if(aux == "true" || aux == "false") {
+                istringstream(aux) >> std::boolalpha >> v.divisible;
+            } else {
+                v.divisible = true;
+            }
         } else if(cp_it->first == controls_prop || cp_it->first == monitors_prop) {
-            v.custom_props[cp_it->first] = parse_vars(cp_it->second);
+            boost::trim(cp_it->second);
+            if(cp_it->second != "") {
+                v.custom_props[cp_it->first] = parse_vars(cp_it->second);
+            }
         } else if(cp_it->first == context_prop) {
             Context c = parse_context_condition(cp_it->second);
             
             v.custom_props[cp_it->first] = c;
         } else if(cp_it->first == location_prop) {
-            v.custom_props[cp_it->first] = cp_it->second;
+            boost::trim(cp_it->second);
+            if(cp_it->second != "") {
+                v.custom_props[cp_it->first] = cp_it->second;
+            }
         } else if(cp_it->first == robot_number_prop) {
-            v.fixed_robot_num = false;
-            v.robot_num = parse_robot_number(cp_it->second);
+            boost::trim(cp_it->second);
+            if(cp_it->second != "") {
+                v.robot_num = parse_robot_number(cp_it->second);
+
+                if(holds_alternative<int>(v.robot_num)) {
+                    v.fixed_robot_num = true;
+                } else {
+                    v.fixed_robot_num = false;
+                }
+
+                v.custom_props[robot_number_prop] = cp_it->second;
+            }
         } else if(cp_it->first == params_prop) {
             vector<string> params;
 
@@ -433,7 +457,7 @@ void check_undefined_number_of_robots(GMGraph& gm, vector<task> abstract_tasks, 
 
     for(int gm_index = 0;gm_index < graph_size;gm_index++) {
         VertexData vertex = gm[gm_index];
-        if(vertex.type == istar_task && vertex.fixed_robot_num) {
+        if(vertex.type == istar_task && vertex.custom_props.find(robot_number_prop) == vertex.custom_props.end()) {
             pair<string,string> at_id_name = parse_at_text(vertex.text);
 
             int robot_number = 0;

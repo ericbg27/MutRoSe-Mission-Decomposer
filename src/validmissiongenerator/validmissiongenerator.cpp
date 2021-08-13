@@ -667,7 +667,9 @@ void ValidMissionGenerator::check_parallel_op_children(queue<pair<int,ATNode>>& 
         }
     }
 
-    solve_conflicts(children_effects);
+    if(!is_or) {
+        solve_conflicts(children_effects);
+    }
 }
 
 void ValidMissionGenerator::check_fallback_op_children(queue<pair<int,ATNode>>& mission_queue, map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>>& children_effects, int depth, pair<int,ATNode> current_node) {
@@ -742,7 +744,7 @@ void ValidMissionGenerator::check_fallback_op_children(queue<pair<int,ATNode>>& 
 
         if(is_child) {
             map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>> child_effects;
-            child_effects = recursive_valid_mission_decomposition("#", mission_queue, depth, child_effects);
+            child_effects = recursive_valid_mission_decomposition("FALLBACK", mission_queue, depth, child_effects);
 
             map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>>::iterator ceff_it;
             for(ceff_it = child_effects.begin(); ceff_it != child_effects.end(); ++ceff_it) {
