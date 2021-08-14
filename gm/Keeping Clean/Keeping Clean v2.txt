@@ -34,7 +34,7 @@
             "GoalType": "Achieve",
             "Controls": "current_room : Room",
             "Monitors": "rooms",
-            "AchieveCondition": "rooms->forAll(current_room | current_room.staphylococcus = 0)"
+            "AchieveCondition": "rooms->forAll(current_room | current_room.staphylococcus = 0 || current_room.occupied)"
           }
         },
         {
@@ -120,7 +120,8 @@
           "x": 441,
           "y": 455,
           "customProperties": {
-            "Description": ""
+            "Description": "",
+            "Params": "current_room"
           }
         },
         {
@@ -219,7 +220,8 @@
           "y": 382,
           "customProperties": {
             "Description": "",
-            "CreationCondition": "assertion condition \"current_room.occupied\""
+            "CreationCondition": "assertion condition \"current_room.occupied\"",
+            "Monitors": "current_room"
           }
         },
         {

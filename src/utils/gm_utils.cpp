@@ -98,6 +98,7 @@ AchieveCondition parse_achieve_condition(string cond) {
         parse_condition(forAll_vars.at(2).c_str()); //In parser we are considering leading and trailing spaces!
 
         a.set_condition(parsed_condition->get_condition());
+        a.set_is_and(parsed_condition->get_is_and());
     } else {
         parse_condition(cond.c_str());
 

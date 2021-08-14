@@ -103,6 +103,7 @@ vector<Constraint> ConstraintManager::generate_mission_constraints() {
     @ Output: The vector with all of the mission constraints
 */
 void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decomposition) {
+    print_mission_decomposition(trimmed_mission_decomposition);
     stack<pair<int,ATNode>> operators_stack;
     stack<variant<pair<int,ATNode>,Constraint>> nodes_stack;
 
@@ -154,7 +155,6 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
         } else if(current_node.second.parent == current_root_node.first && current_node_index != depth_first_nodes.at(current_root_node.second) && !holds_alternative<AbstractTask>(current_node.second.content)) {
             pair<int,ATNode> artificial_node;
             artificial_node.first = -1;
-
             current_branch_nodes_stack.push(artificial_node);
 
             current_root_node.first = current_node.first;
@@ -180,7 +180,7 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
 
         if(current_node.second.node_type == ATASK) {
             current_branch_nodes_stack.push(current_node);
-        
+            
             if(current_branch_operators_stack.size() > 0 && current_branch_nodes_stack.size() >= 2) {
                 bool new_branch = false;
                 
@@ -774,16 +774,25 @@ void ConstraintManager::generate_seq_constraints(map<int,set<int>>& existing_con
 
             -> If we create a constraint with another constraint, we just need to create with the second involved task
         */
-        pair<int,ATNode> last_task = std::get<pair<int,ATNode>>(current_branch_nodes_stack.top());
+        pair<int,ATNode> last_task = std::get<pair<int,ATNode>>(current_branch_nodes_stack.top()); 
         current_branch_nodes_stack.pop();
 
         Constraint new_constraint;
-        Constraint last_constraint = std::get<Constraint>(current_branch_nodes_stack.top());
+        if(holds_alternative<Constraint>(current_branch_nodes_stack.top())) {
+            Constraint last_constraint = std::get<Constraint>(current_branch_nodes_stack.top()); //PROBLEM!
 
-        new_constraint = generate_constraint(last_constraint.nodes_involved.second,last_task, SEQ);
+            new_constraint = generate_constraint(last_constraint.nodes_involved.second,last_task, SEQ);
 
-        current_branch_nodes_stack.push(new_constraint);
-        existing_constraints[last_constraint.nodes_involved.second.first].insert(last_task.first);
+            current_branch_nodes_stack.push(new_constraint);
+            existing_constraints[last_constraint.nodes_involved.second.first].insert(last_task.first);
+        } else { //CHECK
+            pair<int,ATNode> t = std::get<pair<int,ATNode>>(current_branch_nodes_stack.top());
+
+            new_constraint = generate_constraint(t, last_task, SEQ);
+
+            current_branch_nodes_stack.push(new_constraint);
+            existing_constraints[t.first].insert(last_task.first);
+        }
     } else if(last_op == fallback_op) {
         /*
             If the last operator was a fallback, we need to create constraints with all of the constraints (and their tasks) until we reach an artificial
