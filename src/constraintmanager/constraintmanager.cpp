@@ -103,7 +103,6 @@ vector<Constraint> ConstraintManager::generate_mission_constraints() {
     @ Output: The vector with all of the mission constraints
 */
 void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decomposition) {
-    print_mission_decomposition(trimmed_mission_decomposition);
     stack<pair<int,ATNode>> operators_stack;
     stack<variant<pair<int,ATNode>,Constraint>> nodes_stack;
 
@@ -133,6 +132,10 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
         int current_node_index = dfs_node_index;
 
         pair<int,ATNode> current_node = make_pair(current_node_index, trimmed_mission_decomposition[current_node_index]);
+
+        if(trimmed_mission_decomposition[current_node.second.parent].is_achieve_type) {
+            last_op = "";
+        }
 
         if(current_node.second.parent == depth_first_nodes.at(0)) {
             pair<int,ATNode> artificial_node;
@@ -785,13 +788,6 @@ void ConstraintManager::generate_seq_constraints(map<int,set<int>>& existing_con
 
             current_branch_nodes_stack.push(new_constraint);
             existing_constraints[last_constraint.nodes_involved.second.first].insert(last_task.first);
-        } else { //CHECK
-            pair<int,ATNode> t = std::get<pair<int,ATNode>>(current_branch_nodes_stack.top());
-
-            new_constraint = generate_constraint(t, last_task, SEQ);
-
-            current_branch_nodes_stack.push(new_constraint);
-            existing_constraints[t.first].insert(last_task.first);
         }
     } else if(last_op == fallback_op) {
         /*

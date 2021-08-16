@@ -2,7 +2,7 @@
     "world_db": {
         "type": "file",
         "file_type": "xml",
-        "path": "knowledge/Keeping Clean/world_knowledge.xml",
+        "path": "knowledge/Keeping Clean/world_knowledge2.xml",
         "xml_root": "world_db"
     },
 

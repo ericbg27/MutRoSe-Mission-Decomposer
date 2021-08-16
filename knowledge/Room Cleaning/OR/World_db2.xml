@@ -7,7 +7,7 @@
     <Room>
         <name>RoomB</name>
         <is_clean>False</is_clean>
-        <is_occupied>False</is_occupied>
+        <is_occupied>True</is_occupied>
     </Room>
     <Room>
         <name>RoomC</name>
