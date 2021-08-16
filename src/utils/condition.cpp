@@ -499,6 +499,10 @@ ConditionExpression* ConditionEvaluation::get_evaluation_predicates() {
     return empty_expr;
 }
 
+ConditionEvaluation::ConditionEvaluation() {
+    this->is_and = true;
+}
+
 void ConditionEvaluation::set_evaluation(variant<pair<pair<predicate_definition,vector<string>>,variant<pair<variant<int,float>,variant<bool,string>>,bool>>,bool,pair<ConditionEvaluation*,ConditionEvaluation*>> eval) {
     evaluation = eval;
 }
@@ -513,6 +517,10 @@ void ConditionEvaluation::set_is_and(bool a) {
 
 bool ConditionEvaluation::get_is_and() {
     return is_and;
+}
+
+Condition::Condition() {
+    this->is_and = true;
 }
 
 void Condition::set_condition(variant<string,pair<Condition*,Condition*>> cond) {

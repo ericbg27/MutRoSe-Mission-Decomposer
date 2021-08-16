@@ -38,6 +38,8 @@ struct ConditionExpression {
 
 class ConditionEvaluation {
     public:
+        ConditionEvaluation();
+
         ConditionExpression* get_evaluation_predicates();
 
         void set_evaluation(std::variant<std::pair<std::pair<predicate_definition,std::vector<std::string>>,std::variant<std::pair<std::variant<int,float>,std::variant<bool,std::string>>,bool>>,bool,pair<ConditionEvaluation*,ConditionEvaluation*>> eval);
@@ -53,6 +55,8 @@ class ConditionEvaluation {
 
 class Condition {
     public:
+        Condition();
+
         std::variant<std::string,std::pair<Condition*,Condition*>> get_condition();
         bool get_is_and();
 

@@ -44,7 +44,7 @@
             "GoalType": "Achieve",
             "Controls": "current_room : Room",
             "Monitors": "rooms",
-            "AchieveCondition": "rooms->forAll(current_room | current_room.is_clean)"
+            "AchieveCondition": "rooms->forAll(current_room | current_room.is_clean || current_room.is_occupied)"
           }
         },
         {

@@ -53,7 +53,7 @@
           "customProperties": {
             "Description": "",
             "GoalType": "Achieve",
-            "AchieveCondition": "rooms->forAll(current_room | current_room.is_prepared)",
+            "AchieveCondition": "rooms->forAll(current_room | current_room.is_prepared && current_room.is_clean)",
             "Monitors": "rooms : Sequence(Room)",
             "Controls": "current_room : Room"
           }

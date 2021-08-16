@@ -2,7 +2,7 @@
     "world_db": {
         "type": "file",
         "file_type": "xml",
-        "path": "knowledge/Keeping Clean/world_knowledge.xml",
+        "path": "knowledge/Keeping Clean/world_knowledge2.xml",
         "xml_root": "world_db"
     },
 
@@ -28,6 +28,15 @@
                 {
                     "gm_var": "equipment_room",
                     "hddl_var": "?eqrm"
+                }
+            ]
+        },
+        {
+            "task_id": "AT2",
+            "map": [
+                {
+                    "gm_var": "current_room",
+                    "hddl_var": "?rm"
                 }
             ]
         },
