@@ -27,7 +27,7 @@ class MissionDecomposer {
         virtual ATGraph build_at_graph(std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_vars_map, 
                                             std::vector<SemanticMapping> semantic_mapping) = 0;
         
-        virtual void recursive_at_graph_build(int parent, general_annot* rannot, bool non_coop, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_vars_map, 
+        virtual void recursive_at_graph_build(int parent, general_annot* rannot, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_vars_map, 
                                                 pt::ptree world_db, std::vector<SemanticMapping> semantic_mapping, std::map<std::string, std::variant<std::string,std::vector<std::string>>> instantiated_vars) = 0;
         void final_context_dependency_links_generation();
 
@@ -77,7 +77,7 @@ class FileKnowledgeMissionDecomposer : public MissionDecomposer {
         ATGraph build_at_graph(std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_vars_map, 
                                             std::vector<SemanticMapping> semantic_mapping);
         
-        void recursive_at_graph_build(int parent, general_annot* rannot, bool non_coop, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_vars_map, 
+        void recursive_at_graph_build(int parent, general_annot* rannot, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_vars_map, 
                                                 pt::ptree world_db, std::vector<SemanticMapping> semantic_mapping, std::map<std::string, std::variant<std::string,std::vector<std::string>>> instantiated_vars);
         void set_fk_manager(FileKnowledgeManager* manager);
 
