@@ -70,7 +70,6 @@ void MissionDecomposer::final_context_dependency_links_generation() {
 				vector<int> vctr = vis.GetVector();
 
 				int current_node = vctr.at(0);
-				vctr.erase(vctr.begin());
 
 				while(current_node != 0) {
 					if(mission_decomposition[current_node].node_type == ATASK) {
@@ -80,6 +79,10 @@ void MissionDecomposer::final_context_dependency_links_generation() {
 						cd_edge.target = current_node;
 						
 						boost::add_edge(boost::vertex(source, mission_decomposition), boost::vertex(current_node, mission_decomposition), cd_edge, mission_decomposition);
+					}
+
+					if(vctr.size() == 0) {
+						break;
 					}
 
 					current_node = vctr.at(0);
@@ -176,9 +179,8 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 	}
 
 	if(mission_decomposition[current_node].node_type == GOALNODE) {
-		int node_gm_id = find_gm_node_by_id(std::get<string>(mission_decomposition[current_node].content), gm);
-
 		bool found_at = false;
+
 		ATGraph::out_edge_iterator ei, ei_end;
 		for(boost::tie(ei,ei_end) = out_edges(current_node,mission_decomposition);ei != ei_end;++ei) {
 			int target = boost::target(*ei,mission_decomposition);
@@ -304,7 +306,7 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 
 				//For now we create the dependency between the first AT that satisfies its context
 				found_at = true;
-			} else if(context_satisfied && is_sequential) {
+			} else if(context_satisfied && is_sequential) { // Can this happen?
 				if(verbose) {
 					cout << "Context satisfied with task " << std::get<Decomposition>(mission_decomposition[d_id].content).id << ": " << at.name << endl;
 				}
@@ -665,7 +667,7 @@ ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string, variant<pair<
         world_db = xml_base->get_knowledge();
     }
 
-	recursive_at_graph_build(-1, gmannot, false, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
+	recursive_at_graph_build(-1, gmannot, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
 
 	final_context_dependency_links_generation();
 
@@ -690,7 +692,7 @@ ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string, variant<pair<
 				aux = mission_decomposition[goal];
 
 				aux.node_type = OP;
-				aux.content = "#";
+				aux.content = parallel_op;
 
 				int aux_id = boost::add_vertex(aux, mission_decomposition);
 				
@@ -699,7 +701,7 @@ ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string, variant<pair<
 				for(boost::tie(ei,ei_end) = out_edges(parent,mission_decomposition);ei != ei_end;++ei) {
 					ATEdge e = mission_decomposition[*ei];
 
-					if(e.target == goal && (e.edge_type == NORMALAND || e.edge_type == NORMALOR)) {
+					if(e.target == static_cast<int>(goal) && (e.edge_type == NORMALAND || e.edge_type == NORMALOR)) {
 						auto edge = boost::edge(parent,goal,mission_decomposition).first;
 
 						boost::remove_edge(edge, mission_decomposition);
@@ -727,7 +729,7 @@ ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string, variant<pair<
 				aux = mission_decomposition[goal];
 
 				aux.node_type = OP;
-				aux.content = "#";
+				aux.content = parallel_op;
 
 				int aux_id = boost::add_vertex(aux, mission_decomposition);
 
@@ -754,14 +756,13 @@ ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string, variant<pair<
 
 	@ Input 1: The ID of the parent of the current node
 	@ Input 2: The current node annotation object
-	@ Input 3: A boolean flag indicating if the current node is involved in execution constraints
-	@ Input 4: The map between OCL goal model variables and HDDL variables
-	@ Input 5: The world knowledge as a ptree object
-	@ Input 6: The semantic mappings vector
-	@ Input 7: A map of the instantiated OCL variables at this level of the recursion
+	@ Input 3: The map between OCL goal model variables and HDDL variables
+	@ Input 4: The world knowledge as a ptree object
+	@ Input 5: The semantic mappings vector
+	@ Input 6: A map of the instantiated OCL variables at this level of the recursion
     @ Output: Void. The ATGraph object is built
 */
-void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, general_annot* rannot, bool non_coop, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_vars_map, 
+void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, general_annot* rannot, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_vars_map, 
                                                 				pt::ptree world_db, vector<SemanticMapping> semantic_mapping, map<string, variant<string,vector<string>>> instantiated_vars) {
 	ATNode node;
 	int node_id;
@@ -787,7 +788,6 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 				context = std::get<Context>(gm_node.custom_props[context_prop]);
 
 				if(context.get_context_type() == condition_context_type) {
-					//active_context = check_context(context, world_state, semantic_mapping, instantiated_vars);
 					map<string, variant<pair<string,string>,pair<vector<string>,string>>> vars_map;
 
 					map<string, variant<string,vector<string>>>::iterator instantiated_vars_it;
@@ -859,8 +859,6 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 				This will happen in two cases:
 					- If we have a wrong model
 					- If we have a parallel decomposition which is not completely parallel since we have a context dependency
-
-				-> Contexts are currently in the format [variable].[attribute]
 			*/
 			map<string, variant<pair<string,string>,pair<vector<string>,string>>> vars_map;
 
@@ -880,24 +878,9 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 			bool resolved_context = check_context_dependency(parent, node_id, context, vars_map, semantic_mapping);
 
 			active_context = resolved_context;
-
-			/*if(!resolved_context) {
-				string bad_context_err = "COULD NOT RESOLVE CONTEXT FOR NODE: " + gm_node.text;
-
-				throw std::runtime_error(bad_context_err);
-			}*/
 		}
 
 		if(active_context) {
-			if(!non_coop) {
-				non_coop = node.non_coop;
-			}
-			/*
-				If the node is non cooperative (non-group or non-divisible group) we create non coop links between AT's that are children of it.
-
-				-> We just create these links at the last child AT
-			*/
-			unsigned int child_index = 0;
 			if(is_forAll) {
 				int value_index = 0;
 				for(general_annot* child : rannot->children) {
@@ -906,29 +889,23 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 					instantiated_vars[iteration_var.first] = var_map.first.at(value_index);
 					value_index++;
 
-					if(child_index < rannot->children.size()-1) {
-						recursive_at_graph_build(node_id, child, false, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
-					} else {
-						recursive_at_graph_build(node_id, child, non_coop, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
-					}
-					child_index++;
+					recursive_at_graph_build(node_id, child, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
 				}
 			} else {
 				if(is_achieve) {
-					pair<vector<string>,string> var_map = std::get<pair<vector<string>,string>>(gm_vars_map[iterated_var.first]);
+					if(gm_vars_map.find(iterated_var.first) != gm_vars_map.end()) {
+						if(holds_alternative<pair<vector<string>,string>>(gm_vars_map[iterated_var.first])) {
+							pair<vector<string>,string> var_map = std::get<pair<vector<string>,string>>(gm_vars_map[iterated_var.first]);
 
-					if(var_map.first.size() == 1) {
-						instantiated_vars[iteration_var.first] = var_map.first.at(0);
+							if(var_map.first.size() == 1) {
+								instantiated_vars[iteration_var.first] = var_map.first.at(0);
+							}
+						}
 					}
 				}
 
 				for(general_annot* child : rannot->children) {
-					if(child_index < rannot->children.size()-1) {
-						recursive_at_graph_build(node_id, child, false, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
-					} else {
-						recursive_at_graph_build(node_id, child, non_coop, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
-					}
-					child_index++;
+					recursive_at_graph_build(node_id, child, gm_vars_map, world_db, semantic_mapping, instantiated_vars);
 				}
 			}
 		} else {
