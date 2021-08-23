@@ -11,6 +11,7 @@
 #include "../annotmanager/annotmanager.hpp"
 
 std::pair<ATGraph,std::map<int,int>> generate_trimmed_at_graph(ATGraph mission_decomposition);
+ATGraph generate_tree_like_at_graph(ATGraph mission_decomposition);
 
 void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, bool verbose);
 

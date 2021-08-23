@@ -129,6 +129,26 @@ pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decompositi
 							reverse_ids_map[a_node.parent] = source;
 
 							boost::add_edge(boost::vertex(node_id, trimmed_mission_decomposition), boost::vertex(task_id, trimmed_mission_decomposition), e, trimmed_mission_decomposition);
+						
+							ATGraph::out_edge_iterator di, di_end;
+							for(boost::tie(di,di_end) = out_edges(target,mission_decomposition); di != di_end;++di) {
+								auto d_target = boost::target(*di,mission_decomposition);
+								auto d_edge = boost::edge(target,d_target,mission_decomposition);
+
+								ATEdge de = mission_decomposition[d_edge.first];
+								if(de.edge_type != CDEPEND && de.edge_type != NONCOOP) {
+									if(mission_decomposition[d_target].node_type == DECOMPOSITION) {
+										int decomposition_id = boost::add_vertex(mission_decomposition[d_target], trimmed_mission_decomposition);
+
+										reverse_ids_map[decomposition_id] = d_target;
+										ATEdge decomposition_edge = de;
+										decomposition_edge.source = task_id;
+										decomposition_edge.target = decomposition_id;
+
+										boost::add_edge(boost::vertex(task_id, trimmed_mission_decomposition), boost::vertex(decomposition_id, trimmed_mission_decomposition), decomposition_edge, trimmed_mission_decomposition);
+									}
+								}
+							}
 						}
 					}
 				}
@@ -158,6 +178,26 @@ pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decompositi
 							reverse_ids_map[a_node.parent] = source;
 
 							boost::add_edge(boost::vertex(ids_map[parent], trimmed_mission_decomposition), boost::vertex(task_id, trimmed_mission_decomposition), e, trimmed_mission_decomposition);
+
+							ATGraph::out_edge_iterator di, di_end;
+							for(boost::tie(di,di_end) = out_edges(target,mission_decomposition); di != di_end;++di) {
+								auto d_target = boost::target(*di,mission_decomposition);
+								auto d_edge = boost::edge(target,d_target,mission_decomposition);
+
+								ATEdge de = mission_decomposition[d_edge.first];
+								if(de.edge_type != CDEPEND && de.edge_type != NONCOOP) {
+									if(mission_decomposition[d_target].node_type == DECOMPOSITION) {
+										int decomposition_id = boost::add_vertex(mission_decomposition[d_target], trimmed_mission_decomposition);
+
+										reverse_ids_map[decomposition_id] = d_target;
+										ATEdge decomposition_edge = de;
+										decomposition_edge.source = task_id;
+										decomposition_edge.target = decomposition_id;
+
+										boost::add_edge(boost::vertex(task_id, trimmed_mission_decomposition), boost::vertex(decomposition_id, trimmed_mission_decomposition), decomposition_edge, trimmed_mission_decomposition);
+									}
+								}
+							}
 						}
 					}
 				}
@@ -188,6 +228,26 @@ pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decompositi
 						reverse_ids_map[a_node.parent] = source;
 
 						boost::add_edge(boost::vertex(ids_map[parent], trimmed_mission_decomposition), boost::vertex(task_id, trimmed_mission_decomposition), e, trimmed_mission_decomposition);
+					
+						ATGraph::out_edge_iterator di, di_end;
+						for(boost::tie(di,di_end) = out_edges(target,mission_decomposition); di != di_end;++di) {
+							auto d_target = boost::target(*di,mission_decomposition);
+							auto d_edge = boost::edge(target,d_target,mission_decomposition);
+
+							ATEdge de = mission_decomposition[d_edge.first];
+							if(de.edge_type != CDEPEND && de.edge_type != NONCOOP) {
+								if(mission_decomposition[d_target].node_type == DECOMPOSITION) {
+									int decomposition_id = boost::add_vertex(mission_decomposition[d_target], trimmed_mission_decomposition);
+
+									reverse_ids_map[decomposition_id] = d_target;
+									ATEdge decomposition_edge = de;
+									decomposition_edge.source = task_id;
+									decomposition_edge.target = decomposition_id;
+
+									boost::add_edge(boost::vertex(task_id, trimmed_mission_decomposition), boost::vertex(decomposition_id, trimmed_mission_decomposition), decomposition_edge, trimmed_mission_decomposition);
+								}
+							}
+						}
 					}
 				}
 			}
@@ -195,6 +255,21 @@ pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decompositi
 	}
 
 	return make_pair(trimmed_mission_decomposition, reverse_ids_map);
+}
+
+ATGraph generate_tree_like_at_graph(ATGraph mission_decomposition) {
+	ATGraph tree_like_at_graph = mission_decomposition;
+
+	ATGraph::edge_iterator edges_it, edges_end;
+	for(boost::tie(edges_it, edges_end) = edges(mission_decomposition); edges_it != edges_end; ++edges_it) {
+		ATEdge e = mission_decomposition[*edges_it];
+
+		if(e.edge_type == NONCOOP || e.edge_type == CDEPEND) {
+			boost::remove_edge(e.source, e.target, tree_like_at_graph);
+		}
+	}
+
+	return tree_like_at_graph;
 }
 
 /*
