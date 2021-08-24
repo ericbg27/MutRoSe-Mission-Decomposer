@@ -29,6 +29,10 @@ class MissionDecomposer {
         
         virtual void recursive_at_graph_build(int parent, general_annot* rannot, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_vars_map, 
                                                 pt::ptree world_db, std::vector<SemanticMapping> semantic_mapping, std::map<std::string, std::variant<std::string,std::vector<std::string>>> instantiated_vars) = 0;
+        
+        void trim_at_graph();
+        void insert_trimmed_at_graph_node(ATGraph& trimmed_mission_decomposition, int node_id, int root, int parent, std::map<int,int>& ids_map, std::map<int,int>& reverse_ids_map);
+
         void final_context_dependency_links_generation();
 
         bool check_context_dependency(int parent_node, int context_node, Context context, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> vars_map,

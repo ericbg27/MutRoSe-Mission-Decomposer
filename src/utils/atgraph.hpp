@@ -39,6 +39,7 @@ struct ATNode {
     bool group = true;
     bool divisible = true;
     bool is_achieve_type = false;
+    std::string achieve_goal_id;
     int parent;
 };
 

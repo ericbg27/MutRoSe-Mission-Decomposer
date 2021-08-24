@@ -20,24 +20,8 @@ vector<Constraint> ConstraintManager::generate_mission_constraints() {
      bool is_unique = is_unique_branch(mission_decomposition);
     
     if(!is_unique) {
-        pair<ATGraph,map<int,int>> trimmed_mission_decomposition_data = generate_trimmed_at_graph(mission_decomposition);
-        ATGraph trimmed_mission_decomposition = trimmed_mission_decomposition_data.first;
-
+        ATGraph trimmed_mission_decomposition = generate_tree_like_at_graph(mission_decomposition);
         generate_at_constraints(trimmed_mission_decomposition);
-
-        map<int,int> id_map = trimmed_mission_decomposition_data.second;
-        for(Constraint& c : mission_constraints) {
-            pair<int,ATNode> node1 = c.nodes_involved.first;
-            pair<int,ATNode> node2 = c.nodes_involved.second;
-
-            node1.second.parent = id_map[node1.second.parent];
-            node1.first = id_map[node1.first];
-            node2.second.parent = id_map[node2.second.parent];
-            node2.first = id_map[node2.first];
-
-            c.nodes_involved.first = node1;
-            c.nodes_involved.second = node2;
-        }
     }
 
     transform_at_constraints();
@@ -133,109 +117,111 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
 
         pair<int,ATNode> current_node = make_pair(current_node_index, trimmed_mission_decomposition[current_node_index]);
 
-        if(trimmed_mission_decomposition[current_node.second.parent].is_achieve_type) {
-            last_op = "";
-        }
+        if(current_node.second.node_type != DECOMPOSITION) {
+            if(trimmed_mission_decomposition[current_node.second.parent].is_achieve_type) {
+                last_op = "";
+            }
 
-        if(current_node.second.parent == depth_first_nodes.at(0)) {
-            pair<int,ATNode> artificial_node;
-            artificial_node.first = -1;
+            if(current_node.second.parent == depth_first_nodes.at(0)) {
+                pair<int,ATNode> artificial_node;
+                artificial_node.first = -1;
 
-            if(current_node_index != depth_first_nodes.at(1)) {
-                generate_constraints_from_stacks(current_branch_operators_stack, current_branch_nodes_stack, existing_constraints);
+                if(current_node_index != depth_first_nodes.at(1)) {
+                    generate_constraints_from_stacks(current_branch_operators_stack, current_branch_nodes_stack, existing_constraints);
 
-                while(!current_branch_nodes_stack.empty()) {
-                    nodes_stack.push(current_branch_nodes_stack.top());
+                    while(!current_branch_nodes_stack.empty()) {
+                        nodes_stack.push(current_branch_nodes_stack.top());
+                        
+                        current_branch_nodes_stack.pop();
+                    }
                     
-                    current_branch_nodes_stack.pop();
+                    nodes_stack.push(artificial_node);
                 }
+
+                current_root_node.first = current_node.first;
+                current_root_node.second = dfs_node_index+1;
+            } else if(current_node.second.parent == current_root_node.first && current_node_index != depth_first_nodes.at(current_root_node.second) && !holds_alternative<AbstractTask>(current_node.second.content)) {
+                pair<int,ATNode> artificial_node;
+                artificial_node.first = -1;
+                current_branch_nodes_stack.push(artificial_node);
+
+                current_root_node.first = current_node.first;
+                current_root_node.second = dfs_node_index+1;
+            } else if(current_node.second.parent == current_root_node.first && current_node_index != depth_first_nodes.at(current_root_node.second) && holds_alternative<AbstractTask>(current_node.second.content)) {
+                int last_child;
                 
-                nodes_stack.push(artificial_node);
-            }
+                ATGraph::out_edge_iterator ei, ei_end;
+                for(boost::tie(ei,ei_end) = out_edges(current_node.second.parent,trimmed_mission_decomposition);ei != ei_end;++ei) {
+                    int source = boost::source(*ei,trimmed_mission_decomposition);
+                    int target = boost::target(*ei,trimmed_mission_decomposition);
+                    auto edge = boost::edge(source,target,trimmed_mission_decomposition).first;
 
-            current_root_node.first = current_node.first;
-            current_root_node.second = dfs_node_index+1;
-        } else if(current_node.second.parent == current_root_node.first && current_node_index != depth_first_nodes.at(current_root_node.second) && !holds_alternative<AbstractTask>(current_node.second.content)) {
-            pair<int,ATNode> artificial_node;
-            artificial_node.first = -1;
-            current_branch_nodes_stack.push(artificial_node);
-
-            current_root_node.first = current_node.first;
-            current_root_node.second = dfs_node_index+1;
-        } else if(current_node.second.parent == current_root_node.first && current_node_index != depth_first_nodes.at(current_root_node.second) && holds_alternative<AbstractTask>(current_node.second.content)) {
-            int last_child;
-            
-            ATGraph::out_edge_iterator ei, ei_end;
-            for(boost::tie(ei,ei_end) = out_edges(current_node.second.parent,trimmed_mission_decomposition);ei != ei_end;++ei) {
-                int source = boost::source(*ei,trimmed_mission_decomposition);
-                int target = boost::target(*ei,trimmed_mission_decomposition);
-                auto edge = boost::edge(source,target,trimmed_mission_decomposition).first;
-
-                if(trimmed_mission_decomposition[edge].edge_type == NORMALAND) {
-                    last_child = target;
-                }
-            }
-
-            if(current_node.first != last_child) {
-                current_branch_operators_stack.push(make_pair(current_root_node.first,trimmed_mission_decomposition[current_root_node.first]));
-            }
-        }
-
-        if(current_node.second.node_type == ATASK) {
-            current_branch_nodes_stack.push(current_node);
-            
-            if(current_branch_operators_stack.size() > 0 && current_branch_nodes_stack.size() >= 2) {
-                bool new_branch = false;
-                
-                /*
-                    Check if we have at least 2 nodes until we reach some artificial node
-                */
-                stack<variant<pair<int,ATNode>,Constraint>> nodes_stack_cpy = current_branch_nodes_stack;
-                for(int cnt = 0;cnt < 2;cnt++) {
-                    if(holds_alternative<pair<int,ATNode>>(nodes_stack_cpy.top())) {
-                        if(std::get<pair<int,ATNode>>(nodes_stack_cpy.top()).first == -1) {
-                            new_branch = true;
-                        }
-                        nodes_stack_cpy.pop();
+                    if(trimmed_mission_decomposition[edge].edge_type == NORMALAND) {
+                        last_child = target;
                     }
                 }
 
-                if(new_branch) {
-                    last_op = "";
-                } else {
+                if(current_node.first != last_child) {
+                    current_branch_operators_stack.push(make_pair(current_root_node.first,trimmed_mission_decomposition[current_root_node.first]));
+                }
+            }
+
+            if(current_node.second.node_type == ATASK) {
+                current_branch_nodes_stack.push(current_node);
+                
+                if(current_branch_operators_stack.size() > 0 && current_branch_nodes_stack.size() >= 2) {
+                    bool new_branch = false;
+                    
                     /*
-                        Here is the logic for creating a constraint
-                    
-                        -> Idea: Go through the stack and
-                            - If we find an AT we will get it and use it to form new constraint(s)
-                            - If we find a constraint we don't erase it from the stack but:
-                                - If we have a sequential operator we just take into consideration the most recent constraint
-                                - If we have a parallel operator we take into consideration all of the constraints we have until reaching one that has id -1 or the
-                                first created constraint
+                        Check if we have at least 2 nodes until we reach some artificial node
                     */
-                    if(std::get<string>(current_branch_operators_stack.top().second.content) == parallel_op || std::get<string>(current_branch_operators_stack.top().second.content) == fallback_op) {
-                        /*
-                            Using the temporary vector, generate the constraints, delete AT's and generate the new constraints
-
-                            -> Remember that we will have an AT in the first position of the queue and we will generate constraints using it 
-                            and all of the constraints (or another AT) we already have
-                        */
-                        constraint_type ctype = (std::get<string>(current_branch_operators_stack.top().second.content) == parallel_op ? PAR : FB);
-
-                        generate_par_and_fallback_constraints(existing_constraints, current_branch_nodes_stack, current_branch_operators_stack, ctype);
-
-                        last_op = (ctype == PAR ? parallel_op : fallback_op);
-                    } else {
-                        generate_seq_constraints(existing_constraints, current_branch_nodes_stack, current_branch_operators_stack, last_op);
-
-                        last_op = sequential_op;
+                    stack<variant<pair<int,ATNode>,Constraint>> nodes_stack_cpy = current_branch_nodes_stack;
+                    for(int cnt = 0;cnt < 2;cnt++) {
+                        if(holds_alternative<pair<int,ATNode>>(nodes_stack_cpy.top())) {
+                            if(std::get<pair<int,ATNode>>(nodes_stack_cpy.top()).first == -1) {
+                                new_branch = true;
+                            }
+                            nodes_stack_cpy.pop();
+                        }
                     }
 
-                    current_branch_operators_stack.pop();
+                    if(new_branch) {
+                        last_op = "";
+                    } else {
+                        /*
+                            Here is the logic for creating a constraint
+                        
+                            -> Idea: Go through the stack and
+                                - If we find an AT we will get it and use it to form new constraint(s)
+                                - If we find a constraint we don't erase it from the stack but:
+                                    - If we have a sequential operator we just take into consideration the most recent constraint
+                                    - If we have a parallel operator we take into consideration all of the constraints we have until reaching one that has id -1 or the
+                                    first created constraint
+                        */
+                        if(std::get<string>(current_branch_operators_stack.top().second.content) == parallel_op || std::get<string>(current_branch_operators_stack.top().second.content) == fallback_op) {
+                            /*
+                                Using the temporary vector, generate the constraints, delete AT's and generate the new constraints
+
+                                -> Remember that we will have an AT in the first position of the queue and we will generate constraints using it 
+                                and all of the constraints (or another AT) we already have
+                            */
+                            constraint_type ctype = (std::get<string>(current_branch_operators_stack.top().second.content) == parallel_op ? PAR : FB);
+
+                            generate_par_and_fallback_constraints(existing_constraints, current_branch_nodes_stack, current_branch_operators_stack, ctype);
+
+                            last_op = (ctype == PAR ? parallel_op : fallback_op);
+                        } else {
+                            generate_seq_constraints(existing_constraints, current_branch_nodes_stack, current_branch_operators_stack, last_op);
+
+                            last_op = sequential_op;
+                        }
+
+                        current_branch_operators_stack.pop();
+                    }
                 }
+            } else if(current_node.second.node_type == OP) {
+                current_branch_operators_stack.push(current_node);
             }
-        } else {
-            current_branch_operators_stack.push(current_node);
         }
     }
 
