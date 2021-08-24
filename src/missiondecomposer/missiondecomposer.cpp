@@ -65,7 +65,7 @@ void MissionDecomposer::trim_at_graph() {
 		}
 
 		if(out_edge_num > 1) {
-			root = *i;
+			root = int(*i);
 			break;
 		}
 	}
@@ -73,20 +73,25 @@ void MissionDecomposer::trim_at_graph() {
 	bool found_root = false;
 
 	for(boost::tie(i,end) = vertices(mission_decomposition); i != end; ++i) {
-		if(int(*i) == root) {
+		int current_vertex_id = int(*i);
+		
+		if(current_vertex_id == root) {
 			found_root = true;
 		}
 		if(!found_root) {
 			continue;
 		}
-		ATGraph::out_edge_iterator ai, a_end;
-		ATNode node = mission_decomposition[*i];
+
+		ATNode node = mission_decomposition[current_vertex_id];
+		if(node.node_type == ATASK || node.node_type == DECOMPOSITION) {
+			continue;
+		}
 
 		int parent = -1;
 		ATNode current_node = node;
 		bool found_parent = false;
 
-		if(int(*i) != root) {
+		if(current_vertex_id != root) {
 			while(!found_parent) {
 				if(ids_map.find(current_node.parent) == ids_map.end()) {
 					current_node = mission_decomposition[current_node.parent];
@@ -120,7 +125,7 @@ void MissionDecomposer::trim_at_graph() {
 				}
 				int node_id = boost::add_vertex(node, trimmed_mission_decomposition);
 
-				if(int(*i) != root) {
+				if(current_vertex_id != root) {
 					at_edge_type edge_type = NORMALAND;
 					for(boost::tie(ei,ei_end) = out_edges(parent,mission_decomposition);ei != ei_end;++ei) {
 						auto source = boost::source(*ei,mission_decomposition);
@@ -141,15 +146,15 @@ void MissionDecomposer::trim_at_graph() {
 					boost::add_edge(boost::vertex(ids_map[parent], trimmed_mission_decomposition), boost::vertex(node_id, trimmed_mission_decomposition), e, trimmed_mission_decomposition);
 				}
 
-				ids_map[int(*i)] = node_id;
-				reverse_ids_map[node_id] = *i;
-					
-				insert_trimmed_at_graph_node(trimmed_mission_decomposition, *i, root, parent, ids_map, reverse_ids_map);
+				ids_map[current_vertex_id] = node_id;
+				reverse_ids_map[node_id] = current_vertex_id;
+				
+				insert_trimmed_at_graph_node(trimmed_mission_decomposition, current_vertex_id, root, current_vertex_id, ids_map, reverse_ids_map);
 			} else {
-				insert_trimmed_at_graph_node(trimmed_mission_decomposition, *i, root, parent, ids_map, reverse_ids_map);
+				insert_trimmed_at_graph_node(trimmed_mission_decomposition, current_vertex_id, root, parent, ids_map, reverse_ids_map);
 			}
 		} else if(node.node_type == GOALNODE) {
-			insert_trimmed_at_graph_node(trimmed_mission_decomposition, *i, root, parent, ids_map, reverse_ids_map);
+			insert_trimmed_at_graph_node(trimmed_mission_decomposition, current_vertex_id, root, parent, ids_map, reverse_ids_map);
 		}
 	}
 
@@ -176,6 +181,26 @@ void MissionDecomposer::trim_at_graph() {
 }
 
 void MissionDecomposer::insert_trimmed_at_graph_node(ATGraph& trimmed_mission_decomposition, int node_id, int root, int parent, map<int,int>& ids_map, map<int,int>& reverse_ids_map) {
+	int tasks_parent;
+	if(parent == node_id) {
+		tasks_parent = node_id;
+	} else {
+		tasks_parent = parent;
+	}
+
+	at_edge_type edge_type = NORMALAND;
+	ATGraph::out_edge_iterator ei, ei_end;
+	for(boost::tie(ei,ei_end) = out_edges(tasks_parent,mission_decomposition); ei != ei_end; ++ei) {
+		auto s = boost::source(*ei,mission_decomposition);
+		auto t = boost::target(*ei,mission_decomposition);
+		auto e = boost::edge(s,t,mission_decomposition);
+
+		if(mission_decomposition[e.first].edge_type == NORMALAND || mission_decomposition[e.first].edge_type == NORMALOR) {
+			edge_type = mission_decomposition[e.first].edge_type;
+			break;
+		}
+	}
+	
 	ATGraph::out_edge_iterator ai, a_end;
 	for(boost::tie(ai,a_end) = out_edges(node_id,mission_decomposition); ai != a_end;++ai) {
 		auto source = boost::source(*ai,mission_decomposition);
@@ -183,8 +208,8 @@ void MissionDecomposer::insert_trimmed_at_graph_node(ATGraph& trimmed_mission_de
 		auto edge = boost::edge(source,target,mission_decomposition);
 
 		ATNode a_node = mission_decomposition[target];
-		if(parent != mission_decomposition[root].parent) {
-			a_node.parent = ids_map[parent];
+		if(tasks_parent != mission_decomposition[root].parent) {
+			a_node.parent = ids_map[tasks_parent];
 		} else {
 			a_node.parent = mission_decomposition[root].parent;
 		}
@@ -192,23 +217,10 @@ void MissionDecomposer::insert_trimmed_at_graph_node(ATGraph& trimmed_mission_de
 		if(mission_decomposition[edge.first].edge_type == NORMALAND || mission_decomposition[edge.first].edge_type == NORMALOR) {
 			if(a_node.node_type == ATASK) {
 				int task_id = boost::add_vertex(a_node, trimmed_mission_decomposition);
-				
-				at_edge_type edge_type = NORMALAND;
-				ATGraph::out_edge_iterator ei, ei_end;
-				for(boost::tie(ei,ei_end) = out_edges(parent,mission_decomposition); ei != ei_end; ++ei) {
-					auto s = boost::source(*ei,mission_decomposition);
-					auto t = boost::target(*ei,mission_decomposition);
-					auto e = boost::edge(s,t,mission_decomposition);
-
-					if(mission_decomposition[e.first].edge_type == NORMALAND || mission_decomposition[e.first].edge_type == NORMALOR) {
-						edge_type = mission_decomposition[e.first].edge_type;
-						break;
-					}
-				}
 
 				ATEdge e;
 				e.edge_type = edge_type;
-				e.source = parent;
+				e.source = tasks_parent;
 				e.target = task_id;
 
 				ids_map[target] = task_id;
@@ -217,7 +229,7 @@ void MissionDecomposer::insert_trimmed_at_graph_node(ATGraph& trimmed_mission_de
 				reverse_ids_map[task_id] = target;
 				reverse_ids_map[a_node.parent] = source;
 
-				boost::add_edge(boost::vertex(ids_map[parent], trimmed_mission_decomposition), boost::vertex(task_id, trimmed_mission_decomposition), e, trimmed_mission_decomposition);
+				boost::add_edge(boost::vertex(ids_map[tasks_parent], trimmed_mission_decomposition), boost::vertex(task_id, trimmed_mission_decomposition), e, trimmed_mission_decomposition);
 			
 				ATGraph::out_edge_iterator di, di_end;
 				for(boost::tie(di,di_end) = out_edges(target,mission_decomposition); di != di_end;++di) {
