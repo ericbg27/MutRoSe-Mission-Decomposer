@@ -45,7 +45,7 @@
 }
 
 %token KEY_END_ID
-%token <sval> KEY_SEQ KEY_PAR KEY_FALLBACK KEY_OPT KEY_ALT 
+%token <sval> KEY_SEQ KEY_PAR KEY_FALLBACK
 %token <sval> STRNAME 
 
 %type <annot> annot
@@ -57,15 +57,11 @@
 %type <annot> expr-seq
 %type <annot> expr-par
 %type <annot> expr-fallback
-%type <annot> expr-alt
-%type <annot> expr-opt
 %type <vstring> STRNAME-list
 
 %left KEY_SEQ
 %left KEY_PAR
-%left KEY_OPT
 %left KEY_FALLBACK
-%left KEY_ALT
 
 %start input
 
@@ -93,8 +89,6 @@ expr:  '(' expr-no-pt ')' {$$ = $2;}
 expr-no-pt: expr-seq {$$ = $1;}
           | expr-par {$$ = $1;}
           | expr-fallback {$$ = $1;}
-          | expr-alt {$$ = $1;}
-          | expr-opt {$$ = $1;}
 
 expr-seq: expr KEY_SEQ expr {
     $$ = new general_annot();
@@ -105,91 +99,33 @@ expr-seq: expr KEY_SEQ expr {
 
     std::vector<general_annot*> children;
 
-    if($1->children.size() > 0) {
-        general_annot* current;
-        general_annot* last;
-        std::set<general_annot*> visited;
+    bool unwind = true;
 
-        bool finished = false;
-        current = $1;
-        last = $1;
-        while(!finished) {
-            bool found_child = false;
+    if($1->type == OPERATOR) {
+        if($1->content != ";") {
+            unwind = false;
+        }
+    }
 
-            general_annot* to_check;
-            if(current->children.size() > 0) {
-                for(auto child : current->children) {
-                    if(visited.find(child) == visited.end()) {
-                        to_check = child;
-                        found_child = true;
-                        break;
-                    }
-                }
-
-                if(found_child) {
-                    last = current;
-                    current = to_check;
-                } else {
-                    visited.insert(current);
-
-                    if(current == $1) {
-                        finished = true;
-                    } else {
-                        current = current->parent;
-                        last = current;
-                    }
-                }
-            } else {
-                children.push_back(current);
-                visited.insert(current);
-                current = last;
-            }
+    if($3->type == OPERATOR && unwind) {
+        if($3->content != ";") {
+            unwind = false;
+        }
+    } else if($3->type != OPERATOR && unwind) {
+        if($1->type != OPERATOR) {
+            unwind = false;
+        }
+    }
+    
+    if(unwind) {
+        for(general_annot* child : $1->children) {
+            children.push_back(child);
+        }
+        for(general_annot* child : $3->children) {
+            children.push_back(child);
         }
     } else {
         children.push_back($1);
-    }
-
-    if($3->children.size() > 0) {
-        general_annot* current;
-        general_annot* last;
-        std::set<general_annot*> visited;
-
-        bool finished = false;
-        current = $3;
-        last = $3;
-        while(!finished) {
-            bool found_child = false;
-
-            general_annot* to_check;
-            if(current->children.size() > 0) {
-                for(auto child : current->children) {
-                    if(visited.find(child) == visited.end()) {
-                        to_check = child;
-                        found_child = true;
-                        break;
-                    }
-                }
-
-                if(found_child) {
-                    last = current;
-                    current = to_check;
-                } else {
-                    visited.insert(current);
-
-                    if(current == $3) {
-                        finished = true;
-                    } else {
-                        current = current->parent;
-                        last = current;
-                    }
-                }
-            } else {
-                children.push_back(current);
-                visited.insert(current);
-                current = last;
-            }
-        }
-    } else {
         children.push_back($3);
     }
 
@@ -205,91 +141,33 @@ expr-par: expr KEY_PAR expr {
 
     std::vector<general_annot*> children;
 
-    if($1->children.size() > 0) {
-        general_annot* current;
-        general_annot* last;
-        std::set<general_annot*> visited;
+    bool unwind = true;
 
-        bool finished = false;
-        current = $1;
-        last = $1;
-        while(!finished) {
-            bool found_child = false;
+    if($1->type == OPERATOR) {
+        if($1->content != "#") {
+            unwind = false;
+        }
+    }
 
-            general_annot* to_check;
-            if(current->children.size() > 0) {
-                for(auto child : current->children) {
-                    if(visited.find(child) == visited.end()) {
-                        to_check = child;
-                        found_child = true;
-                        break;
-                    }
-                }
-
-                if(found_child) {
-                    last = current;
-                    current = to_check;
-                } else {
-                    visited.insert(current);
-
-                    if(current == $1) {
-                        finished = true;
-                    } else {
-                        current = current->parent;
-                        last = current;
-                    }
-                }
-            } else {
-                children.push_back(current);
-                visited.insert(current);
-                current = last;
-            }
+    if($3->type == OPERATOR && unwind) {
+        if($3->content != "#") {
+            unwind = false;
+        }
+    } else if($3->type != OPERATOR && unwind) {
+        if($1->type != OPERATOR) {
+            unwind = false;
+        }
+    }
+    
+    if(unwind) {
+        for(general_annot* child : $1->children) {
+            children.push_back(child);
+        }
+        for(general_annot* child : $3->children) {
+            children.push_back(child);
         }
     } else {
         children.push_back($1);
-    }
-
-    if($3->children.size() > 0) {
-        general_annot* current;
-        general_annot* last;
-        std::set<general_annot*> visited;
-
-        bool finished = false;
-        current = $3;
-        last = $3;
-        while(!finished) {
-            bool found_child = false;
-
-            general_annot* to_check;
-            if(current->children.size() > 0) {
-                for(auto child : current->children) {
-                    if(visited.find(child) == visited.end()) {
-                        to_check = child;
-                        found_child = true;
-                        break;
-                    }
-                }
-
-                if(found_child) {
-                    last = current;
-                    current = to_check;
-                } else {
-                    visited.insert(current);
-
-                    if(current == $3) {
-                        finished = true;
-                    } else {
-                        current = current->parent;
-                        last = current;
-                    }
-                }
-            } else {
-                children.push_back(current);
-                visited.insert(current);
-                current = last;
-            }
-        }
-    } else {
         children.push_back($3);
     }
 
@@ -303,29 +181,39 @@ expr-fallback: KEY_FALLBACK '(' expr ',' expr ')' {
 
     $$->content = "FALLBACK";
 
-    $$->children.push_back($3);
-    $$->children.push_back($5);
-}
+    std::vector<general_annot*> children;
 
-expr-alt: expr KEY_ALT expr {
-    $$ = new general_annot();
+    bool unwind = true;
 
-    $$->type = OPERATOR;
+    if($3->type == OPERATOR) {
+        if($3->content != "FALLBACK") {
+            unwind = false;
+        }
+    }
 
-    $$->content = "|";
+    if($5->type == OPERATOR && unwind) {
+        if($5->content != "FALLBACK") {
+            unwind = false;
+        }
+    } else if($5->type != OPERATOR && unwind) {
+        if($3->type != OPERATOR) {
+            unwind = false;
+        }
+    }
+    
+    if(unwind) {
+        for(general_annot* child : $3->children) {
+            children.push_back(child);
+        }
+        for(general_annot* child : $5->children) {
+            children.push_back(child);
+        }
+    } else {
+        children.push_back($3);
+        children.push_back($5);
+    }
 
-    $$->children.push_back($1);
-    $$->children.push_back($3);
-}
-
-expr-opt: KEY_OPT '(' expr ')' {
-    $$ = new general_annot();
-
-    $$->type = OPERATOR;
-
-    $$->content = "OPT";
-
-    $$->children.push_back($3);
+    $$->children = children;
 }
 
 name-no-pt: STRNAME {

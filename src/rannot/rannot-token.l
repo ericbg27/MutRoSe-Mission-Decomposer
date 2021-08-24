@@ -21,8 +21,6 @@
 ;               {return KEY_SEQ;}
 #               {return KEY_PAR;}
 FALLBACK        {return KEY_FALLBACK;}
-OPT             {return KEY_OPT;}
-\|               {return KEY_ALT;}
 
 [ \t\n\r]         ; // whitespace
 
