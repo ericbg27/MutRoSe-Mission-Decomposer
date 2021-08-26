@@ -261,7 +261,7 @@ void ATManager::recursive_at_instances_generation(int current, int depth, map<in
 	}
 
 	parent_annot = retrieve_runtime_annot(parent_text);
-	if(parent_annot->type != OPERATOR) {
+	if(parent_annot->type != OPERATOR && parent_annot->type != EMPTYANNOT) {
 		string invalid_runtime_annotation_error = "[AT_MANAGER] Invalid runtime annotation for node: " + gm[current].text;
 			
 		throw std::runtime_error(invalid_runtime_annotation_error);

@@ -17,14 +17,14 @@ const std::string parallel_op = "#";
 const std::string fallback_op = "FALLBACK";
 //##############################################################################################################################################
 
-enum rannot_type {OPERATOR, GOAL, TASK, MEANSEND}; //Goal type is useless (needs checking!)
+enum rannot_type {OPERATOR, GOAL, TASK, MEANSEND, EMPTYANNOT}; //Goal type is useless (needs checking!)
 
 struct general_annot {
-    rannot_type type;
-    std::string content;
+    rannot_type type = EMPTYANNOT;
+    std::string content = "";
     std::vector<general_annot*> children;
     general_annot* parent;
-    std::string related_goal;
+    std::string related_goal = "";
     bool non_coop = false;
     bool group = true;
     bool divisible = true;

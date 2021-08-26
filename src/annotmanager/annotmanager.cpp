@@ -53,9 +53,6 @@ general_annot* FileKnowledgeAnnotManager::retrieve_gm_annot() {
     int current_node = vctr.at(0);
 
     general_annot* empty_annot = new general_annot();
-    empty_annot->content = "";
-    empty_annot->related_goal = "";
-
     gmannot->parent = empty_annot;
 
     shared_ptr<FileKnowledgeBase> world_knowledge_base = fk_manager->get_world_knowledge();
@@ -91,7 +88,7 @@ general_annot* FileKnowledgeAnnotManager::retrieve_gm_annot() {
     @ Output: Void. The runtime goal model annotation is generated
 */ 
 void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* node_annot, vector<int> &vctr,  pt::ptree worlddb, int current_node, std::map<int,AchieveCondition> valid_forAll_conditions) {    
-    set<string> operators {sequential_op,parallel_op,fallback_op,"OPT","|"};
+    set<string> operators {sequential_op,parallel_op,fallback_op};
 
     set<string>::iterator op_it;
 
@@ -328,7 +325,7 @@ void AnnotManager::expand_non_root_annot(general_annot* node_annot, int current_
     general_annot* expanded_annot = retrieve_runtime_annot(gm[vctr.at(0)].text);
 
     if(gm[vctr.at(0)].children.size() > 1) {
-        if(expanded_annot->content == "") {
+        if(expanded_annot->type == EMPTYANNOT) {
             expanded_annot->content = parallel_op;
             for(int child : gm[vctr.at(0)].children) {
                 general_annot* aux = new general_annot();

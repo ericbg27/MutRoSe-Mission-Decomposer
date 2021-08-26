@@ -71,14 +71,6 @@ input: STRNAME KEY_END_ID STRNAME-list annot {$$ = $4; $$->related_goal = $1; go
 
 annot: '[' expr-or-null ']' {$$ = $2;} | {$$ = new general_annot();}
 
-//Here we have to add nodes to the graph and generate the graph itself
-//annot-list: expr { 
-//    $$ = new RAnnotGraph();
-//    /*
-//        Use the general_annot structure to generate a RAnnotGraph
-//    */
-//}
-
 expr-or-null: expr {$$ = $1;}
             | {$$ = new general_annot();}
 
@@ -118,11 +110,20 @@ expr-seq: expr KEY_SEQ expr {
     }
     
     if(unwind) {
-        for(general_annot* child : $1->children) {
-            children.push_back(child);
+        if($1->type == OPERATOR) {
+            for(general_annot* child : $1->children) {
+                children.push_back(child);
+            }
+        } else {
+            children.push_back($1);
         }
-        for(general_annot* child : $3->children) {
-            children.push_back(child);
+
+        if($3->type == OPERATOR) {
+            for(general_annot* child : $3->children) {
+                children.push_back(child);
+            }
+        } else {
+            children.push_back($3);
         }
     } else {
         children.push_back($1);
@@ -160,11 +161,20 @@ expr-par: expr KEY_PAR expr {
     }
     
     if(unwind) {
-        for(general_annot* child : $1->children) {
-            children.push_back(child);
+        if($1->type == OPERATOR) {
+            for(general_annot* child : $1->children) {
+                children.push_back(child);
+            }
+        } else {
+            children.push_back($1);
         }
-        for(general_annot* child : $3->children) {
-            children.push_back(child);
+
+        if($3->type == OPERATOR) {
+            for(general_annot* child : $3->children) {
+                children.push_back(child);
+            }
+        } else {
+            children.push_back($3);
         }
     } else {
         children.push_back($1);
@@ -202,11 +212,20 @@ expr-fallback: KEY_FALLBACK '(' expr ',' expr ')' {
     }
     
     if(unwind) {
-        for(general_annot* child : $3->children) {
-            children.push_back(child);
+        if($3->type == OPERATOR) {
+            for(general_annot* child : $3->children) {
+                children.push_back(child);
+            }
+        } else {
+            children.push_back($3);
         }
-        for(general_annot* child : $5->children) {
-            children.push_back(child);
+
+        if($5->type == OPERATOR) {
+            for(general_annot* child : $5->children) {
+                children.push_back(child);
+            }
+        } else {
+            children.push_back($5);
         }
     } else {
         children.push_back($3);
