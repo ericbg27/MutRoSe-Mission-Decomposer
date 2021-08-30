@@ -889,7 +889,7 @@ void print_mission_decomposition(ATGraph mission_decomposition) {
 bool is_unique_branch(ATGraph mission_decomposition) {
     ATGraph::vertex_iterator i, end;
 
-    int changed_root = false;
+    int changed_root = true;
 	for(boost::tie(i,end) = vertices(mission_decomposition); i != end; ++i) {
 		if(mission_decomposition[*i].node_type != ATASK) {
 			int out_edge_num = 0;
@@ -906,13 +906,11 @@ bool is_unique_branch(ATGraph mission_decomposition) {
 			}
 
 			if(out_edge_num > 1) {
-				changed_root = true;
+				changed_root = false;
 				break;
 			}
 		}
 	}
-
-    changed_root = !changed_root;
 
     return changed_root;
 }

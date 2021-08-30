@@ -347,7 +347,7 @@ void ValidMissionGenerator::valid_mission_decompositions_from_unique_branch(queu
         pair<int,ATNode> current_node =  mission_queue.front();
 
         if(current_node.second.node_type == ATASK) {
-            pair<int,ATNode> task_decomposition;
+            std::vector<pair<int,ATNode>> task_decompositions;
 
             ATGraph::out_edge_iterator ei, ei_end;
             for(boost::tie(ei,ei_end) = out_edges(current_node.first,mission_decomposition);ei != ei_end;++ei) {
@@ -356,44 +356,102 @@ void ValidMissionGenerator::valid_mission_decompositions_from_unique_branch(queu
                 if(mission_decomposition[target].node_type == DECOMPOSITION) {
                     ATNode decomposition = mission_decomposition[target];
 
-                    task_decomposition = make_pair(target,decomposition);
-                    break;
+                    task_decompositions.push_back(make_pair(target,decomposition));
                 }
             }
 
-            Decomposition d = std::get<Decomposition>(task_decomposition.second.content);
-            
-            bool preconditions_hold = true;
-            for(variant<ground_literal,literal> prec : d.prec) {
-                for(ground_literal state : world_state) {
+            bool at_least_one_decomposition_valid = false;
+            for(pair<int,ATNode> task_decomposition : task_decompositions) {
+                Decomposition d = std::get<Decomposition>(task_decomposition.second.content);
+                
+                bool preconditions_hold = true;
+                for(variant<ground_literal,literal> prec : d.prec) {
                     if(holds_alternative<ground_literal>(prec)) {
                         ground_literal p = std::get<ground_literal>(prec);
 
-                        if(is_same_predicate(p,state)) {
-                            if(p.positive != state.positive) {
-                                preconditions_hold = false;
+                        if(!p.isComparison) {
+                            for(ground_literal state : world_state) {
+                                if(is_same_predicate(p,state)) {
+                                    if(p.positive != state.positive) {
+                                        preconditions_hold = false;
 
-                                break;
+                                        break;
+                                    }
+                                }
+                            }
+                        } else {
+                            for(pair<ground_literal, variant<int,float>> func_state : world_state_functions) {
+                                if(is_same_predicate(p,func_state.first)) {
+                                    string comparison_op = p.comparison_op_and_value.first;
+                                    variant<int,float> comparison_value = p.comparison_op_and_value.second;
+                                        
+                                    if(comparison_op == equal_comparison_op) {
+                                        if(holds_alternative<int>(func_state.second)) {
+                                            int state_val = std::get<int>(func_state.second);
+
+                                            if(holds_alternative<int>(comparison_value)) {
+                                                preconditions_hold = (state_val == std::get<int>(comparison_value));
+                                            } else {
+                                                preconditions_hold = compare_int_and_float(state_val, std::get<float>(comparison_value));
+                                            }
+                                        } else {
+                                            float state_val = std::get<float>(func_state.second);
+
+                                            if(holds_alternative<int>(comparison_value)) {
+                                                preconditions_hold = compare_int_and_float(std::get<int>(comparison_value), state_val);
+                                            } else {
+                                                preconditions_hold = compare_floats(state_val, std::get<float>(comparison_value));
+                                            }
+                                        }
+                                        
+                                        if(!preconditions_hold) break;
+                                    } else if(comparison_op == greater_comparison_op) {
+                                        if(holds_alternative<int>(func_state.second)) {
+                                            int state_val = std::get<int>(func_state.second);
+
+                                            if(holds_alternative<int>(comparison_value)) {
+                                                preconditions_hold = (state_val > std::get<int>(comparison_value));
+                                            } else {
+                                                preconditions_hold = greater_than_int_and_float(state_val, std::get<float>(comparison_value));
+                                            }
+                                        } else {
+                                            float state_val = std::get<float>(func_state.second);
+
+                                            if(holds_alternative<int>(comparison_value)) {
+                                                preconditions_hold = greater_than_float_and_int(std::get<int>(comparison_value), state_val);
+                                            } else {
+                                                preconditions_hold = greater_than_floats(state_val, std::get<float>(comparison_value));
+                                            }
+                                        }
+                                        
+                                        if(!preconditions_hold) break;
+                                    }
+
+                                    break;
+                                }
                             }
                         }
                     }
                 }
+
+                if(preconditions_hold) {
+                    at_least_one_decomposition_valid = true;
+
+                    vector<pair<int,ATNode>> valid_decomposition;
+                    valid_decomposition.push_back(task_decomposition);
+
+                    set<int> decomposition_id;
+                    decomposition_id.insert(task_decomposition.first);
+                    valid_mission_decompositions.push_back(make_pair(valid_decomposition,decomposition_id));
+                }
             }
 
-            if(!preconditions_hold) {
+            if(!at_least_one_decomposition_valid) {
                 AbstractTask at = get<AbstractTask>(current_node.second.content);
                 string invalid_task_decomposition_error = "NO VALID DECOMPOSITIONS FOR TASK " + at.id + ": " + at.name;
 
                 throw std::runtime_error(invalid_task_decomposition_error);
             }
-
-            vector<pair<int,ATNode>> valid_decomposition;
-            valid_decomposition.push_back(task_decomposition);
-
-            set<int> decomposition_id;
-            decomposition_id.insert(task_decomposition.first);
-
-            valid_mission_decompositions.push_back(make_pair(valid_decomposition,decomposition_id));
         }
 
         mission_queue.pop();

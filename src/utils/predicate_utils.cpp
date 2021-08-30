@@ -121,7 +121,7 @@ bool check_decomposition_preconditions(vector<ground_literal> world_state, vecto
     }
 
     int prec_index = 0;
-    for(auto prec : d.prec) { //NEED TO ADD THE SORTS VECTOR TO THE VALID MISSION GENERATOR AND AS INPUT OF THE FUNCTION!
+    for(auto prec : d.prec) {
         if(holds_alternative<literal>(prec)) {
             literal p = std::get<literal>(prec);
 
