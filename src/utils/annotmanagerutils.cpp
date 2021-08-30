@@ -193,7 +193,7 @@ void print_runtime_annot_from_general_annot(general_annot* rt) {
     @ Output: The current runtime annotation string
 */ 
 string recursive_rt_annot_build(general_annot* rt) {
-    set<string> operators {sequential_op,parallel_op,fallback_op,"OPT","|"};
+    set<string> operators {sequential_op,parallel_op,fallback_op};
 
     set<string>::iterator op_it;
 
@@ -204,11 +204,7 @@ string recursive_rt_annot_build(general_annot* rt) {
         annot += "NC(";
     }
     if(op_it != operators.end()) {
-        if(rt->content == "OPT") {
-            string child = recursive_rt_annot_build(rt->children.at(0));
-
-            annot += "OPT(" + child + ")";
-        } else if(rt->content == fallback_op) {
+        if(rt->content == fallback_op) {
             vector<string> children;
             for(general_annot* child : rt->children) {
                 children.push_back(recursive_rt_annot_build(child));

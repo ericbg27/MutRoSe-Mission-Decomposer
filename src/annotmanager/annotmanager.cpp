@@ -41,21 +41,14 @@ void FileKnowledgeAnnotManager::set_fk_manager(FileKnowledgeManager* manager) {
 */ 
 general_annot* FileKnowledgeAnnotManager::retrieve_gm_annot() {
     vector<int> vctr = get_dfs_gm_nodes(gm);
-    
-    VertexData root = gm[vctr.at(0)];
-
-    gmannot = retrieve_runtime_annot(root.text);
-
-    recursive_fill_up_runtime_annot(gmannot, gm[vctr.at(0)]);
-
-    node_depths[vctr.at(0)] = 0;
-
     int current_node = vctr.at(0);
+    
+    VertexData root = gm[current_node];
+    node_depths[current_node] = 0;
+
+    gmannot = new general_annot();
 
     general_annot* empty_annot = new general_annot();
-    empty_annot->content = "";
-    empty_annot->related_goal = "";
-
     gmannot->parent = empty_annot;
 
     shared_ptr<FileKnowledgeBase> world_knowledge_base = fk_manager->get_world_knowledge();
@@ -91,12 +84,6 @@ general_annot* FileKnowledgeAnnotManager::retrieve_gm_annot() {
     @ Output: Void. The runtime goal model annotation is generated
 */ 
 void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* node_annot, vector<int> &vctr,  pt::ptree worlddb, int current_node, std::map<int,AchieveCondition> valid_forAll_conditions) {    
-    set<string> operators {sequential_op,parallel_op,fallback_op,"OPT","|"};
-
-    set<string>::iterator op_it;
-
-    op_it = operators.find(node_annot->content);
-
     int depth;
     if(gm[current_node].parent != -1) {
         depth = node_depths[gm[current_node].parent] + 1;
@@ -115,9 +102,9 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
 
         throw std::runtime_error(sequential_or_error);
     } else if(node_annot->content == fallback_op && node_annot->or_decomposition) {
-        string sequential_or_error = "OR decomposed goal cannot have fallback runtime annotations";
+        string fallback_or_error = "OR decomposed goal cannot have fallback runtime annotations";
 
-        throw std::runtime_error(sequential_or_error);
+        throw std::runtime_error(fallback_or_error);
     }
 
     /*
@@ -127,21 +114,12 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
             - We may be dealing with a leaf node, in which case we simply finish the execution or
             - We may be dealing with a non-leaf node, in which case we expand it and substitute it for its extension in the parent's children
     */
-    if(op_it != operators.end()) { //GM root goal 
-        expand_root_annot(node_annot, current_node, is_forAll_goal, depth, vctr, valid_forAll_conditions, worlddb);
-    } else {
-        node_annot->group = gm[current_node].group;
-        node_annot->divisible = gm[current_node].divisible;
-
-        recursive_fill_up_runtime_annot(node_annot, gm[vctr.at(0)]);
-
-        if(gm[vctr.at(0)].children.size() == 0) { //Leaf Node
-            vctr.erase(vctr.begin());
-            return;
-        } else {
-            expand_non_root_annot(node_annot, current_node, is_forAll_goal, depth, vctr, valid_forAll_conditions, worlddb);
-        }
-    }
+    if(gm[current_node].children.size() == 0) { // Leaf Node
+        vctr.erase(vctr.begin());
+        return;
+    } 
+        
+    expand_annotation(node_annot, current_node, is_forAll_goal, depth, vctr, valid_forAll_conditions, worlddb);
 }
 
 void AnnotManager::expand_node_vector(std::vector<int>& vctr, int current, int generated_instances) {
@@ -301,36 +279,19 @@ bool FileKnowledgeAnnotManager::goal_node_resolution(general_annot* node_annot, 
     return is_forAll_goal;
 }
 
-void AnnotManager::expand_root_annot(general_annot* node_annot, int current_node, bool is_forAll_goal, int depth, vector<int>& vctr, map<int,AchieveCondition> valid_forAll_conditions, pt::ptree worlddb) {
+void AnnotManager::expand_annotation(general_annot* node_annot, int current_node, bool is_forAll_goal, int depth, vector<int>& vctr, map<int,AchieveCondition> valid_forAll_conditions, pt::ptree worlddb) {
     node_annot->group = gm[current_node].group;
     node_annot->divisible = gm[current_node].divisible;
 
-    bool expanded_in_forAll = false;
+    recursive_fill_up_runtime_annot(node_annot, gm[current_node]);
 
-    if(is_forAll_goal) {
-        int c_node = vctr.at(0);
-        
-        expanded_in_forAll = forall_goal_resolution(node_annot, c_node, depth, valid_forAll_conditions, vctr, worlddb);
-    }
+    general_annot* expanded_annot = retrieve_runtime_annot(gm[current_node].text);
 
-    vctr.erase(vctr.begin()); 
-
-    if(!expanded_in_forAll) {
-        for(general_annot* child : node_annot->children) {
-            child->parent = node_annot;
-            int c_node = vctr.at(0);
-            recursive_gm_annot_generation(child, vctr, worlddb, c_node, valid_forAll_conditions);
-        }
-    }
-}
-
-void AnnotManager::expand_non_root_annot(general_annot* node_annot, int current_node, bool is_forAll_goal, int depth, vector<int>& vctr, map<int,AchieveCondition> valid_forAll_conditions, pt::ptree worlddb) {
-    general_annot* expanded_annot = retrieve_runtime_annot(gm[vctr.at(0)].text);
-
-    if(gm[vctr.at(0)].children.size() > 1) {
-        if(expanded_annot->content == "") {
+    if(gm[current_node].children.size() > 1) {
+        if(expanded_annot->type == EMPTYANNOT) {
             expanded_annot->content = parallel_op;
-            for(int child : gm[vctr.at(0)].children) {
+            expanded_annot->type = OPERATOR;
+            for(int child : gm[current_node].children) {
                 general_annot* aux = new general_annot();
 
                 string node_name = get_node_name(gm[child].text);
@@ -346,8 +307,8 @@ void AnnotManager::expand_non_root_annot(general_annot* node_annot, int current_
             }
         } 
     } else { //Means-end decomposition
-        int only_child = gm[vctr.at(0)].children.at(0);
-        expanded_annot->content = get_node_name(gm[vctr.at(0)].text);
+        int only_child = gm[current_node].children.at(0);
+        expanded_annot->content = get_node_name(gm[current_node].text);
         expanded_annot->type = MEANSEND;
 
         general_annot* aux = new general_annot();
@@ -373,14 +334,13 @@ void AnnotManager::expand_non_root_annot(general_annot* node_annot, int current_
     node_annot->type = expanded_annot->type;
     node_annot->children = expanded_annot->children;
     node_annot->related_goal = expanded_annot->related_goal;
-    
-    int current = vctr.at(0);
-    vctr.erase(vctr.begin());
 
     bool expanded_in_forAll = false;
+
+    vctr.erase(vctr.begin());
     
     if(is_forAll_goal) {
-        expanded_in_forAll = forall_goal_resolution(node_annot, current, depth, valid_forAll_conditions, vctr, worlddb);
+        expanded_in_forAll = forall_goal_resolution(node_annot, current_node, depth, valid_forAll_conditions, vctr, worlddb);
     }
 
     if(!expanded_in_forAll) {

@@ -28,8 +28,7 @@ class AnnotManager {
         bool forall_goal_resolution(general_annot* node_annot, int current, int depth, std::map<int,AchieveCondition> valid_forAll_conditions, std::vector<int>& vctr, pt::ptree worlddb);
         virtual bool goal_node_resolution(general_annot* node_annot, int current_node, int depth, std::map<int,AchieveCondition>& valid_forAll_conditions, pt::ptree worlddb) = 0;
 
-        void expand_root_annot(general_annot* node_annot, int current_node, bool is_forAll_goal, int depth, std::vector<int>& vctr, std::map<int,AchieveCondition> valid_forAll_conditions, pt::ptree worlddb);
-        void expand_non_root_annot(general_annot* node_annot, int current_node, bool is_forAll_goal, int depth, std::vector<int>& vctr, std::map<int,AchieveCondition> valid_forAll_conditions, pt::ptree worlddb);
+        void expand_annotation(general_annot* node_annot, int current_node, bool is_forAll_goal, int depth, std::vector<int>& vctr, std::map<int,AchieveCondition> valid_forAll_conditions, pt::ptree worlddb);
 
         annot_manager_type get_annot_manager_type();
     
