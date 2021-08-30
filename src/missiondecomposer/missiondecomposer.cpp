@@ -75,6 +75,8 @@ void MissionDecomposer::trim_at_graph() {
 	for(boost::tie(i,end) = vertices(mission_decomposition); i != end; ++i) {
 		int current_vertex_id = int(*i);
 		
+		std::cout << "Vertex: " << current_vertex_id << std::endl;
+
 		if(current_vertex_id == root) {
 			found_root = true;
 		}
@@ -893,7 +895,7 @@ ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string, variant<pair<
 
 	create_execution_constraint_edges();
 
-	if(is_unique_branch(mission_decomposition)) {
+	/*if(is_unique_branch(mission_decomposition)) {
 		vector<size_t> achieve_goals;
 		
 		ATGraph::vertex_iterator i, end;
@@ -964,11 +966,13 @@ ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string, variant<pair<
 				v->parent = aux_id;
 			}
 		}
-	}
+	}*/
 
 	print_mission_decomposition(mission_decomposition);
 
-	trim_at_graph();
+	if(!is_unique_branch(mission_decomposition)) {
+		trim_at_graph();
+	}
 
 	return mission_decomposition;
 }
