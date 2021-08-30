@@ -290,6 +290,7 @@ void AnnotManager::expand_annotation(general_annot* node_annot, int current_node
     if(gm[current_node].children.size() > 1) {
         if(expanded_annot->type == EMPTYANNOT) {
             expanded_annot->content = parallel_op;
+            expanded_annot->type = OPERATOR;
             for(int child : gm[current_node].children) {
                 general_annot* aux = new general_annot();
 
