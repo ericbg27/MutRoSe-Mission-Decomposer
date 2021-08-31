@@ -502,9 +502,9 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 			DecompositionPath path = std::get<Decomposition>(mission_decomposition[d_id].content).path;
 			
 			vector<ground_literal> world_state_copy = world_state;
-			update_world_state(world_state_copy, path, at); //Is this a MissionDecomposer method?
+			update_world_state(world_state_copy, path, at); // TODO: Is this a MissionDecomposer method?
 
-			vector<pair<ground_literal,variant<int,float>>> world_state_functions_copy; //Empty for now
+			vector<pair<ground_literal,variant<int,float>>> world_state_functions_copy; // TODO: Empty for now
 
 			context_satisfied = inactive_ctx_predicates->evaluate_expression(world_state_copy, world_state_functions_copy);
 
@@ -523,7 +523,7 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 
 				//For now we create the dependency between the first AT that satisfies its context
 				found_at = true;
-			} else if(context_satisfied && is_sequential) { // Can this happen?
+			} else if(context_satisfied && is_sequential) {
 				if(verbose) {
 					cout << "Context satisfied with task " << std::get<Decomposition>(mission_decomposition[d_id].content).id << ": " << at.name << endl;
 				}
@@ -594,9 +594,9 @@ void MissionDecomposer::create_execution_constraint_edges() {
 
 		if(mission_decomposition[current_node].node_type == GOALNODE || mission_decomposition[current_node].node_type == OP) {
 			if(!is_group || (is_group && !is_divisible)) {
-				constraint_nodes[current_node] = make_pair(is_group,is_divisible);
-
 				if(!active_constraint_branch.first) {
+					constraint_nodes[current_node] = make_pair(is_group,is_divisible);
+
 					active_constraint_branch.first = true;
 					active_constraint_branch.second = current_node;
 				} else {
@@ -605,8 +605,9 @@ void MissionDecomposer::create_execution_constraint_edges() {
 					// If active constraint is a group and the one just found isn't, replace active constraint
 					if(active_constraint.first) {
 						if(!is_group) {
-							inactive_constraint_branches.push(active_constraint_branch);
+							constraint_nodes[current_node] = make_pair(is_group,is_divisible);
 
+							inactive_constraint_branches.push(active_constraint_branch);
 							active_constraint_branch = make_pair(true,current_node);
 						}
 					}
