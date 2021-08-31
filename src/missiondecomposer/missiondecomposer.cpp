@@ -74,8 +74,6 @@ void MissionDecomposer::trim_at_graph() {
 
 	for(boost::tie(i,end) = vertices(mission_decomposition); i != end; ++i) {
 		int current_vertex_id = int(*i);
-		
-		std::cout << "Vertex: " << current_vertex_id << std::endl;
 
 		if(current_vertex_id == root) {
 			found_root = true;
@@ -504,9 +502,9 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 			DecompositionPath path = std::get<Decomposition>(mission_decomposition[d_id].content).path;
 			
 			vector<ground_literal> world_state_copy = world_state;
-			update_world_state(world_state_copy, path, at); //Is this a MissionDecomposer method?
+			update_world_state(world_state_copy, path, at); // TODO: Is this a MissionDecomposer method?
 
-			vector<pair<ground_literal,variant<int,float>>> world_state_functions_copy; //Empty for now
+			vector<pair<ground_literal,variant<int,float>>> world_state_functions_copy; // TODO: Empty for now
 
 			context_satisfied = inactive_ctx_predicates->evaluate_expression(world_state_copy, world_state_functions_copy);
 
@@ -525,7 +523,7 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 
 				//For now we create the dependency between the first AT that satisfies its context
 				found_at = true;
-			} else if(context_satisfied && is_sequential) { // Can this happen?
+			} else if(context_satisfied && is_sequential) {
 				if(verbose) {
 					cout << "Context satisfied with task " << std::get<Decomposition>(mission_decomposition[d_id].content).id << ": " << at.name << endl;
 				}
@@ -596,9 +594,9 @@ void MissionDecomposer::create_execution_constraint_edges() {
 
 		if(mission_decomposition[current_node].node_type == GOALNODE || mission_decomposition[current_node].node_type == OP) {
 			if(!is_group || (is_group && !is_divisible)) {
-				constraint_nodes[current_node] = make_pair(is_group,is_divisible);
-
 				if(!active_constraint_branch.first) {
+					constraint_nodes[current_node] = make_pair(is_group,is_divisible);
+
 					active_constraint_branch.first = true;
 					active_constraint_branch.second = current_node;
 				} else {
@@ -607,8 +605,9 @@ void MissionDecomposer::create_execution_constraint_edges() {
 					// If active constraint is a group and the one just found isn't, replace active constraint
 					if(active_constraint.first) {
 						if(!is_group) {
-							inactive_constraint_branches.push(active_constraint_branch);
+							constraint_nodes[current_node] = make_pair(is_group,is_divisible);
 
+							inactive_constraint_branches.push(active_constraint_branch);
 							active_constraint_branch = make_pair(true,current_node);
 						}
 					}
@@ -683,76 +682,31 @@ void MissionDecomposer::group_and_divisible_attrs_instantiation(int parent, ATNo
 int MissionDecomposer::add_goal_op_node(ATNode& node, general_annot* rannot, int parent, bool is_forAll, bool is_achieve) {
 	node.non_coop = rannot->non_coop;
 	group_and_divisible_attrs_instantiation(parent, node, rannot);
-	if(rannot->children.size() == 0 || rannot->type == MEANSEND) {
+	if(rannot->type == MEANSEND) {
 		node.node_type = GOALNODE;
 	} else {
 		node.node_type = OP;
 	}
 	node.content = rannot->content;
 	node.parent = parent;
-	node.is_achieve_type = is_forAll || is_achieve;
+	node.is_achieve_type = is_forAll;
 	if(is_forAll) {
 		node.achieve_goal_id = rannot->children.at(0)->related_goal;
 	}
 
-	int achieve_goalnode_id = -1;
-	if(is_achieve && node.node_type == OP) {
-		ATNode new_achieve_node = node;
-
-		new_achieve_node.node_type = GOALNODE;
-		new_achieve_node.content = rannot->related_goal;
-
-		node.non_coop = false;
-		node.group = true;
-		node.divisible = true;
-
-		achieve_goalnode_id = boost::add_vertex(new_achieve_node, mission_decomposition);
-
-		node.parent = achieve_goalnode_id;
-		node.is_achieve_type = false;
-	}
-
 	int node_id = boost::add_vertex(node, mission_decomposition);
 
-	if(achieve_goalnode_id == -1) {
-		if(parent != -1) {
-			ATEdge e;
-			if(rannot->parent->or_decomposition) {
-				e.edge_type = NORMALOR;
-			} else {
-				e.edge_type = NORMALAND;
-			}
-			e.source = parent;
-			e.target = node_id;
-
-			//mission_decomposition[node_id].parent = parent;
-			boost::add_edge(boost::vertex(parent, mission_decomposition), boost::vertex(node_id, mission_decomposition), e, mission_decomposition);
-		}
-	} else {
-		if(parent != -1) {
-			ATEdge e;
-			if(rannot->parent->or_decomposition) {
-				e.edge_type = NORMALOR;
-			} else {
-				e.edge_type = NORMALAND;
-			}
-			e.source = parent;
-			e.target = achieve_goalnode_id;
-
-			//mission_decomposition[node_id].parent = parent;
-			boost::add_edge(boost::vertex(parent, mission_decomposition), boost::vertex(achieve_goalnode_id, mission_decomposition), e, mission_decomposition);
-		}
-
+	if(parent != -1) {
 		ATEdge e;
 		if(rannot->parent->or_decomposition) {
 			e.edge_type = NORMALOR;
 		} else {
 			e.edge_type = NORMALAND;
 		}
-		e.source = achieve_goalnode_id;
+		e.source = parent;
 		e.target = node_id;
 
-		boost::add_edge(boost::vertex(achieve_goalnode_id, mission_decomposition), boost::vertex(node_id, mission_decomposition), e, mission_decomposition);
+		boost::add_edge(boost::vertex(parent, mission_decomposition), boost::vertex(node_id, mission_decomposition), e, mission_decomposition);
 	}
 
 	return node_id;
@@ -895,79 +849,6 @@ ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string, variant<pair<
 
 	create_execution_constraint_edges();
 
-	/*if(is_unique_branch(mission_decomposition)) {
-		vector<size_t> achieve_goals;
-		
-		ATGraph::vertex_iterator i, end;
-
-		for(boost::tie(i,end) = vertices(mission_decomposition); i != end; ++i) {
-			if(mission_decomposition[*i].is_achieve_type && mission_decomposition[*i].node_type == GOALNODE) {
-				achieve_goals.push_back(*i);
-			}
-		}
-
-		for(size_t goal : achieve_goals) {
-			int parent = mission_decomposition[goal].parent;
-
-			if(parent != -1) {
-				ATNode aux;
-				aux = mission_decomposition[goal];
-
-				aux.node_type = OP;
-				aux.content = parallel_op;
-
-				int aux_id = boost::add_vertex(aux, mission_decomposition);
-				
-				ATGraph::out_edge_iterator ei, ei_end;
-
-				for(boost::tie(ei,ei_end) = out_edges(parent,mission_decomposition);ei != ei_end;++ei) {
-					ATEdge e = mission_decomposition[*ei];
-
-					if(e.target == static_cast<int>(goal) && (e.edge_type == NORMALAND || e.edge_type == NORMALOR)) {
-						auto edge = boost::edge(parent,goal,mission_decomposition).first;
-
-						boost::remove_edge(edge, mission_decomposition);
-					}	
-				}
-
-				ATEdge e;
-				e.edge_type = NORMALAND;
-				e.source = parent;
-				e.target = aux_id;
-
-				boost::add_edge(boost::vertex(parent, mission_decomposition), boost::vertex(aux_id, mission_decomposition), e, mission_decomposition);
-
-				ATEdge e2;
-				e2.edge_type = NORMALAND;
-				e2.source = aux_id;
-				e2.target = goal;
-
-				boost::add_edge(boost::vertex(aux_id, mission_decomposition), boost::vertex(goal, mission_decomposition), e2, mission_decomposition);
-
-				ATNode* v = &mission_decomposition[goal];
-				v->parent = aux_id;
-			} else {
-				ATNode aux;
-				aux = mission_decomposition[goal];
-
-				aux.node_type = OP;
-				aux.content = parallel_op;
-
-				int aux_id = boost::add_vertex(aux, mission_decomposition);
-
-				ATEdge e;
-				e.edge_type = NORMALAND;
-				e.source = aux_id;
-				e.target = goal;
-
-				boost::add_edge(boost::vertex(aux_id, mission_decomposition), boost::vertex(goal, mission_decomposition), e, mission_decomposition);
-
-				ATNode* v = &mission_decomposition[goal];
-				v->parent = aux_id;
-			}
-		}
-	}*/
-
 	print_mission_decomposition(mission_decomposition);
 
 	if(!is_unique_branch(mission_decomposition)) {
@@ -995,7 +876,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 	ATNode node;
 	int node_id;
 
-	if(rannot->type == OPERATOR || rannot->type == MEANSEND) {
+	if(rannot->type == OPERATOR || rannot->type == MEANSEND) { // Here wee simply skip Query goals that are kept in the runtime annotation (their type is GOAL)
 		bool active_context = true;
 		Context context;
 

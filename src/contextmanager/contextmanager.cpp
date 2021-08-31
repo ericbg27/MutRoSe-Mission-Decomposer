@@ -24,27 +24,6 @@ void Context::set_context_type(string tp) {
 */
 bool Context::check_context(vector<ground_literal> world_state, vector<SemanticMapping> semantic_mapping, map<string, variant<pair<string,string>,pair<vector<string>,string>>> var_maps) {	
 	bool is_active = false;
-	/*if(holds_alternative<string>(condition)) { // This probably isn't possible
-		//pair<bool,pair<string,predicate_definition>> var_and_pred = get_pred_from_context(std::get<string>(condition), semantic_mapping);
-
-		var_and_pred.second.first = std::get<pair<string,string>>(var_maps[var_and_pred.second.first]).first;
-		
-		for(ground_literal state : world_state) {
-			if(state.predicate == var_and_pred.second.second.name) {
-				if(state.args.size() == 1) { //We have an attribute of one variable only
-					if(state.args.at(0) == var_and_pred.second.first) {
-						if(state.positive == var_and_pred.first) {
-							is_active = true;
-
-							break;
-						}
-					}
-				}
-			}
-		}
-	} else {
-		//TODO
-	}*/
 
 	string var_attr_regex = "([!]?[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}";
 	string var_attr_regex2 = "(((\\bnot\\b)[ ]+){1}[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}";
@@ -54,7 +33,7 @@ bool Context::check_context(vector<ground_literal> world_state, vector<SemanticM
 	ConditionEvaluation* evaluation = Condition::evaluate_condition(var_maps, semantic_mapping, accepted_regex_patterns);
 	ConditionExpression* eval_result = evaluation->get_evaluation_predicates();
 
-	vector<pair<ground_literal,variant<int,float>>> world_state_functions; // Empty for now
+	vector<pair<ground_literal,variant<int,float>>> world_state_functions; // TODO: Empty for now
 
 	is_active = eval_result->evaluate_expression(world_state, world_state_functions);
 

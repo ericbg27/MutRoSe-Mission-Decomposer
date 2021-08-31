@@ -489,50 +489,12 @@ void ValidMissionGenerator::check_sequential_op_children(queue<pair<int,ATNode>>
             int target = boost::target(*ei,mission_decomposition);
             auto edge = boost::edge(source,target,mission_decomposition).first;
 
-            /*int children_num = 0;
-            ATGraph::out_edge_iterator target_ei, target_ei_end;
-            for(boost::tie(target_ei,target_ei_end) = out_edges(target,mission_decomposition);target_ei != target_ei_end;++target_ei) {
-                children_num++;
-            }*/
-
-            /*if(mission_decomposition[target].node_type == GOALNODE || (mission_decomposition[target].node_type == OP && children_num < 2)) {
-                bool goal_node = true;
-                int child_id = target;
-                while(goal_node) {
-                    ATGraph::out_edge_iterator ci, ci_end;
-                    for(boost::tie(ci,ci_end) = out_edges(child_id,mission_decomposition);ci != ci_end;++ci) {
-                        int s = boost::source(*ci,mission_decomposition);
-                        int t = boost::target(*ci,mission_decomposition);
-                        auto e = boost::edge(s,t,mission_decomposition).first;
-
-                        /
-                            A goal node only has a goal as child if it has a Means-end decomposition
-                        /
-                        if(mission_decomposition[t].node_type != GOALNODE) {
-                            goal_node = false;
-                            if(mission_decomposition[e].edge_type == NORMALAND || mission_decomposition[e].edge_type == NORMALOR) {
-                                if(t == next_node.first) {
-                                    is_child = true;
-                                    break;
-                                }
-                            }
-                        } else {
-                            child_id = t;
-                        }
-                    }
-                }
-
-                if(is_child) {
+            if(mission_decomposition[edge].edge_type == NORMALAND || mission_decomposition[edge].edge_type == NORMALOR) {
+                if(target == next_node.first) {
+                    is_child = true;
                     break;
                 }
-            } else {*/
-                if(mission_decomposition[edge].edge_type == NORMALAND || mission_decomposition[edge].edge_type == NORMALOR) {
-                    if(target == next_node.first) {
-                        is_child = true;
-                        break;
-                    }
-                }
-            //}
+            }
         }
 
         if(is_child) {
@@ -601,53 +563,12 @@ void ValidMissionGenerator::check_parallel_op_children(queue<pair<int,ATNode>>& 
                 is_or = true;
             }
 
-            /*int children_num = 0;
-            ATGraph::out_edge_iterator target_ei, target_ei_end;
-            for(boost::tie(target_ei,target_ei_end) = out_edges(target,mission_decomposition);target_ei != target_ei_end;++target_ei) {
-                children_num++;
-            }*/
-
-            /*
-                If we have a goal node as child we have to search its children for the next node
-            */
-            /*if(mission_decomposition[target].node_type == GOALNODE || (mission_decomposition[target].node_type == OP && children_num < 2)) {
-                bool goal_node = true;
-                int child_id = target;
-                while(goal_node) {
-                    ATGraph::out_edge_iterator ci, ci_end;
-                    for(boost::tie(ci,ci_end) = out_edges(child_id,mission_decomposition);ci != ci_end;++ci) {
-                        int s = boost::source(*ci,mission_decomposition);
-                        int t = boost::target(*ci,mission_decomposition);
-                        auto e = boost::edge(s,t,mission_decomposition).first;
-
-                        /
-                            A goal node only has a goal as child if it has a Means-end decomposition
-                        /
-                        if(mission_decomposition[t].node_type != GOALNODE) {
-                            goal_node = false;
-                            if(mission_decomposition[e].edge_type == NORMALAND || mission_decomposition[e].edge_type == NORMALOR) {
-                                if(t == next_node.first) {
-                                    is_child = true;
-                                    break;
-                                }
-                            }
-                        } else {
-                            child_id = t;
-                        }
-                    }
-                }
-
-                if(is_child) {
+            if(mission_decomposition[edge].edge_type == NORMALAND || mission_decomposition[edge].edge_type == NORMALOR) {
+                if(target == next_node.first) {
+                    is_child = true;
                     break;
-                }
-            } else {*/
-                if(mission_decomposition[edge].edge_type == NORMALAND || mission_decomposition[edge].edge_type == NORMALOR) {
-                    if(target == next_node.first) {
-                        is_child = true;
-                        break;
-                    }
-                }
-            //}
+                 }
+            }
         }
 
         if(is_child) {
@@ -749,54 +670,13 @@ void ValidMissionGenerator::check_fallback_op_children(queue<pair<int,ATNode>>& 
             int source = boost::source(*ei,mission_decomposition);
             int target = boost::target(*ei,mission_decomposition);
             auto edge = boost::edge(source,target,mission_decomposition).first;
-
-            /*int children_num = 0;
-            ATGraph::out_edge_iterator target_ei, target_ei_end;
-            for(boost::tie(target_ei,target_ei_end) = out_edges(target,mission_decomposition);target_ei != target_ei_end;++target_ei) {
-                children_num++;
-            }*/
-
-            /*
-                If we have a goal node as child we have to search its children for the next node
-            */
-            /*if(mission_decomposition[target].node_type == GOALNODE || (mission_decomposition[target].node_type == OP && children_num < 2)) {
-                bool goal_node = true;
-                int child_id = target;
-                while(goal_node) {
-                    ATGraph::out_edge_iterator ci, ci_end;
-                    for(boost::tie(ci,ci_end) = out_edges(child_id,mission_decomposition);ci != ci_end;++ci) {
-                        int s = boost::source(*ci,mission_decomposition);
-                        int t = boost::target(*ci,mission_decomposition);
-                        auto e = boost::edge(s,t,mission_decomposition).first;
-
-                        /
-                            A goal node only has a goal as child if it has a Means-end decomposition
-                        /
-                        if(mission_decomposition[t].node_type != GOALNODE) {
-                            goal_node = false;
-                            if(mission_decomposition[e].edge_type == NORMALAND || mission_decomposition[e].edge_type == NORMALOR) {
-                                if(t == next_node.first) {
-                                    is_child = true;
-                                    break;
-                                }
-                            }
-                        } else {
-                            child_id = t;
-                        }
-                    }
-                }
-
-                if(is_child) {
+       
+            if(mission_decomposition[edge].edge_type == NORMALAND || mission_decomposition[edge].edge_type == NORMALOR) {
+                if(target == next_node.first) {
+                    is_child = true;
                     break;
                 }
-            } else {*/
-                if(mission_decomposition[edge].edge_type == NORMALAND || mission_decomposition[edge].edge_type == NORMALOR) {
-                    if(target == next_node.first) {
-                        is_child = true;
-                        break;
-                    }
-                }
-            //}
+            }
         }
 
         if(is_child) {
