@@ -109,34 +109,27 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
     vector<int> depth_first_nodes = vis.GetVector();
     operators_stack.push(make_pair(depth_first_nodes.at(0),trimmed_mission_decomposition[depth_first_nodes.at(0)]));
 
-    pair<int,int> current_root_node = make_pair(depth_first_nodes.at(0),1);
+    pair<int,int> current_root_node = make_pair(depth_first_nodes.at(1),depth_first_nodes.at(2));
 
-    unsigned int dfs_node_index;
-    for(dfs_node_index = 1;dfs_node_index < depth_first_nodes.size();dfs_node_index++) {
+    for(int dfs_node_index : depth_first_nodes) {
         int current_node_index = dfs_node_index;
 
         pair<int,ATNode> current_node = make_pair(current_node_index, trimmed_mission_decomposition[current_node_index]);
 
         if(current_node.second.node_type != DECOMPOSITION) {
-            if(trimmed_mission_decomposition[current_node.second.parent].is_achieve_type) {
-                last_op = "";
-            }
-
-            if(current_node.second.parent == depth_first_nodes.at(0)) {
+            if(current_node.second.parent == depth_first_nodes.at(0) && current_node_index != depth_first_nodes.at(1)) {
                 pair<int,ATNode> artificial_node;
                 artificial_node.first = -1;
 
-                if(current_node_index != depth_first_nodes.at(1)) {
-                    generate_constraints_from_stacks(current_branch_operators_stack, current_branch_nodes_stack, existing_constraints);
+                generate_constraints_from_stacks(current_branch_operators_stack, current_branch_nodes_stack, existing_constraints);
 
-                    while(!current_branch_nodes_stack.empty()) {
-                        nodes_stack.push(current_branch_nodes_stack.top());
-                        
-                        current_branch_nodes_stack.pop();
-                    }
+                while(!current_branch_nodes_stack.empty()) {
+                    nodes_stack.push(current_branch_nodes_stack.top());
                     
-                    nodes_stack.push(artificial_node);
+                    current_branch_nodes_stack.pop();
                 }
+                
+                nodes_stack.push(artificial_node);
 
                 current_root_node.first = current_node.first;
                 current_root_node.second = dfs_node_index+1;
@@ -148,16 +141,24 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
                 current_root_node.first = current_node.first;
                 current_root_node.second = dfs_node_index+1;
             } else if(current_node.second.parent == current_root_node.first && current_node_index != depth_first_nodes.at(current_root_node.second) && holds_alternative<AbstractTask>(current_node.second.content)) {
-                int last_child;
-                
-                ATGraph::out_edge_iterator ei, ei_end;
-                for(boost::tie(ei,ei_end) = out_edges(current_node.second.parent,trimmed_mission_decomposition);ei != ei_end;++ei) {
-                    int source = boost::source(*ei,trimmed_mission_decomposition);
-                    int target = boost::target(*ei,trimmed_mission_decomposition);
-                    auto edge = boost::edge(source,target,trimmed_mission_decomposition).first;
+                DFSATVisitor dfs_vis;
+                boost::depth_first_search(trimmed_mission_decomposition, dfs_vis, colormap, current_root_node.first);
 
-                    if(trimmed_mission_decomposition[edge].edge_type == NORMALAND) {
-                        last_child = target;
+                vector<int> parent_dfs_nodes = dfs_vis.GetVector();
+                parent_dfs_nodes.resize(std::find(parent_dfs_nodes.begin(),parent_dfs_nodes.end(),0) - parent_dfs_nodes.begin() - 1);
+
+                /*
+                    Find if the task is not the last child of its parent.
+
+                    If it is not the last and it isn't the first we insert an operator equal to its parent that is the current root node. This needs to be done since
+                    runtime annotations are flattened in the runtime annotation tree generation.
+                */
+                int last_child = -1;
+                std::vector<int>::reverse_iterator rit = parent_dfs_nodes.rbegin();
+                for(; rit != parent_dfs_nodes.rend(); ++rit) {
+                    if(trimmed_mission_decomposition[*rit].node_type != DECOMPOSITION) {
+                        last_child = *rit;
+                        break;
                     }
                 }
 
@@ -166,11 +167,15 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
                 }
             }
 
+            if(trimmed_mission_decomposition[current_node.second.parent].is_achieve_type) {
+                last_op = "";
+            }
+
             if(current_node.second.node_type == ATASK) {
                 current_branch_nodes_stack.push(current_node);
                 
                 if(current_branch_operators_stack.size() > 0 && current_branch_nodes_stack.size() >= 2) {
-                    bool new_branch = false;
+                    bool can_create_constraints = true;
                     
                     /*
                         Check if we have at least 2 nodes until we reach some artificial node
@@ -179,15 +184,13 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
                     for(int cnt = 0;cnt < 2;cnt++) {
                         if(holds_alternative<pair<int,ATNode>>(nodes_stack_cpy.top())) {
                             if(std::get<pair<int,ATNode>>(nodes_stack_cpy.top()).first == -1) {
-                                new_branch = true;
+                                can_create_constraints = false;
                             }
                             nodes_stack_cpy.pop();
                         }
                     }
 
-                    if(new_branch) {
-                        last_op = "";
-                    } else {
+                    if(can_create_constraints) {
                         /*
                             Here is the logic for creating a constraint
                         
@@ -195,7 +198,7 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
                                 - If we find an AT we will get it and use it to form new constraint(s)
                                 - If we find a constraint we don't erase it from the stack but:
                                     - If we have a sequential operator we just take into consideration the most recent constraint
-                                    - If we have a parallel operator we take into consideration all of the constraints we have until reaching one that has id -1 or the
+                                    - If we have a parallel/fallback operator we take into consideration all of the constraints we have until reaching one that has id -1 or the
                                     first created constraint
                         */
                         if(std::get<string>(current_branch_operators_stack.top().second.content) == parallel_op || std::get<string>(current_branch_operators_stack.top().second.content) == fallback_op) {
@@ -234,7 +237,7 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
     }
     
     /*
-        Here we will have the final operators and several constraints and possibly tasks, which we must combine to have all of the constraints of the mission
+        Here we will have the final operators, several constraints and possibly tasks which we must combine to have all of the constraints of the mission
     */
     generate_constraints_from_stacks(operators_stack, nodes_stack, existing_constraints);
 
@@ -263,7 +266,7 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
     @ Input 3: A reference to the existing constraints map
     @ Output: Void. The input structures are updated
 */
-void ConstraintManager::generate_constraints_from_stacks(stack<pair<int,ATNode>>& operators_stack, stack<variant<pair<int,ATNode>,Constraint>>& nodes_stack, map<int,set<int>>& existing_constraints) {
+void ConstraintManager::generate_constraints_from_stacks(stack<pair<int,ATNode>>& operators_stack, stack<variant<pair<int,ATNode>,Constraint>>& nodes_stack, map<int,set<int>>& existing_constraints) {    
     while(!operators_stack.empty()) {
         pair<int,ATNode> current_op = operators_stack.top();
         operators_stack.pop();
@@ -1121,30 +1124,45 @@ void ConstraintManager::generate_execution_constraints() {
 void ConstraintManager::trim_mission_constraints() {
     // 1st walk-through
     map<int,set<int>> first_nodes, second_nodes;
+    map<int,set<int>> fb_first_nodes, fb_second_nodes;
 
     for(Constraint c : mission_constraints) {
-        if(c.type == SEQ) {
+        if(c.type == SEQ || c.type == FB) {
             int first_node = c.nodes_involved.first.first;
             int second_node = c.nodes_involved.second.first;
 
-            first_nodes[second_node].insert(first_node);
-            second_nodes[first_node].insert(second_node);
+            if(c.type == SEQ) {
+                first_nodes[second_node].insert(first_node);
+                second_nodes[first_node].insert(second_node);
+            } else {
+                fb_first_nodes[second_node].insert(first_node);
+                fb_second_nodes[first_node].insert(second_node);
+            }
         }
     }
 
     // 2nd walk-through
     vector<Constraint>::iterator constraint_it = mission_constraints.begin();
     while(constraint_it != mission_constraints.end()) {
-        if(constraint_it->type == SEQ) {
+        if(constraint_it->type == SEQ || constraint_it->type == FB) {
             int first_node = constraint_it->nodes_involved.first.first;
             int second_node = constraint_it->nodes_involved.second.first;
 
             vector<int> v = {-1};
-            if(second_nodes.find(first_node) != second_nodes.end() && first_nodes.find(second_node) != first_nodes.end()) {
-                set<int> first_node_set = second_nodes[first_node];
-                set<int> second_node_set = first_nodes[second_node];
+            if(constraint_it->type == SEQ) {
+                if(second_nodes.find(first_node) != second_nodes.end() && first_nodes.find(second_node) != first_nodes.end()) {
+                    set<int> first_node_set = second_nodes[first_node];
+                    set<int> second_node_set = first_nodes[second_node];
 
-                std::set_intersection(first_node_set.begin(), first_node_set.end(), second_node_set.begin(), second_node_set.end(), v.begin());
+                    std::set_intersection(first_node_set.begin(), first_node_set.end(), second_node_set.begin(), second_node_set.end(), v.begin());
+                }
+            } else {
+                if(fb_second_nodes.find(first_node) != fb_second_nodes.end() && fb_first_nodes.find(second_node) != fb_first_nodes.end()) {
+                    set<int> first_node_set = fb_second_nodes[first_node];
+                    set<int> second_node_set = fb_first_nodes[second_node];
+
+                    std::set_intersection(first_node_set.begin(), first_node_set.end(), second_node_set.begin(), second_node_set.end(), v.begin());
+                }
             }
 
             if(v.at(0) != -1) {
