@@ -24,6 +24,13 @@ vector<Constraint> ConstraintManager::generate_mission_constraints() {
         generate_at_constraints(trimmed_mission_decomposition);
     }
 
+    int fallback_constraints = 0;
+    for(auto c : mission_constraints) {
+        if(c.type == FB) {
+            fallback_constraints++;
+        }
+    }
+
     transform_at_constraints();
     generate_execution_constraints();
     trim_mission_constraints();
@@ -87,175 +94,744 @@ vector<Constraint> ConstraintManager::generate_mission_constraints() {
     @ Output: The vector with all of the mission constraints
 */
 void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decomposition) {
-    stack<pair<int,ATNode>> operators_stack;
-    stack<variant<pair<int,ATNode>,Constraint>> nodes_stack;
-
-    stack<pair<int,ATNode>> current_branch_operators_stack;
-    stack<variant<pair<int,ATNode>,Constraint>> current_branch_nodes_stack;
-
-    map<int,set<int>> existing_constraints;
-
-    /*
-        Nodes with id -1 are artificial just to simulate the division between branches of the tree
-    */
-    string last_op = "";
-
     auto indexmap = boost::get(boost::vertex_index, trimmed_mission_decomposition);
     auto colormap = boost::make_vector_property_map<boost::default_color_type>(indexmap);
 
     DFSATVisitor vis;
     boost::depth_first_search(trimmed_mission_decomposition, vis, colormap, 0);
 
-    vector<int> depth_first_nodes = vis.GetVector();
-    operators_stack.push(make_pair(depth_first_nodes.at(0),trimmed_mission_decomposition[depth_first_nodes.at(0)]));
+    vector<int> dfs_nodes = vis.GetVector();
 
-    pair<int,int> current_root_node = make_pair(depth_first_nodes.at(1),depth_first_nodes.at(2));
+    variant<pair<int,ATNode>,ConstraintTree*> ct = recursive_constraint_tree_build(dfs_nodes, trimmed_mission_decomposition);
+    if(!holds_alternative<ConstraintTree*>(ct)) {
+        string constraint_generation_error = "Could not generate constraints";
 
-    for(int dfs_node_index : depth_first_nodes) {
-        int current_node_index = dfs_node_index;
+        throw std::runtime_error(constraint_generation_error);
+    }
 
-        pair<int,ATNode> current_node = make_pair(current_node_index, trimmed_mission_decomposition[current_node_index]);
+    ConstraintTree* constraints_tree = std::get<ConstraintTree*>(ct);
+    constraints_tree->generate_constraints();
 
-        if(current_node.second.node_type != DECOMPOSITION) {
-            if(current_node.second.parent == depth_first_nodes.at(0) && current_node_index != depth_first_nodes.at(1)) {
-                pair<int,ATNode> artificial_node;
-                artificial_node.first = -1;
-
-                generate_constraints_from_stacks(current_branch_operators_stack, current_branch_nodes_stack, existing_constraints);
-
-                while(!current_branch_nodes_stack.empty()) {
-                    nodes_stack.push(current_branch_nodes_stack.top());
-                    
-                    current_branch_nodes_stack.pop();
-                }
-                
-                nodes_stack.push(artificial_node);
-
-                current_root_node.first = current_node.first;
-                current_root_node.second = dfs_node_index+1;
-            } else if(current_node.second.parent == current_root_node.first && current_node_index != depth_first_nodes.at(current_root_node.second) && !holds_alternative<AbstractTask>(current_node.second.content)) {
-                pair<int,ATNode> artificial_node;
-                artificial_node.first = -1;
-                current_branch_nodes_stack.push(artificial_node);
-
-                current_root_node.first = current_node.first;
-                current_root_node.second = dfs_node_index+1;
-            } else if(current_node.second.parent == current_root_node.first && current_node_index != depth_first_nodes.at(current_root_node.second) && holds_alternative<AbstractTask>(current_node.second.content)) {
-                DFSATVisitor dfs_vis;
-                boost::depth_first_search(trimmed_mission_decomposition, dfs_vis, colormap, current_root_node.first);
-
-                vector<int> parent_dfs_nodes = dfs_vis.GetVector();
-                parent_dfs_nodes.resize(std::find(parent_dfs_nodes.begin(),parent_dfs_nodes.end(),0) - parent_dfs_nodes.begin() - 1);
-
-                /*
-                    Find if the task is not the last child of its parent.
-
-                    If it is not the last and it isn't the first we insert an operator equal to its parent that is the current root node. This needs to be done since
-                    runtime annotations are flattened in the runtime annotation tree generation.
-                */
-                int last_child = -1;
-                std::vector<int>::reverse_iterator rit = parent_dfs_nodes.rbegin();
-                for(; rit != parent_dfs_nodes.rend(); ++rit) {
-                    if(trimmed_mission_decomposition[*rit].node_type != DECOMPOSITION) {
-                        last_child = *rit;
-                        break;
-                    }
-                }
-
-                if(current_node.first != last_child) {
-                    current_branch_operators_stack.push(make_pair(current_root_node.first,trimmed_mission_decomposition[current_root_node.first]));
-                }
-            }
-
-            if(trimmed_mission_decomposition[current_node.second.parent].is_achieve_type) {
-                last_op = "";
-            }
-
-            if(current_node.second.node_type == ATASK) {
-                current_branch_nodes_stack.push(current_node);
-                
-                if(current_branch_operators_stack.size() > 0 && current_branch_nodes_stack.size() >= 2) {
-                    bool can_create_constraints = true;
-                    
-                    /*
-                        Check if we have at least 2 nodes until we reach some artificial node
-                    */
-                    stack<variant<pair<int,ATNode>,Constraint>> nodes_stack_cpy = current_branch_nodes_stack;
-                    for(int cnt = 0;cnt < 2;cnt++) {
-                        if(holds_alternative<pair<int,ATNode>>(nodes_stack_cpy.top())) {
-                            if(std::get<pair<int,ATNode>>(nodes_stack_cpy.top()).first == -1) {
-                                can_create_constraints = false;
-                            }
-                            nodes_stack_cpy.pop();
-                        }
-                    }
-
-                    if(can_create_constraints) {
-                        /*
-                            Here is the logic for creating a constraint
-                        
-                            -> Idea: Go through the stack and
-                                - If we find an AT we will get it and use it to form new constraint(s)
-                                - If we find a constraint we don't erase it from the stack but:
-                                    - If we have a sequential operator we just take into consideration the most recent constraint
-                                    - If we have a parallel/fallback operator we take into consideration all of the constraints we have until reaching one that has id -1 or the
-                                    first created constraint
-                        */
-                        if(std::get<string>(current_branch_operators_stack.top().second.content) == parallel_op || std::get<string>(current_branch_operators_stack.top().second.content) == fallback_op) {
-                            /*
-                                Using the temporary vector, generate the constraints, delete AT's and generate the new constraints
-
-                                -> Remember that we will have an AT in the first position of the queue and we will generate constraints using it 
-                                and all of the constraints (or another AT) we already have
-                            */
-                            constraint_type ctype = (std::get<string>(current_branch_operators_stack.top().second.content) == parallel_op ? PAR : FB);
-
-                            generate_par_and_fallback_constraints(existing_constraints, current_branch_nodes_stack, current_branch_operators_stack, ctype);
-
-                            last_op = (ctype == PAR ? parallel_op : fallback_op);
-                        } else {
-                            generate_seq_constraints(existing_constraints, current_branch_nodes_stack, current_branch_operators_stack, last_op);
-
-                            last_op = sequential_op;
-                        }
-
-                        current_branch_operators_stack.pop();
-                    }
-                }
-            } else if(current_node.second.node_type == OP) {
-                current_branch_operators_stack.push(current_node);
-            }
+    int fb_cts = 0;
+    for(auto ch : constraints_tree->child_constraints) {
+        if(ch.type == FB) {
+            fb_cts++;
         }
     }
 
-    generate_constraints_from_stacks(current_branch_operators_stack, current_branch_nodes_stack, existing_constraints);
-    
-    while(!current_branch_nodes_stack.empty()) {
-        nodes_stack.push(current_branch_nodes_stack.top());
-                    
-        current_branch_nodes_stack.pop();
-    }
-    
-    /*
-        Here we will have the final operators, several constraints and possibly tasks which we must combine to have all of the constraints of the mission
-    */
-    generate_constraints_from_stacks(operators_stack, nodes_stack, existing_constraints);
+    mission_constraints = constraints_tree->constraints;
+    mission_constraints.insert(mission_constraints.end(), constraints_tree->child_constraints.begin(), constraints_tree->child_constraints.end());
+}
 
-    while(!nodes_stack.empty()) {
-        if(holds_alternative<Constraint>(nodes_stack.top())) {
-            mission_constraints.push_back(std::get<Constraint>(nodes_stack.top()));
+std::variant<std::pair<int,ATNode>,ConstraintTree*> ConstraintManager::recursive_constraint_tree_build(vector<int>& dfs_nodes, ATGraph trimmed_mission_decomposition) {
+    int current_node_index = dfs_nodes.at(0);
+    dfs_nodes.erase(dfs_nodes.begin());
+
+    ATNode current_node = trimmed_mission_decomposition[current_node_index];
+
+    if(holds_alternative<string>(current_node.content)) { // Operator
+        string op = std::get<string>(current_node.content);
+
+        ConstraintTree* op_tree;
+        if(op == sequential_op) {
+            op_tree = new SequentialConstraintTree();
+        } else if(op == fallback_op) {
+            op_tree = new FallbackConstraintTree();
+        } else if(op == parallel_op) {
+            op_tree = new ParallelConstraintTree();
+        }
+
+        bool is_child = true;
+        while(is_child) {
+            if(dfs_nodes.size() == 0) {
+                break;
+            }
+
+            int next_node_index = dfs_nodes.at(0);
+            auto edge = boost::edge(current_node_index, next_node_index, trimmed_mission_decomposition);
+
+            if(!edge.second) { //If edge exists we have a child
+                is_child = false;
+            }
+
+            if(is_child) {
+                variant<pair<int,ATNode>,ConstraintTree*> child_tree = recursive_constraint_tree_build(dfs_nodes, trimmed_mission_decomposition);
+                op_tree->children.push_back(child_tree);
+            }
+        }
+
+        return op_tree;
+    } else if(holds_alternative<AbstractTask>(current_node.content)) {
+        bool is_child = true;
+
+        while(is_child) {
+            if(dfs_nodes.size() == 0) {
+                break;
+            }
+
+            int next_node_index = dfs_nodes.at(0);
+            auto edge = boost::edge(current_node_index, next_node_index, trimmed_mission_decomposition);
+
+            if(!edge.second) { //If edge exists we have a child
+                is_child = false;
+            }
+
+            if(is_child) {
+                variant<pair<int,ATNode>,ConstraintTree*> decomposition = recursive_constraint_tree_build(dfs_nodes, trimmed_mission_decomposition);
+            }
+        }
+
+        return make_pair(current_node_index, current_node);
+    } 
+    
+    return make_pair(current_node_index, current_node);
+}
+
+void SequentialConstraintTree::generate_constraints() {
+    for(auto child : children) {
+        if(holds_alternative<ConstraintTree*>(child)) {
+            ConstraintTree* ch = std::get<ConstraintTree*>(child);
+
+            ch->generate_constraints();
+            child_constraints.insert(child_constraints.end(),ch->constraints.begin(),ch->constraints.end());
+            child_constraints.insert(child_constraints.end(),ch->child_constraints.begin(),ch->child_constraints.end());
+        }
+    }
+
+    unsigned int right_child_index = 1;
+    for(unsigned int left_child_index = 0; left_child_index < children.size()-1; left_child_index++) {
+        variant<pair<int,ATNode>,vector<Constraint>> left_child_val, right_child_val;
+
+        if(holds_alternative<ConstraintTree*>(children.at(left_child_index))) {
+            ConstraintTree* left_child = std::get<ConstraintTree*>(children.at(left_child_index));
+        
+            left_child_val = left_child->constraints;
         } else {
-            pair<int,ATNode> node = std::get<pair<int,ATNode>>(nodes_stack.top());
+            pair<int,ATNode> left_child = std::get<pair<int,ATNode>>(children.at(left_child_index));
 
-            string constraint_error = "Could not generate constraint with node " + std::get<AbstractTask>(node.second.content).id;
-
-            throw std::runtime_error(constraint_error);
+            left_child_val = left_child;
         }
 
-        nodes_stack.pop();
+        if(holds_alternative<ConstraintTree*>(children.at(right_child_index))) {
+            ConstraintTree* right_child = std::get<ConstraintTree*>(children.at(right_child_index));
+        
+            right_child_val = right_child->constraints;
+        } else {
+            pair<int,ATNode> right_child = std::get<pair<int,ATNode>>(children.at(right_child_index));
+
+            right_child_val = right_child;
+        }
+
+        vector<Constraint> child_generated_constraints = generate_constraints_from_child_contents(left_child_val, right_child_val);
+        constraints.insert(constraints.end(), child_generated_constraints.begin(), child_generated_constraints.end());
+
+        right_child_index++;
     }
 }
 
+vector<Constraint> SequentialConstraintTree::generate_constraints_from_child_contents(variant<pair<int,ATNode>,vector<Constraint>> left_val, variant<pair<int,ATNode>,vector<Constraint>> right_val) {
+    vector<Constraint> new_constraints;
+    
+    if(holds_alternative<vector<Constraint>>(left_val)) { 
+        vector<Constraint> left_value = std::get<vector<Constraint>>(left_val);
+
+        if(holds_alternative<vector<Constraint>>(right_val)) {
+            vector<Constraint> right_value = std::get<vector<Constraint>>(right_val);
+
+            for(Constraint lval : left_value) {
+                for(Constraint rval : right_value) {
+                    if(lval.type == SEQ) {
+                        if(rval.type == SEQ || rval.type == FB) {
+                            Constraint c = generate_constraint(lval.nodes_involved.second,rval.nodes_involved.first,SEQ);
+
+                            bool insert_constraint = is_new_constraint(c, constraints_map);
+
+                            if(insert_constraint) {
+                                new_constraints.push_back(c);
+                            }
+                        } else {
+                            Constraint c1, c2;
+
+                            c1 = generate_constraint(lval.nodes_involved.second,rval.nodes_involved.first,SEQ);
+                            c2 = generate_constraint(lval.nodes_involved.second,rval.nodes_involved.second,SEQ);
+
+                            bool insert_constraint;
+
+                            insert_constraint = is_new_constraint(c1, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c1);
+                            }
+
+                            insert_constraint = is_new_constraint(c2, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c2);
+                            }
+                        }
+                    } else if(lval.type == PAR) {
+                        if(rval.type == SEQ || rval.type == FB) {
+                            Constraint c1, c2;
+
+                            c1 = generate_constraint(lval.nodes_involved.first, rval.nodes_involved.first, SEQ);
+                            c2 = generate_constraint(lval.nodes_involved.second, rval.nodes_involved.first, SEQ);
+
+                            bool insert_constraint;
+
+                            insert_constraint = is_new_constraint(c1, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c1);
+                            }
+
+                            insert_constraint = is_new_constraint(c2, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c2);
+                            }
+                        } else {
+                            Constraint c1, c2, c3, c4;
+
+                            c1 = generate_constraint(lval.nodes_involved.first, rval.nodes_involved.first, SEQ);
+                            c2 = generate_constraint(lval.nodes_involved.first, rval.nodes_involved.second, SEQ);
+                            c3 = generate_constraint(lval.nodes_involved.second, rval.nodes_involved.first, SEQ);
+                            c4 = generate_constraint(lval.nodes_involved.second, rval.nodes_involved.second, SEQ);
+
+                            bool insert_constraint;
+
+                            insert_constraint = is_new_constraint(c1, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c1);
+                            }
+
+                            insert_constraint = is_new_constraint(c2, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c2);
+                            }
+
+                            insert_constraint = is_new_constraint(c3, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c3);
+                            }
+                            
+                            insert_constraint = is_new_constraint(c4, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c4);
+                            }
+                        }
+                    } else if(lval.type == FB) {
+                        if(rval.type == SEQ || rval.type == FB) {
+                            Constraint c1, c2;
+
+                            c1 = generate_constraint(lval.nodes_involved.first,rval.nodes_involved.first,SEQ);
+                            c2 = generate_constraint(lval.nodes_involved.second,rval.nodes_involved.first,SEQ);
+
+                            bool insert_constraint;
+
+                            insert_constraint = is_new_constraint(c1, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c1);
+                            }
+
+                            insert_constraint = is_new_constraint(c2, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c2);
+                            }
+                        } else {
+                            Constraint c1, c2, c3, c4;
+
+                            c1 = generate_constraint(lval.nodes_involved.first, rval.nodes_involved.first, SEQ);
+                            c2 = generate_constraint(lval.nodes_involved.first, rval.nodes_involved.second, SEQ);
+                            c3 = generate_constraint(lval.nodes_involved.second, rval.nodes_involved.first, SEQ);
+                            c4 = generate_constraint(lval.nodes_involved.second, rval.nodes_involved.second, SEQ);
+
+                            bool insert_constraint;
+
+                            insert_constraint = is_new_constraint(c1, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c1);
+                            }
+
+                            insert_constraint = is_new_constraint(c2, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c2);
+                            }
+
+                            insert_constraint = is_new_constraint(c3, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c3);
+                            }
+                            
+                            insert_constraint = is_new_constraint(c4, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c4);
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            pair<int,ATNode> right_value = std::get<pair<int,ATNode>>(right_val);
+
+            for(Constraint lval : left_value) {
+                if(lval.type == SEQ) {
+                    Constraint c = generate_constraint(lval.nodes_involved.second, right_value, SEQ);
+
+                    bool insert_constraint = is_new_constraint(c, constraints_map);
+
+                    if(insert_constraint) {
+                        new_constraints.push_back(c);
+                    }
+                } else if(lval.type == FB || lval.type == PAR) {
+                    Constraint c1, c2;
+
+                    c1 = generate_constraint(lval.nodes_involved.first, right_value, SEQ);
+                    c2 = generate_constraint(lval.nodes_involved.second, right_value, SEQ);
+
+                    bool insert_constraint;
+
+                    insert_constraint = is_new_constraint(c1, constraints_map);
+                    if(insert_constraint) {
+                        new_constraints.push_back(c1);
+                    }
+
+                    insert_constraint = is_new_constraint(c2, constraints_map);
+                    if(insert_constraint) {
+                        new_constraints.push_back(c2);
+                    }
+                }
+            }
+        }
+    } else {
+        pair<int,ATNode> left_value = std::get<pair<int,ATNode>>(left_val);
+
+        if(holds_alternative<vector<Constraint>>(right_val)) {
+            vector<Constraint> right_value = std::get<vector<Constraint>>(right_val);
+
+            for(Constraint rval : right_value) {
+                if(rval.type == SEQ || rval.type == FB) {
+                    Constraint c = generate_constraint(left_value, rval.nodes_involved.first, SEQ);
+
+                    bool insert_constraint = is_new_constraint(c, constraints_map);
+
+                    if(insert_constraint) {
+                        new_constraints.push_back(c);
+                    }
+                } else if(rval.type == PAR) {
+                    Constraint c1, c2;
+
+                    c1 = generate_constraint(left_value, rval.nodes_involved.first, SEQ);
+                    c2 = generate_constraint(left_value, rval.nodes_involved.second, SEQ);
+
+                    bool insert_constraint;
+
+                    insert_constraint = is_new_constraint(c1, constraints_map);
+                    if(insert_constraint) {
+                        new_constraints.push_back(c1);
+                    }
+
+                    insert_constraint = is_new_constraint(c2, constraints_map);
+                    if(insert_constraint) {
+                        new_constraints.push_back(c2);
+                    }
+                }
+            }
+        } else {
+            pair<int,ATNode> right_value = std::get<pair<int,ATNode>>(right_val);
+
+            Constraint c = generate_constraint(left_value, right_value, SEQ);
+
+            bool insert_constraint = is_new_constraint(c, constraints_map);
+
+            if(insert_constraint) {
+                new_constraints.push_back(c);
+            }
+        }
+    }
+
+    return new_constraints;
+}
+
+void FallbackConstraintTree::generate_constraints() {
+    for(auto child : children) {
+        if(holds_alternative<ConstraintTree*>(child)) {
+            ConstraintTree* ch = std::get<ConstraintTree*>(child);
+
+            ch->generate_constraints();
+            child_constraints.insert(child_constraints.end(),ch->constraints.begin(),ch->constraints.end());
+            child_constraints.insert(child_constraints.end(),ch->child_constraints.begin(),ch->child_constraints.end());
+        }
+    }
+
+    unsigned int right_child_index = 1;
+    for(unsigned int left_child_index = 0; left_child_index < children.size()-1; left_child_index++) {
+        variant<pair<int,ATNode>,vector<Constraint>> left_child_val, right_child_val;
+
+        if(holds_alternative<ConstraintTree*>(children.at(left_child_index))) {
+            ConstraintTree* left_child = std::get<ConstraintTree*>(children.at(left_child_index));
+        
+            left_child_val = left_child->constraints;
+        } else {
+            pair<int,ATNode> left_child = std::get<pair<int,ATNode>>(children.at(left_child_index));
+
+            left_child_val = left_child;
+        }
+
+        if(holds_alternative<ConstraintTree*>(children.at(right_child_index))) {
+            ConstraintTree* right_child = std::get<ConstraintTree*>(children.at(right_child_index));
+        
+            right_child_val = right_child->constraints;
+        } else {
+            pair<int,ATNode> right_child = std::get<pair<int,ATNode>>(children.at(right_child_index));
+
+            right_child_val = right_child;
+        }
+
+        vector<Constraint> child_generated_constraints = generate_constraints_from_child_contents(left_child_val, right_child_val);
+        constraints.insert(constraints.end(), child_generated_constraints.begin(), child_generated_constraints.end());
+
+        right_child_index++;
+    }
+}
+
+vector<Constraint> FallbackConstraintTree::generate_constraints_from_child_contents(variant<pair<int,ATNode>,vector<Constraint>> left_val, variant<pair<int,ATNode>,vector<Constraint>> right_val) {
+    vector<Constraint> new_constraints;
+
+    if(holds_alternative<vector<Constraint>>(left_val)) { 
+        vector<Constraint> left_value = std::get<vector<Constraint>>(left_val);
+
+        if(holds_alternative<vector<Constraint>>(right_val)) {
+            vector<Constraint> right_value = std::get<vector<Constraint>>(right_val);
+
+            for(Constraint lval : left_value) {
+                for(Constraint rval : right_value) {
+                    if(lval.type == SEQ || lval.type == PAR) {
+                        if(rval.type == SEQ || rval.type == PAR) {
+                            Constraint c1, c2, c3, c4;
+
+                            c1 = generate_constraint(lval.nodes_involved.first, rval.nodes_involved.first, FB);
+                            c2 = generate_constraint(lval.nodes_involved.first, rval.nodes_involved.second, FB);
+                            c3 = generate_constraint(lval.nodes_involved.second, rval.nodes_involved.first, FB);
+                            c4 = generate_constraint(lval.nodes_involved.second, rval.nodes_involved.second, FB);
+
+                            bool insert_constraint;
+
+                            insert_constraint = is_new_constraint(c1, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c1);
+                            }
+
+                            insert_constraint = is_new_constraint(c2, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c2);
+                            }
+
+                            insert_constraint = is_new_constraint(c3, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c3);
+                            }
+                            
+                            insert_constraint = is_new_constraint(c4, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c4);
+                            }
+                        } else {
+                            Constraint c1, c2;
+
+                            c1 = generate_constraint(lval.nodes_involved.first, rval.nodes_involved.first, FB);
+                            c2 = generate_constraint(lval.nodes_involved.second, rval.nodes_involved.first, FB);
+
+                            bool insert_constraint;
+
+                            insert_constraint = is_new_constraint(c1, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c1);
+                            }
+
+                            insert_constraint = is_new_constraint(c2, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c2);
+                            }
+                        }
+                    } else {
+                        if(rval.type == SEQ || rval.type == PAR) {
+                            Constraint c1, c2;
+
+                            c1 = generate_constraint(lval.nodes_involved.second, rval.nodes_involved.first, FB);
+                            c2 = generate_constraint(lval.nodes_involved.second, rval.nodes_involved.second, FB);
+
+                            bool insert_constraint;
+
+                            insert_constraint = is_new_constraint(c1, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c1);
+                            }
+
+                            insert_constraint = is_new_constraint(c2, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c2);
+                            }
+                        } else {
+                            Constraint c;
+
+                            c = generate_constraint(lval.nodes_involved.second, rval.nodes_involved.first, FB);
+
+                            bool insert_constraint;
+
+                            insert_constraint = is_new_constraint(c, constraints_map);
+                            if(insert_constraint) {
+                                new_constraints.push_back(c);
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            pair<int,ATNode> right_value = std::get<pair<int,ATNode>>(right_val);
+
+            for(Constraint lval : left_value) {
+                if(lval.type == SEQ || lval.type == PAR) {
+                    Constraint c1, c2;
+
+                    c1 = generate_constraint(lval.nodes_involved.first, right_value, FB);
+                    c2 = generate_constraint(lval.nodes_involved.second, right_value, FB);
+
+                    bool insert_constraint;
+
+                    insert_constraint = is_new_constraint(c1, constraints_map);
+                    if(insert_constraint) {
+                        new_constraints.push_back(c1);
+                    }
+
+                    insert_constraint = is_new_constraint(c2, constraints_map);
+                    if(insert_constraint) {
+                        new_constraints.push_back(c2);
+                    }
+                } else {
+                    Constraint c;
+
+                    c = generate_constraint(lval.nodes_involved.second, right_value, FB);
+
+                    bool insert_constraint;
+
+                    insert_constraint = is_new_constraint(c, constraints_map);
+                    if(insert_constraint) {
+                        new_constraints.push_back(c);
+                    }
+                }
+            }
+        }
+    } else {
+        pair<int,ATNode> left_value = std::get<pair<int,ATNode>>(left_val);
+
+        if(holds_alternative<vector<Constraint>>(right_val)) {
+            vector<Constraint> right_value = std::get<vector<Constraint>>(right_val);
+
+            for(Constraint rval : right_value) {
+                if(rval.type == SEQ || rval.type == PAR) {
+                    Constraint c1, c2;
+
+                    c1 = generate_constraint(left_value, rval.nodes_involved.first, FB);
+                    c2 = generate_constraint(left_value, rval.nodes_involved.second, FB);
+
+                    bool insert_constraint;
+
+                    insert_constraint = is_new_constraint(c1, constraints_map);
+                    if(insert_constraint) {
+                        new_constraints.push_back(c1);
+                    }
+
+                    insert_constraint = is_new_constraint(c2, constraints_map);
+                    if(insert_constraint) {
+                        new_constraints.push_back(c2);
+                    }   
+                } else {
+                    Constraint c;
+
+                    c = generate_constraint(left_value, rval.nodes_involved.first, FB);
+
+                    bool insert_constraint;
+
+                    insert_constraint = is_new_constraint(c, constraints_map);
+                    if(insert_constraint) {
+                        new_constraints.push_back(c);
+                    }
+                }
+            }
+        } else {
+            pair<int,ATNode> right_value = std::get<pair<int,ATNode>>(right_val);
+
+            Constraint c = generate_constraint(left_value, right_value, FB);
+
+            bool insert_constraint = is_new_constraint(c, constraints_map);
+
+            if(insert_constraint) {
+                new_constraints.push_back(c);
+            }
+        }
+    }
+
+    return new_constraints;
+}
+
+void ParallelConstraintTree::generate_constraints() {
+    for(auto child : children) {
+        if(holds_alternative<ConstraintTree*>(child)) {
+            ConstraintTree* ch = std::get<ConstraintTree*>(child);
+
+            ch->generate_constraints();
+            child_constraints.insert(child_constraints.end(),ch->constraints.begin(),ch->constraints.end());
+            child_constraints.insert(child_constraints.end(),ch->child_constraints.begin(),ch->child_constraints.end());
+        }
+    }
+
+    for(unsigned int left_child_index = 0; left_child_index < children.size()-1; left_child_index++) {
+        for(unsigned int right_child_index = left_child_index+1; right_child_index < children.size(); right_child_index++) {
+            variant<pair<int,ATNode>,vector<Constraint>> left_child_val, right_child_val;
+
+            if(holds_alternative<ConstraintTree*>(children.at(left_child_index))) {
+                ConstraintTree* left_child = std::get<ConstraintTree*>(children.at(left_child_index));
+            
+                left_child_val = left_child->constraints;
+            } else {
+                pair<int,ATNode> left_child = std::get<pair<int,ATNode>>(children.at(left_child_index));
+
+                left_child_val = left_child;
+            }
+
+            if(holds_alternative<ConstraintTree*>(children.at(right_child_index))) {
+                ConstraintTree* right_child = std::get<ConstraintTree*>(children.at(right_child_index));
+            
+                right_child_val = right_child->constraints;
+            } else {
+                pair<int,ATNode> right_child = std::get<pair<int,ATNode>>(children.at(right_child_index));
+
+                right_child_val = right_child;
+            }
+
+            vector<Constraint> child_generated_constraints = generate_constraints_from_child_contents(left_child_val, right_child_val);
+            constraints.insert(constraints.end(), child_generated_constraints.begin(), child_generated_constraints.end());
+        }
+    }
+}
+
+vector<Constraint> ParallelConstraintTree::generate_constraints_from_child_contents(variant<pair<int,ATNode>,vector<Constraint>> left_val, variant<pair<int,ATNode>,vector<Constraint>> right_val) {
+    vector<Constraint> new_constraints;
+    
+    if(holds_alternative<vector<Constraint>>(left_val)) { 
+        vector<Constraint> left_value = std::get<vector<Constraint>>(left_val);
+
+        if(holds_alternative<vector<Constraint>>(right_val)) {
+            vector<Constraint> right_value = std::get<vector<Constraint>>(right_val);
+
+            for(Constraint lval : left_value) {
+                for(Constraint rval : right_value) {
+                    Constraint c1, c2, c3, c4;
+
+                    c1 = generate_constraint(lval.nodes_involved.first, rval.nodes_involved.first, PAR);
+                    c2 = generate_constraint(lval.nodes_involved.first, rval.nodes_involved.second, PAR);
+                    c3 = generate_constraint(lval.nodes_involved.second, rval.nodes_involved.first, PAR);
+                    c4 = generate_constraint(lval.nodes_involved.second, rval.nodes_involved.second, PAR);
+
+                    bool insert_constraint;
+
+                    insert_constraint = is_new_constraint(c1, constraints_map);
+                    if(insert_constraint) {
+                        new_constraints.push_back(c1);
+                    }
+
+                    insert_constraint = is_new_constraint(c2, constraints_map);
+                    if(insert_constraint) {
+                        new_constraints.push_back(c2);
+                    }
+
+                    insert_constraint = is_new_constraint(c3, constraints_map);
+                    if(insert_constraint) {
+                        new_constraints.push_back(c3);
+                    }
+                    
+                    insert_constraint = is_new_constraint(c4, constraints_map);
+                    if(insert_constraint) {
+                        new_constraints.push_back(c4);
+                    }
+                }
+            }
+        } else {
+            pair<int,ATNode> right_value = std::get<pair<int,ATNode>>(right_val);
+
+            for(Constraint lval : left_value) {
+                Constraint c1, c2;
+
+                c1 = generate_constraint(lval.nodes_involved.first, right_value, PAR);
+                c2 = generate_constraint(lval.nodes_involved.second, right_value, PAR);
+
+                bool insert_constraint;
+
+                insert_constraint = is_new_constraint(c1, constraints_map);
+                if(insert_constraint) {
+                    new_constraints.push_back(c1);
+                }
+
+                insert_constraint = is_new_constraint(c2, constraints_map);
+                if(insert_constraint) {
+                    new_constraints.push_back(c2);
+                }
+            }
+        }
+    } else {
+        pair<int,ATNode> left_value = std::get<pair<int,ATNode>>(left_val);
+
+        if(holds_alternative<vector<Constraint>>(right_val)) {
+            vector<Constraint> right_value = std::get<vector<Constraint>>(right_val);
+
+            for(Constraint rval : right_value) {
+                Constraint c1, c2;
+
+                c1 = generate_constraint(left_value, rval.nodes_involved.first, PAR);
+                c2 = generate_constraint(left_value, rval.nodes_involved.second, PAR);
+
+                bool insert_constraint;
+
+                insert_constraint = is_new_constraint(c1, constraints_map);
+                if(insert_constraint) {
+                    new_constraints.push_back(c1);
+                }
+
+                insert_constraint = is_new_constraint(c2, constraints_map);
+                if(insert_constraint) {
+                    new_constraints.push_back(c2);
+                }
+            }
+        } else {
+            pair<int,ATNode> right_value = std::get<pair<int,ATNode>>(right_val);
+
+            Constraint c = generate_constraint(left_value, right_value, PAR);
+
+            bool insert_constraint = is_new_constraint(c, constraints_map);
+
+            if(insert_constraint) {
+                new_constraints.push_back(c);
+            }
+        }
+    }
+
+    return new_constraints;
+}
+
+bool is_new_constraint(Constraint c, map<int,set<int>>& constraints_map) {
+    bool is_new = false;
+
+    if(constraints_map.find(c.nodes_involved.first.first) != constraints_map.end()) {
+        if(constraints_map[c.nodes_involved.first.first].find(c.nodes_involved.second.first) == constraints_map[c.nodes_involved.first.first].end()) {
+            is_new = true;
+
+            constraints_map[c.nodes_involved.first.first].insert(c.nodes_involved.second.first);
+        }
+    } else {
+        is_new = true;
+        
+        constraints_map[c.nodes_involved.first.first] = set<int>();
+        constraints_map[c.nodes_involved.first.first].insert(c.nodes_involved.second.first);
+    }
+
+    return is_new;
+}
 /*
     Function: generate_constraints from stacks
     Objective: Generate constraints based on an input operators stack and an input nodes stack. Additionally, an existing
@@ -266,7 +842,7 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
     @ Input 3: A reference to the existing constraints map
     @ Output: Void. The input structures are updated
 */
-void ConstraintManager::generate_constraints_from_stacks(stack<pair<int,ATNode>>& operators_stack, stack<variant<pair<int,ATNode>,Constraint>>& nodes_stack, map<int,set<int>>& existing_constraints) {    
+void ConstraintManager::generate_constraints_from_stacks(stack<pair<int,ATNode>>& operators_stack, stack<variant<pair<int,ATNode>,Constraint>>& nodes_stack, map<int,set<int>>& existing_constraints) {      
     while(!operators_stack.empty()) {
         pair<int,ATNode> current_op = operators_stack.top();
         operators_stack.pop();
@@ -373,13 +949,15 @@ void ConstraintManager::generate_constraints_from_stacks(stack<pair<int,ATNode>>
                                     nc4.type = NEX;
                                 }
 
-                                if(existing_constraints[nc1.nodes_involved.first.first].find(nc1.nodes_involved.second.first) == existing_constraints[nc1.nodes_involved.first.first].end()) {
-                                    nodes_stack.push(nc1);
-                                
-                                    existing_constraints[nc1.nodes_involved.first.first].insert(nc1.nodes_involved.second.first);
+                                if(ctype == PAR) {
+                                    if(existing_constraints[nc1.nodes_involved.first.first].find(nc1.nodes_involved.second.first) == existing_constraints[nc1.nodes_involved.first.first].end()) {
+                                        nodes_stack.push(nc1);
+                                    
+                                        existing_constraints[nc1.nodes_involved.first.first].insert(nc1.nodes_involved.second.first);
+                                    }
                                 }
     
-                                if(nc2.type != NEX) {
+                                if(nc2.type != NEX && ctype == PAR) {
                                     if(existing_constraints[nc2.nodes_involved.first.first].find(nc2.nodes_involved.second.first) == existing_constraints[nc2.nodes_involved.first.first].end()) {
                                         nodes_stack.push(nc2);
 
@@ -395,7 +973,7 @@ void ConstraintManager::generate_constraints_from_stacks(stack<pair<int,ATNode>>
                                     }
                                 }
 
-                                if(nc4.type != NEX) {
+                                if(nc4.type != NEX && ctype == PAR) {
                                     if(existing_constraints[nc4.nodes_involved.first.first].find(nc4.nodes_involved.second.first) == existing_constraints[nc4.nodes_involved.first.first].end()) {
                                         nodes_stack.push(nc4);
 
@@ -585,7 +1163,7 @@ void ConstraintManager::generate_constraints_from_stacks(stack<pair<int,ATNode>>
 }
 
 void ConstraintManager::generate_par_and_fallback_constraints(map<int,set<int>>& existing_constraints, stack<variant<pair<int,ATNode>,Constraint>>& current_branch_nodes_stack,
-                                                                stack<pair<int,ATNode>>& current_branch_operators_stack, constraint_type ctype) {
+                                                                stack<pair<int,ATNode>>& current_branch_operators_stack, constraint_type ctype, string last_op) {
     /*
         While we don't reach an artificial node or the end of the nodes stack we populate our temporary vector
     */
@@ -626,29 +1204,60 @@ void ConstraintManager::generate_par_and_fallback_constraints(map<int,set<int>>&
             new_constraints.push(c);
             node_queue.pop();
         } else {
-            /*
-                We are dealing with a constraint. Since we are dealing with a parallel operator we will create parallel constraints with both of
-                the tasks
-            */
-            Constraint c1, c2;
+            Constraint existing_constraint = get<Constraint>(node_queue.front());
+            pair<pair<int,ATNode>,pair<int,ATNode>> constraint_nodes = existing_constraint.nodes_involved;
 
-            pair<pair<int,ATNode>,pair<int,ATNode>> constraint_nodes = get<Constraint>(node_queue.front()).nodes_involved;
+            if(ctype == PAR) {
+                Constraint c1, c2;
 
-            c1 = generate_constraint(constraint_nodes.first, last_task, ctype);
-            c2 = generate_constraint(constraint_nodes.second, last_task, ctype);
+                c1 = generate_constraint(constraint_nodes.first, last_task, ctype);
+                c2 = generate_constraint(constraint_nodes.second, last_task, ctype);
 
-            if(existing_constraints[constraint_nodes.second.first].find(last_task.first) == existing_constraints[constraint_nodes.second.first].end()) {
-                existing_constraints[constraint_nodes.second.first].insert(last_task.first);
-                new_constraints.push(c2);
+                if(existing_constraints[constraint_nodes.second.first].find(last_task.first) == existing_constraints[constraint_nodes.second.first].end()) {
+                    existing_constraints[constraint_nodes.second.first].insert(last_task.first);
+                    new_constraints.push(c2);
+                }
+
+                if(existing_constraints[constraint_nodes.first.first].find(last_task.first) == existing_constraints[constraint_nodes.first.first].end()) {
+                    existing_constraints[constraint_nodes.first.first].insert(last_task.first);
+                    new_constraints.push(c1);
+                }
+
+                old_constraints.push(get<Constraint>(node_queue.front()));
+                node_queue.pop();
+            } else {
+                if(existing_constraint.type == FB) {
+                    Constraint c;
+
+                    c = generate_constraint(constraint_nodes.second, last_task, ctype);
+
+                    if(existing_constraints[constraint_nodes.second.first].find(last_task.first) == existing_constraints[constraint_nodes.second.first].end()) {
+                        existing_constraints[constraint_nodes.second.first].insert(last_task.first);
+                        new_constraints.push(c);
+                    }
+
+                    old_constraints.push(get<Constraint>(node_queue.front()));
+                    node_queue.pop();
+                } else {
+                    Constraint c1, c2;
+
+                    c1 = generate_constraint(constraint_nodes.first, last_task, ctype);
+                    c2 = generate_constraint(constraint_nodes.second, last_task, ctype);
+
+                    if(existing_constraints[constraint_nodes.second.first].find(last_task.first) == existing_constraints[constraint_nodes.second.first].end()) {
+                        existing_constraints[constraint_nodes.second.first].insert(last_task.first);
+                        new_constraints.push(c2);
+                    }
+
+                    if(existing_constraints[constraint_nodes.first.first].find(last_task.first) == existing_constraints[constraint_nodes.first.first].end()) {
+                        existing_constraints[constraint_nodes.first.first].insert(last_task.first);
+                        new_constraints.push(c1);
+                    }
+
+                    old_constraints.push(get<Constraint>(node_queue.front()));
+                    node_queue.pop();
+                }
             }
-
-            if(existing_constraints[constraint_nodes.first.first].find(last_task.first) == existing_constraints[constraint_nodes.first.first].end()) {
-                existing_constraints[constraint_nodes.first.first].insert(last_task.first);
-                new_constraints.push(c1);
-            }
-
-            old_constraints.push(get<Constraint>(node_queue.front()));
-            node_queue.pop();
         }
     }
 
@@ -1134,10 +1743,10 @@ void ConstraintManager::trim_mission_constraints() {
             if(c.type == SEQ) {
                 first_nodes[second_node].insert(first_node);
                 second_nodes[first_node].insert(second_node);
-            } else {
+            } /*else {
                 fb_first_nodes[second_node].insert(first_node);
                 fb_second_nodes[first_node].insert(second_node);
-            }
+            }*/
         }
     }
 
@@ -1236,7 +1845,7 @@ void ConstraintManager::check_execution_constraints() {
     @ Input 3: The constraint type
     @ Output: The generated constraint
 */
-Constraint ConstraintManager::generate_constraint(pair<int,ATNode> n1, pair<int,ATNode> n2, constraint_type type) {
+Constraint generate_constraint(pair<int,ATNode> n1, pair<int,ATNode> n2, constraint_type type) {
     Constraint c;
     c.type = type;
     c.nodes_involved = make_pair(n1,n2);
