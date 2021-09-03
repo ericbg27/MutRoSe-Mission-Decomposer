@@ -38,7 +38,7 @@ void ConfigManager::parse_xml_configuration_file(string filename) {
 
     BOOST_FOREACH(pt::ptree::value_type& config, config_root.get_child("configuration")) {
         //Read Databases Info
-        vector<string> databases {"world_db"};
+        /*vector<string> databases {"world_db"};
         for(string db : databases) {
             if(config.first == db) {
                 boost::optional<string> db_type_attr = config.second.get_optional<string>("type");
@@ -131,7 +131,7 @@ void ConfigManager::parse_xml_configuration_file(string filename) {
                     throw std::runtime_error(unsupported_db_type_error);
                 }
             }
-        }
+        }*/
 
         /*
             Read output file path and type

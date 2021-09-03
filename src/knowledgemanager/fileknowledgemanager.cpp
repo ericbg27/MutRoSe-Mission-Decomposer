@@ -21,21 +21,26 @@ using namespace std;
 		   -> When (and if) more types are allowed we need to delegate the task of opening these files to functions
 		    passing the configuration file as a function parameter
 */ 
-void FileKnowledgeManager::construct_knowledge_base(string db_name, map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> cfg) {
-	string db_file_type = std::get<map<string,string>>(cfg[db_name])["file_type"];
-    string db_root = "";
+void FileKnowledgeManager::construct_knowledge_base(string db_name) {
+	string db_file_type;
+
+    if(db_name.find(".") != std::string::npos) {
+        size_t separator_pos = db_name.rfind(".");
+
+        db_file_type = db_name.substr(separator_pos+1,db_name.size()-separator_pos-1);
+        std::transform(db_file_type.begin(),db_file_type.end(), db_file_type.begin(), ::toupper);
+    } else {
+        db_file_type = "XML";
+    }
         
     if(db_file_type == "XML") {
         pt::ptree db_knowledge;
-        pt::read_xml(std::get<map<string,string>>(cfg[db_name])["path"], db_knowledge);
+        pt::read_xml(db_name, db_knowledge);
                     
-        db_root = std::get<map<string,string>>(cfg[db_name])["xml_root"];
+        string db_root = "world_db";
 
-        if(db_name == "world_db") {
-            XMLKnowledgeBase wk(db_name, db_knowledge, db_root);
-
-            world_knowledge = make_shared<XMLKnowledgeBase>(wk);
-        }
+        XMLKnowledgeBase wk("world_db", db_knowledge, db_root);
+        world_knowledge = make_shared<XMLKnowledgeBase>(wk);
     } else {
         string unsupported_db_file_type_error = "File type " + db_file_type + " is not supported as a database";
 

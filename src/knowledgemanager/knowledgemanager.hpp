@@ -18,7 +18,7 @@ namespace pt = boost::property_tree;
 
 class KnowledgeManager {
     public:
-        virtual void construct_knowledge_base(std::string name, std::map<std::string, std::variant<std::map<std::string,std::string>, std::vector<std::string>, std::vector<SemanticMapping>, std::vector<VariableMapping>, pair<std::string,std::string>>> cfg) = 0;                                    
+        virtual void construct_knowledge_base(std::string name) = 0;                                    
         
         virtual void initialize_objects(std::map<std::string,std::set<std::string>>& sorts, std::vector<std::string> high_level_loc_types, std::map<std::string,std::vector<AbstractTask>>& at_instances) = 0;
         
