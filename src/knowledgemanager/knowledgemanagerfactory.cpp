@@ -5,7 +5,7 @@ using namespace std;
 shared_ptr<KnowledgeManager> KnowledgeManagerFactory::create_knowledge_manager(map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> cfg, string unique_id, map<string,string> type_mapping) {
     string dbs_type = "";
 
-    vector<string> dbs = {"world_db"};
+    /*vector<string> dbs = {"world_db"};
 
     for(unsigned int i = 0; i < dbs.size(); i++) {
         string db_name = dbs.at(i);
@@ -20,7 +20,9 @@ shared_ptr<KnowledgeManager> KnowledgeManagerFactory::create_knowledge_manager(m
                 throw std::runtime_error(invalid_databases_types_error);
             }
         }
-    }
+    }*/
+
+    dbs_type = "FILE";
 
     if(dbs_type == "FILE") {
         shared_ptr<KnowledgeManager> file_manager = std::make_shared<FileKnowledgeManager>();

@@ -1,5 +1,6 @@
 #include "fileknowledgemanager.hpp"
 
+#include <iostream>
 #include <stack>
 
 #include <boost/foreach.hpp>
