@@ -24,13 +24,6 @@ vector<Constraint> ConstraintManager::generate_mission_constraints() {
         generate_at_constraints(trimmed_mission_decomposition);
     }
 
-    int fallback_constraints = 0;
-    for(auto c : mission_constraints) {
-        if(c.type == FB) {
-            fallback_constraints++;
-        }
-    }
-
     transform_at_constraints();
     generate_execution_constraints();
     trim_mission_constraints();
@@ -111,13 +104,6 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
 
     ConstraintTree* constraints_tree = std::get<ConstraintTree*>(ct);
     constraints_tree->generate_constraints();
-
-    int fb_cts = 0;
-    for(auto ch : constraints_tree->child_constraints) {
-        if(ch.type == FB) {
-            fb_cts++;
-        }
-    }
 
     mission_constraints = constraints_tree->constraints;
     mission_constraints.insert(mission_constraints.end(), constraints_tree->child_constraints.begin(), constraints_tree->child_constraints.end());
