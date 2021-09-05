@@ -868,25 +868,12 @@ void ConstraintManager::transform_at_constraints() {
                 constraint_nodes_decompositions[n2.first] = n2_decompositions;
             }
 
-            /*
-                Verify which decompositions of the first task in which effects prohibit the decompositions of the second task by making its preconditions
-                invalid.
-
-                -> We have to check which tasks are involved in a Non-group or Non-divisible group goal
-                -> These will involve the same robots
-                    - We assume that these will use the same number of robots
-            */
-            bool non_coop_nodes = boost::edge(n1.first,n2.first,mission_decomposition).second;
             unsigned int i,j;
             for(i=0;i<n1_decompositions.size();i++) {
                 for(j=0;j<n2_decompositions.size();j++) {
-                    bool can_unite = can_unite_decompositions(std::get<Decomposition>(n1_decompositions.at(i).second.content),get<Decomposition>(n2_decompositions.at(j).second.content),non_coop_nodes);
+                    Constraint new_c = generate_constraint(n1_decompositions.at(i), n2_decompositions.at(j), SEQ);
 
-                    if(can_unite) {
-                        Constraint new_c = generate_constraint(n1_decompositions.at(i), n2_decompositions.at(j), SEQ);
-
-                        transformed_constraints.push_back(new_c);
-                    }
+                    transformed_constraints.push_back(new_c);
                 }
             }
         } else if(c.type == FB) {
