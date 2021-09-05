@@ -1078,13 +1078,11 @@ void ConstraintManager::trim_mission_constraints() {
             int second_node = constraint_it->nodes_involved.second.first;
 
             vector<int> v = {-1};
-            if(constraint_it->type == SEQ) {
-                if(second_nodes.find(first_node) != second_nodes.end() && first_nodes.find(second_node) != first_nodes.end()) {
-                    set<int> first_node_set = second_nodes[first_node];
-                    set<int> second_node_set = first_nodes[second_node];
+            if(second_nodes.find(first_node) != second_nodes.end() && first_nodes.find(second_node) != first_nodes.end()) {
+                set<int> first_node_set = second_nodes[first_node];
+                set<int> second_node_set = first_nodes[second_node];
 
-                    std::set_intersection(first_node_set.begin(), first_node_set.end(), second_node_set.begin(), second_node_set.end(), v.begin());
-                }
+                std::set_intersection(first_node_set.begin(), first_node_set.end(), second_node_set.begin(), second_node_set.end(), v.begin());
             }
 
             if(v.at(0) != -1) {
