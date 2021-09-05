@@ -1073,7 +1073,7 @@ void ConstraintManager::trim_mission_constraints() {
     // 2nd walk-through
     vector<Constraint>::iterator constraint_it = mission_constraints.begin();
     while(constraint_it != mission_constraints.end()) {
-        if(constraint_it->type == SEQ || constraint_it->type == FB) {
+        if(constraint_it->type == SEQ) {
             int first_node = constraint_it->nodes_involved.first.first;
             int second_node = constraint_it->nodes_involved.second.first;
 
@@ -1082,13 +1082,6 @@ void ConstraintManager::trim_mission_constraints() {
                 if(second_nodes.find(first_node) != second_nodes.end() && first_nodes.find(second_node) != first_nodes.end()) {
                     set<int> first_node_set = second_nodes[first_node];
                     set<int> second_node_set = first_nodes[second_node];
-
-                    std::set_intersection(first_node_set.begin(), first_node_set.end(), second_node_set.begin(), second_node_set.end(), v.begin());
-                }
-            } else {
-                if(fb_second_nodes.find(first_node) != fb_second_nodes.end() && fb_first_nodes.find(second_node) != fb_first_nodes.end()) {
-                    set<int> first_node_set = fb_second_nodes[first_node];
-                    set<int> second_node_set = fb_first_nodes[second_node];
 
                     std::set_intersection(first_node_set.begin(), first_node_set.end(), second_node_set.begin(), second_node_set.end(), v.begin());
                 }
