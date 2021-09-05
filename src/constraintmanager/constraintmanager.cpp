@@ -1038,16 +1038,12 @@ void ConstraintManager::generate_execution_constraints() {
 
                         for(unsigned int i=0;i<source_decompositions.size();i++) {
                             for(unsigned int j=0;j<target_decompositions.size();j++) {
-                                //bool can_unite = can_unite_decompositions(get<Decomposition>(source_decompositions.at(i).second.content),get<Decomposition>(target_decompositions.at(j).second.content),true);
+                                Constraint new_c = generate_constraint(source_decompositions.at(i), target_decompositions.at(j), NC);
+                                new_c.group = e.group;
+                                new_c.divisible = e.divisible;
 
-                                //if(can_unite) {
-                                    Constraint new_c = generate_constraint(source_decompositions.at(i), target_decompositions.at(j), NC);
-                                    new_c.group = e.group;
-                                    new_c.divisible = e.divisible;
-
-                                    mission_constraints.push_back(new_c);
-                                    non_coop_constraints.push_back(new_c);
-                                //}
+                                mission_constraints.push_back(new_c);
+                                non_coop_constraints.push_back(new_c);
                             }
                         }
                     }
@@ -1063,17 +1059,14 @@ void ConstraintManager::trim_mission_constraints() {
     map<int,set<int>> fb_first_nodes, fb_second_nodes;
 
     for(Constraint c : mission_constraints) {
-        if(c.type == SEQ || c.type == FB) {
+        if(c.type == SEQ) {
             int first_node = c.nodes_involved.first.first;
             int second_node = c.nodes_involved.second.first;
 
             if(c.type == SEQ) {
                 first_nodes[second_node].insert(first_node);
                 second_nodes[first_node].insert(second_node);
-            } /*else {
-                fb_first_nodes[second_node].insert(first_node);
-                fb_second_nodes[first_node].insert(second_node);
-            }*/
+            }
         }
     }
 
