@@ -868,25 +868,12 @@ void ConstraintManager::transform_at_constraints() {
                 constraint_nodes_decompositions[n2.first] = n2_decompositions;
             }
 
-            /*
-                Verify which decompositions of the first task in which effects prohibit the decompositions of the second task by making its preconditions
-                invalid.
-
-                -> We have to check which tasks are involved in a Non-group or Non-divisible group goal
-                -> These will involve the same robots
-                    - We assume that these will use the same number of robots
-            */
-            bool non_coop_nodes = boost::edge(n1.first,n2.first,mission_decomposition).second;
             unsigned int i,j;
             for(i=0;i<n1_decompositions.size();i++) {
                 for(j=0;j<n2_decompositions.size();j++) {
-                    bool can_unite = can_unite_decompositions(std::get<Decomposition>(n1_decompositions.at(i).second.content),get<Decomposition>(n2_decompositions.at(j).second.content),non_coop_nodes);
+                    Constraint new_c = generate_constraint(n1_decompositions.at(i), n2_decompositions.at(j), SEQ);
 
-                    if(can_unite) {
-                        Constraint new_c = generate_constraint(n1_decompositions.at(i), n2_decompositions.at(j), SEQ);
-
-                        transformed_constraints.push_back(new_c);
-                    }
+                    transformed_constraints.push_back(new_c);
                 }
             }
         } else if(c.type == FB) {
@@ -1051,16 +1038,12 @@ void ConstraintManager::generate_execution_constraints() {
 
                         for(unsigned int i=0;i<source_decompositions.size();i++) {
                             for(unsigned int j=0;j<target_decompositions.size();j++) {
-                                //bool can_unite = can_unite_decompositions(get<Decomposition>(source_decompositions.at(i).second.content),get<Decomposition>(target_decompositions.at(j).second.content),true);
+                                Constraint new_c = generate_constraint(source_decompositions.at(i), target_decompositions.at(j), NC);
+                                new_c.group = e.group;
+                                new_c.divisible = e.divisible;
 
-                                //if(can_unite) {
-                                    Constraint new_c = generate_constraint(source_decompositions.at(i), target_decompositions.at(j), NC);
-                                    new_c.group = e.group;
-                                    new_c.divisible = e.divisible;
-
-                                    mission_constraints.push_back(new_c);
-                                    non_coop_constraints.push_back(new_c);
-                                //}
+                                mission_constraints.push_back(new_c);
+                                non_coop_constraints.push_back(new_c);
                             }
                         }
                     }
@@ -1076,42 +1059,30 @@ void ConstraintManager::trim_mission_constraints() {
     map<int,set<int>> fb_first_nodes, fb_second_nodes;
 
     for(Constraint c : mission_constraints) {
-        if(c.type == SEQ || c.type == FB) {
+        if(c.type == SEQ) {
             int first_node = c.nodes_involved.first.first;
             int second_node = c.nodes_involved.second.first;
 
             if(c.type == SEQ) {
                 first_nodes[second_node].insert(first_node);
                 second_nodes[first_node].insert(second_node);
-            } /*else {
-                fb_first_nodes[second_node].insert(first_node);
-                fb_second_nodes[first_node].insert(second_node);
-            }*/
+            }
         }
     }
 
     // 2nd walk-through
     vector<Constraint>::iterator constraint_it = mission_constraints.begin();
     while(constraint_it != mission_constraints.end()) {
-        if(constraint_it->type == SEQ || constraint_it->type == FB) {
+        if(constraint_it->type == SEQ) {
             int first_node = constraint_it->nodes_involved.first.first;
             int second_node = constraint_it->nodes_involved.second.first;
 
             vector<int> v = {-1};
-            if(constraint_it->type == SEQ) {
-                if(second_nodes.find(first_node) != second_nodes.end() && first_nodes.find(second_node) != first_nodes.end()) {
-                    set<int> first_node_set = second_nodes[first_node];
-                    set<int> second_node_set = first_nodes[second_node];
+            if(second_nodes.find(first_node) != second_nodes.end() && first_nodes.find(second_node) != first_nodes.end()) {
+                set<int> first_node_set = second_nodes[first_node];
+                set<int> second_node_set = first_nodes[second_node];
 
-                    std::set_intersection(first_node_set.begin(), first_node_set.end(), second_node_set.begin(), second_node_set.end(), v.begin());
-                }
-            } else {
-                if(fb_second_nodes.find(first_node) != fb_second_nodes.end() && fb_first_nodes.find(second_node) != fb_first_nodes.end()) {
-                    set<int> first_node_set = fb_second_nodes[first_node];
-                    set<int> second_node_set = fb_first_nodes[second_node];
-
-                    std::set_intersection(first_node_set.begin(), first_node_set.end(), second_node_set.begin(), second_node_set.end(), v.begin());
-                }
+                std::set_intersection(first_node_set.begin(), first_node_set.end(), second_node_set.begin(), second_node_set.end(), v.begin());
             }
 
             if(v.at(0) != -1) {
