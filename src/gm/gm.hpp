@@ -27,8 +27,8 @@ struct VertexData {
     std::string text;
     std::string type;
     std::map<std::string,std::variant<std::string,std::vector<std::string>,Context,QueriedProperty,AchieveCondition,FailureCondition,IterationRule,std::vector<std::pair<std::string,std::string>>>> custom_props;
-    int x;
-    int y;
+    float x;
+    float y;
     bool periodic; 
     float period;
     float deadline;

@@ -308,8 +308,8 @@ vector<pair<int,VertexData>> parse_gm_nodes(pt::ptree nodes) {
         v.id = node.second.get<string>("id");
         v.text = node.second.get<string>("text");
         v.type = node.second.get<string>("type");
-        v.x = node.second.get<int>("x");
-        v.y = node.second.get<int>("y");
+        v.x = node.second.get<float>("x");
+        v.y = node.second.get<float>("y");
 
         pt::ptree c_props = node.second.get_child("customProperties");
         map<string,string> custom_props;
