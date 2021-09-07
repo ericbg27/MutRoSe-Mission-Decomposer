@@ -606,6 +606,7 @@ void MissionDecomposer::create_execution_constraint_edges() {
 					if(active_constraint.first) {
 						if(!is_group) {
 							constraint_nodes[current_node] = make_pair(is_group,is_divisible);
+							constraint_nodes[active_constraint_branch.second] = make_pair(is_group,is_divisible); // Change the current constraint due to constraint priority
 
 							inactive_constraint_branches.push(active_constraint_branch);
 							active_constraint_branch = make_pair(true,current_node);
@@ -848,8 +849,6 @@ ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string, variant<pair<
 	final_context_dependency_links_generation();
 
 	create_execution_constraint_edges();
-
-	print_mission_decomposition(mission_decomposition);
 
 	if(!is_unique_branch(mission_decomposition)) {
 		trim_at_graph();
