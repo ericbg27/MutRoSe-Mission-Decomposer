@@ -106,7 +106,7 @@ void ConstraintManager::generate_at_constraints(ATGraph trimmed_mission_decompos
     constraints_tree->generate_constraints();
 
     mission_constraints = constraints_tree->constraints;
-    mission_constraints.insert(mission_constraints.end(), constraints_tree->child_constraints.begin(), constraints_tree->child_constraints.end());
+    //mission_constraints.insert(mission_constraints.end(), constraints_tree->child_constraints.begin(), constraints_tree->child_constraints.end());
 }
 
 std::variant<std::pair<int,ATNode>,ConstraintTree*> ConstraintManager::recursive_constraint_tree_build(vector<int>& dfs_nodes, ATGraph trimmed_mission_decomposition) {
@@ -179,8 +179,6 @@ void SequentialConstraintTree::generate_constraints() {
             ConstraintTree* ch = std::get<ConstraintTree*>(child);
 
             ch->generate_constraints();
-            child_constraints.insert(child_constraints.end(),ch->constraints.begin(),ch->constraints.end());
-            child_constraints.insert(child_constraints.end(),ch->child_constraints.begin(),ch->child_constraints.end());
         }
     }
 
@@ -212,6 +210,27 @@ void SequentialConstraintTree::generate_constraints() {
         constraints.insert(constraints.end(), child_generated_constraints.begin(), child_generated_constraints.end());
 
         right_child_index++;
+    }
+
+    for(auto child : children) {
+        if(holds_alternative<ConstraintTree*>(child)) {
+            ConstraintTree* ch = std::get<ConstraintTree*>(child);
+
+            for(Constraint c : ch->constraints) {
+                if(constraints_map.find(c.nodes_involved.first.first) != constraints_map.end()) {
+                    if(constraints_map[c.nodes_involved.first.first].find(c.nodes_involved.second.first) == constraints_map[c.nodes_involved.first.first].end()) {
+                        constraints_map[c.nodes_involved.first.first].insert(c.nodes_involved.second.first);
+
+                        constraints.push_back(c);
+                    }
+                } else {
+                    constraints_map.insert({c.nodes_involved.first.first, set<int>()});
+                    constraints_map[c.nodes_involved.first.first].insert(c.nodes_involved.second.first);
+
+                    constraints.push_back(c);
+                }
+            }
+        }
     }
 }
 
@@ -440,8 +459,6 @@ void FallbackConstraintTree::generate_constraints() {
             ConstraintTree* ch = std::get<ConstraintTree*>(child);
 
             ch->generate_constraints();
-            child_constraints.insert(child_constraints.end(),ch->constraints.begin(),ch->constraints.end());
-            child_constraints.insert(child_constraints.end(),ch->child_constraints.begin(),ch->child_constraints.end());
         }
     }
 
@@ -473,6 +490,27 @@ void FallbackConstraintTree::generate_constraints() {
         constraints.insert(constraints.end(), child_generated_constraints.begin(), child_generated_constraints.end());
 
         right_child_index++;
+    }
+
+    for(auto child : children) {
+        if(holds_alternative<ConstraintTree*>(child)) {
+            ConstraintTree* ch = std::get<ConstraintTree*>(child);
+
+            for(Constraint c : ch->constraints) {
+                if(constraints_map.find(c.nodes_involved.first.first) != constraints_map.end()) {
+                    if(constraints_map[c.nodes_involved.first.first].find(c.nodes_involved.second.first) == constraints_map[c.nodes_involved.first.first].end()) {
+                        constraints_map[c.nodes_involved.first.first].insert(c.nodes_involved.second.first);
+
+                        constraints.push_back(c);
+                    }
+                } else {
+                    constraints_map.insert({c.nodes_involved.first.first, set<int>()});
+                    constraints_map[c.nodes_involved.first.first].insert(c.nodes_involved.second.first);
+
+                    constraints.push_back(c);
+                }
+            }
+        }
     }
 }
 
@@ -662,8 +700,6 @@ void ParallelConstraintTree::generate_constraints() {
             ConstraintTree* ch = std::get<ConstraintTree*>(child);
 
             ch->generate_constraints();
-            child_constraints.insert(child_constraints.end(),ch->constraints.begin(),ch->constraints.end());
-            child_constraints.insert(child_constraints.end(),ch->child_constraints.begin(),ch->child_constraints.end());
         }
     }
 
@@ -693,6 +729,27 @@ void ParallelConstraintTree::generate_constraints() {
 
             vector<Constraint> child_generated_constraints = generate_constraints_from_child_contents(left_child_val, right_child_val);
             constraints.insert(constraints.end(), child_generated_constraints.begin(), child_generated_constraints.end());
+        }
+    }
+
+    for(auto child : children) {
+        if(holds_alternative<ConstraintTree*>(child)) {
+            ConstraintTree* ch = std::get<ConstraintTree*>(child);
+
+            for(Constraint c : ch->constraints) {
+                if(constraints_map.find(c.nodes_involved.first.first) != constraints_map.end()) {
+                    if(constraints_map[c.nodes_involved.first.first].find(c.nodes_involved.second.first) == constraints_map[c.nodes_involved.first.first].end()) {
+                        constraints_map[c.nodes_involved.first.first].insert(c.nodes_involved.second.first);
+
+                        constraints.push_back(c);
+                    }
+                } else {
+                    constraints_map.insert({c.nodes_involved.first.first, set<int>()});
+                    constraints_map[c.nodes_involved.first.first].insert(c.nodes_involved.second.first);
+
+                    constraints.push_back(c);
+                }
+            }
         }
     }
 }
@@ -1063,10 +1120,14 @@ void ConstraintManager::trim_mission_constraints() {
             int first_node = c.nodes_involved.first.first;
             int second_node = c.nodes_involved.second.first;
 
-            if(c.type == SEQ) {
-                first_nodes[second_node].insert(first_node);
-                second_nodes[first_node].insert(second_node);
-            }
+            first_nodes[second_node].insert(first_node);
+            second_nodes[first_node].insert(second_node);
+        } else if(c.type == FB) {
+            int first_node = c.nodes_involved.first.first;
+            int second_node = c.nodes_involved.second.first;
+
+            fb_first_nodes[second_node].insert(first_node);
+            fb_second_nodes[first_node].insert(second_node);
         }
     }
 
@@ -1081,6 +1142,32 @@ void ConstraintManager::trim_mission_constraints() {
             if(second_nodes.find(first_node) != second_nodes.end() && first_nodes.find(second_node) != first_nodes.end()) {
                 set<int> first_node_set = second_nodes[first_node];
                 set<int> second_node_set = first_nodes[second_node];
+
+                std::set_intersection(first_node_set.begin(), first_node_set.end(), second_node_set.begin(), second_node_set.end(), v.begin());
+            }
+
+            if(v.at(0) == -1) {
+                if(second_nodes.find(first_node) != second_nodes.end() && fb_first_nodes.find(second_node) != fb_first_nodes.end()) {
+                    set<int> first_node_set = second_nodes[first_node];
+                    set<int> second_node_set = fb_first_nodes[second_node];
+
+                    std::set_intersection(first_node_set.begin(), first_node_set.end(), second_node_set.begin(), second_node_set.end(), v.begin());
+                }
+            }
+
+            if(v.at(0) != -1) {
+                mission_constraints.erase(constraint_it);
+            } else {
+                constraint_it++;
+            }
+        } else if(constraint_it->type == FB) {
+            int first_node = constraint_it->nodes_involved.first.first;
+            int second_node = constraint_it->nodes_involved.second.first;
+
+            vector<int> v = {-1};
+            if(fb_second_nodes.find(first_node) != fb_second_nodes.end() && fb_first_nodes.find(second_node) != fb_first_nodes.end()) {
+                set<int> first_node_set = fb_second_nodes[first_node];
+                set<int> second_node_set = fb_first_nodes[second_node];
 
                 std::set_intersection(first_node_set.begin(), first_node_set.end(), second_node_set.begin(), second_node_set.end(), v.begin());
             }
