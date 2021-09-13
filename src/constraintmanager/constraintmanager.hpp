@@ -21,7 +21,6 @@ struct ConstraintTree {
     std::vector<std::variant<std::pair<int,ATNode>,ConstraintTree*>> children;
     
     std::vector<Constraint> constraints;
-    std::vector<Constraint> child_constraints;
 
     std::map<int,set<int>> constraints_map; // Avoid duplicate constraints 
 };
