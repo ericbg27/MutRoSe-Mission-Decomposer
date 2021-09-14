@@ -757,17 +757,11 @@ bool MissionDecomposer::find_node_at(ATNode& node, general_annot* rannot) {
 
 	map<string,vector<AbstractTask>>::iterator at_inst_it;
 	for(at_inst_it = at_instances.begin();at_inst_it != at_instances.end();++at_inst_it) {
-		string rannot_id, at_id;
-		rannot_id = rannot->content.substr(0,rannot->content.find("_"));
-		at_id = at_inst_it->second.at(0).id.substr(0,at_inst_it->second.at(0).id.find("_"));
-		
-		if(at_id == rannot_id) { //If we are dealing with the same task
-			for(AbstractTask at : at_inst_it->second) {
-				if(at.id == rannot->content) {
-					node.content = at;
-					found_at = true;
-					break;
-				}
+		for(AbstractTask at : at_inst_it->second) {
+			if(at.id == rannot->content) { //If we are dealing with the same task
+				node.content = at;
+				found_at = true;
+				break;
 			}
 		}
 
