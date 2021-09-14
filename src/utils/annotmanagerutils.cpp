@@ -101,16 +101,25 @@ void recursive_child_replacement(general_annot* copy, general_annot* original) {
 void rename_at_instances_in_runtime_annot(general_annot* gmannot, map<string,vector<AbstractTask>> at_instances, GMGraph gm) {
     map<string,int> at_instances_counter;
 
+    set<string> considered_tasks;
+
     map<string,vector<AbstractTask>>::iterator at_inst_it;
     for(at_inst_it = at_instances.begin();at_inst_it != at_instances.end();at_inst_it++) {
-        string task_id;
-        if(at_inst_it->second.at(0).id.find("_") != string::npos) {
-            task_id = at_inst_it->second.at(0).id.substr(0,at_inst_it->second.at(0).id.find("_"));
-        } else {
-            task_id = at_inst_it->second.at(0).id;
-        }
+        for(AbstractTask at : at_inst_it->second) {
+            string task_id;
 
-        at_instances_counter[task_id] = 0;
+            if(at.id.find("_") != string::npos) {
+                task_id = at_inst_it->second.at(0).id.substr(0,at_inst_it->second.at(0).id.find("_"));
+            } else {
+                task_id = at_inst_it->second.at(0).id;
+            }
+
+            if(considered_tasks.find(task_id) == considered_tasks.end()) {
+                at_instances_counter[task_id] = 0;
+
+                considered_tasks.insert(task_id);
+            }
+        }
     }
 
     if(gmannot->content == parallel_op && gmannot->related_goal == "") {
@@ -137,7 +146,7 @@ void rename_at_instances_in_runtime_annot(general_annot* gmannot, map<string,vec
     @ Output: Void. The runtime goal model annotation is renamed
 */ 
 void recursive_at_instances_renaming(general_annot* rannot, map<string,int>& at_instances_counter, bool in_forAll, map<string,vector<AbstractTask>> at_instances, GMGraph gm) {
-    set<string> operators {sequential_op,parallel_op,fallback_op,"OPT","|"};
+    set<string> operators {sequential_op,parallel_op,fallback_op};
 
     set<string>::iterator op_it;
 
@@ -148,7 +157,16 @@ void recursive_at_instances_renaming(general_annot* rannot, map<string,int>& at_
             int gm_id = find_gm_node_by_id(rannot->content.substr(0,rannot->content.find("_")), gm);
             pair<string,string> at_id_name = parse_at_text(gm[gm_id].text);
 
-            rannot->content = at_instances[at_id_name.second].at(at_instances_counter[at_id_name.first]).id;
+            vector<AbstractTask> aux;
+            for(AbstractTask at : at_instances[at_id_name.second]) {
+                string at_id = at.id.substr(0,at.id.find("_"));
+
+                if(at_id == at_id_name.first) {
+                    aux.push_back(at);
+                }
+            }
+
+            rannot->content = aux.at(at_instances_counter[at_id_name.first]).id;
 
             at_instances_counter[at_id_name.first]++;
         } else {
