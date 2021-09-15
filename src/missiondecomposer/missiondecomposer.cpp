@@ -890,9 +890,9 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 				context = std::get<Context>(gm_node.custom_props[context_prop]);
 
 				if(context.get_context_type() == condition_context_type) {
-					map<string, variant<pair<string,string>,pair<vector<string>,string>>> vars_map;
+					map<string, variant<pair<string,string>,pair<vector<string>,string>>> vars_map = rannot->var_maps;
 
-					map<string, variant<string,vector<string>>>::iterator instantiated_vars_it;
+					/*map<string, variant<string,vector<string>>>::iterator instantiated_vars_it;
 					for(instantiated_vars_it = instantiated_vars.begin(); instantiated_vars_it != instantiated_vars.end(); ++instantiated_vars_it) {
 						if(holds_alternative<string>(instantiated_vars_it->second)) {
 							string var_type = std::get<pair<string,string>>(gm_vars_map[instantiated_vars_it->first]).second;
@@ -903,7 +903,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 
 							vars_map[instantiated_vars_it->first] = make_pair(std::get<vector<string>>(instantiated_vars_it->second),var_type);
 						}
-					}
+					}*/
 					active_context = context.check_context(world_state, semantic_mapping, vars_map);
 				}
 			}
@@ -962,9 +962,9 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 					- If we have a wrong model
 					- If we have a parallel decomposition which is not completely parallel since we have a context dependency
 			*/
-			map<string, variant<pair<string,string>,pair<vector<string>,string>>> vars_map;
+			map<string, variant<pair<string,string>,pair<vector<string>,string>>> vars_map = rannot->var_maps;
 
-			map<string, variant<string,vector<string>>>::iterator instantiated_vars_it;
+			/*map<string, variant<string,vector<string>>>::iterator instantiated_vars_it;
 			for(instantiated_vars_it = instantiated_vars.begin(); instantiated_vars_it != instantiated_vars.end(); ++instantiated_vars_it) {
 				if(holds_alternative<string>(instantiated_vars_it->second)) {
 					string var_type = std::get<pair<string,string>>(gm_vars_map[instantiated_vars_it->first]).second;
@@ -975,7 +975,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 
 					vars_map[instantiated_vars_it->first] = make_pair(std::get<vector<string>>(instantiated_vars_it->second),var_type);
 				}
-			}
+			}*/
 
 			bool resolved_context = check_context_dependency(parent, node_id, context, vars_map, semantic_mapping);
 

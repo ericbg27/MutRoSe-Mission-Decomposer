@@ -115,6 +115,7 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
             - We may be dealing with a non-leaf node, in which case we expand it and substitute it for its extension in the parent's children
     */
     if(gm[current_node].children.size() == 0) { // Leaf Node
+        node_annot->var_maps = get_annot_var_maps(valid_variables);
         vctr.erase(vctr.begin());
         return;
     } 
@@ -180,6 +181,7 @@ void AnnotManager::expand_forall_annot(general_annot* node_annot, int generated_
         aux->group = node_annot->group;
         aux->divisible = node_annot->divisible;
         aux->or_decomposition = node_annot->or_decomposition;
+        aux->var_maps = node_annot->var_maps;
         recursive_child_replacement(aux, node_annot);
 
         new_annots.push_back(aux);
@@ -190,6 +192,7 @@ void AnnotManager::expand_forall_annot(general_annot* node_annot, int generated_
     node_annot->related_goal = "";
     node_annot->children.clear();
     node_annot->or_decomposition = false;
+    node_annot->var_maps = map<string,variant<pair<string,string>,pair<vector<string>,string>>>();
     for(general_annot* annot : new_annots) {
         node_annot->children.push_back(annot);
     }
@@ -250,7 +253,7 @@ bool FileKnowledgeAnnotManager::goal_node_resolution(general_annot* node_annot, 
 
         pt::ptree query_ptree = get_query_ptree(gm, current_node, valid_variables, valid_forAll_conditions, worlddb, fk_manager->get_unique_id());
 
-        pair<vector<pt::ptree>,set<string>> query_result =  solve_query_statement(query_ptree,q,gm,current_node,valid_variables, fk_manager->get_unique_id());
+        pair<vector<pt::ptree>,set<string>> query_result = solve_query_statement(query_ptree,q,gm,current_node,valid_variables, fk_manager->get_unique_id());
 
         string var_name = std::get<vector<pair<string,string>>>(gm[current_node].custom_props[controls_prop]).at(0).first;
         string var_type = std::get<vector<pair<string,string>>>(gm[current_node].custom_props[controls_prop]).at(0).second;
@@ -334,6 +337,8 @@ void AnnotManager::expand_annotation(general_annot* node_annot, int current_node
     node_annot->type = expanded_annot->type;
     node_annot->children = expanded_annot->children;
     node_annot->related_goal = expanded_annot->related_goal;
+    map<string,variant<pair<string,string>,pair<vector<string>,string>>> vm = get_annot_var_maps(valid_variables);
+    node_annot->var_maps = vm;
 
     bool expanded_in_forAll = false;
 
@@ -344,7 +349,7 @@ void AnnotManager::expand_annotation(general_annot* node_annot, int current_node
     }
 
     if(!expanded_in_forAll) {
-        for(general_annot* child : node_annot->children) {            
+        for(general_annot* child : node_annot->children) {           
             int c_node = vctr.at(0);
             child->parent = node_annot;
             recursive_gm_annot_generation(child, vctr, worlddb, c_node, valid_forAll_conditions);
@@ -369,4 +374,27 @@ shared_ptr<AnnotManager> AnnotManagerFactory::create_annot_manager(shared_ptr<Kn
     annot_manager->set_at_instances(at_instances);
 
     return annot_manager;
+}
+
+map<string,variant<pair<string,string>,pair<vector<string>,string>>> get_annot_var_maps(map<string,pair<string,vector<pt::ptree>>> valid_variables) {
+    map<string,variant<pair<string,string>,pair<vector<string>,string>>> var_maps;
+    
+    map<string,pair<string,vector<pt::ptree>>>::iterator var_it;
+    for(var_it = valid_variables.begin(); var_it != valid_variables.end(); ++var_it) {
+        if(var_it->second.second.size() > 1) {
+            vector<string> var_value;
+
+            for(pt::ptree v : var_it->second.second) {
+                var_value.push_back(v.get<string>("name"));
+            }
+
+            var_maps[var_it->first] = make_pair(var_value,var_it->second.first);
+        } else if(var_it->second.second.size() == 1) {
+            string var_value = var_it->second.second.at(0).get<string>("name");
+
+            var_maps[var_it->first] = make_pair(var_value,var_it->second.first);
+        }
+    }
+
+    return var_maps;
 }
