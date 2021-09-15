@@ -230,7 +230,7 @@ bool AnnotManager::forall_goal_resolution(general_annot* node_annot, int current
         expand_forall_annot(node_annot, generated_instances, iterated_var, iteration_var, vctr, current, worlddb, valid_forAll_conditions);
 
         expanded_in_forAll = true;
-    } else {
+    } else if(generated_instances == 1) {
         string var_type = valid_variables[iterated_var].first;
         size_t begin = var_type.find("(")+1;
         size_t end = var_type.find(")", begin);
@@ -288,72 +288,103 @@ void AnnotManager::expand_annotation(general_annot* node_annot, int current_node
 
     recursive_fill_up_runtime_annot(node_annot, gm[current_node]);
 
-    general_annot* expanded_annot = retrieve_runtime_annot(gm[current_node].text);
+    int forall_generated_instances = -1;
 
-    if(gm[current_node].children.size() > 1) {
-        if(expanded_annot->type == EMPTYANNOT) {
-            expanded_annot->content = parallel_op;
-            expanded_annot->type = OPERATOR;
-            for(int child : gm[current_node].children) {
-                general_annot* aux = new general_annot();
-
-                string node_name = get_node_name(gm[child].text);
-
-                aux->content = node_name;
-                if(node_name.front() == 'G') {
-                    aux->type = GOAL;
-                } else {
-                    aux->type = TASK;
-                }
-
-                expanded_annot->children.push_back(aux);
-            }
-        } 
-    } else { //Means-end decomposition
-        int only_child = gm[current_node].children.at(0);
-        expanded_annot->content = get_node_name(gm[current_node].text);
-        expanded_annot->type = MEANSEND;
-
-        general_annot* aux = new general_annot();
-
-        string node_name = get_node_name(gm[only_child].text);
-        
-        aux->content = node_name;
-        if(node_name.front() == 'G') {
-            aux->type = GOAL;
-        } else {
-            aux->type = TASK;
-        }
-
-        if(aux->type == TASK) {
-            pair<string,string> node_name_id = parse_at_text(gm[only_child].text);
-            aux->content = node_name_id.first;
-        }
-
-        expanded_annot->children.push_back(aux);
-    }
-
-    node_annot->content = expanded_annot->content;
-    node_annot->type = expanded_annot->type;
-    node_annot->children = expanded_annot->children;
-    node_annot->related_goal = expanded_annot->related_goal;
-    map<string,variant<pair<string,string>,pair<vector<string>,string>>> vm = get_annot_var_maps(valid_variables);
-    node_annot->var_maps = vm;
-
-    bool expanded_in_forAll = false;
-
-    vctr.erase(vctr.begin());
-    
     if(is_forAll_goal) {
-        expanded_in_forAll = forall_goal_resolution(node_annot, current_node, depth, valid_forAll_conditions, vctr, worlddb);
+        string iterated_var = valid_forAll_conditions[depth].get_iterated_var();
+        string iteration_var = valid_forAll_conditions[depth].get_iteration_var();
+
+        forall_generated_instances = valid_variables[iterated_var].second.size();
     }
 
-    if(!expanded_in_forAll) {
-        for(general_annot* child : node_annot->children) {           
-            int c_node = vctr.at(0);
-            child->parent = node_annot;
-            recursive_gm_annot_generation(child, vctr, worlddb, c_node, valid_forAll_conditions);
+    if(forall_generated_instances != 0) {
+        general_annot* expanded_annot = retrieve_runtime_annot(gm[current_node].text);
+
+        if(gm[current_node].children.size() > 1) {
+            if(expanded_annot->type == EMPTYANNOT) {
+                expanded_annot->content = parallel_op;
+                expanded_annot->type = OPERATOR;
+                for(int child : gm[current_node].children) {
+                    general_annot* aux = new general_annot();
+
+                    string node_name = get_node_name(gm[child].text);
+
+                    aux->content = node_name;
+                    if(node_name.front() == 'G') {
+                        aux->type = GOAL;
+                    } else {
+                        aux->type = TASK;
+                    }
+
+                    expanded_annot->children.push_back(aux);
+                }
+            } 
+        } else { //Means-end decomposition
+            int only_child = gm[current_node].children.at(0);
+            expanded_annot->content = get_node_name(gm[current_node].text);
+            expanded_annot->type = MEANSEND;
+
+            general_annot* aux = new general_annot();
+
+            string node_name = get_node_name(gm[only_child].text);
+            
+            aux->content = node_name;
+            if(node_name.front() == 'G') {
+                aux->type = GOAL;
+            } else {
+                aux->type = TASK;
+            }
+
+            if(aux->type == TASK) {
+                pair<string,string> node_name_id = parse_at_text(gm[only_child].text);
+                aux->content = node_name_id.first;
+            }
+
+            expanded_annot->children.push_back(aux);
         }
+
+        node_annot->content = expanded_annot->content;
+        node_annot->type = expanded_annot->type;
+        node_annot->children = expanded_annot->children;
+        node_annot->related_goal = expanded_annot->related_goal;
+        map<string,variant<pair<string,string>,pair<vector<string>,string>>> vm = get_annot_var_maps(valid_variables);
+        node_annot->var_maps = vm;
+
+        bool expanded_in_forAll = false;
+
+        vctr.erase(vctr.begin());
+        
+        if(is_forAll_goal) {
+            expanded_in_forAll = forall_goal_resolution(node_annot, current_node, depth, valid_forAll_conditions, vctr, worlddb);
+        }
+
+        if(!expanded_in_forAll) {
+            for(general_annot* child : node_annot->children) {           
+                int c_node = vctr.at(0);
+                child->parent = node_annot;
+                recursive_gm_annot_generation(child, vctr, worlddb, c_node, valid_forAll_conditions);
+            }
+        }
+    } else {
+        int current_node_parent = gm[current_node].parent;
+        
+        int index_diff = 0;
+        for(int v : vctr) {
+            if(gm[v].parent <= current_node_parent && v != current_node) {
+                break;
+            }
+
+            index_diff++;
+        }
+
+        int index = 0;
+        while(index < index_diff) {
+            vctr.erase(vctr.begin());
+
+            index++;
+        }
+
+        node_annot->children.clear();
     }
 }
 
