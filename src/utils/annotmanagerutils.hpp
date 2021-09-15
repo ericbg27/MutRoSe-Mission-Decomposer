@@ -29,6 +29,7 @@ struct general_annot {
     bool group = true;
     bool divisible = true;
     bool or_decomposition = false;
+    std::map<std::string,std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> var_maps;
 };
 
 extern std::map<std::string,general_annot*> goals_and_rannots; //Map from goals to runtime annotation

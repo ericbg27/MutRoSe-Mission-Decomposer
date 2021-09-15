@@ -81,4 +81,6 @@ void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm
 
 pt::ptree get_query_ptree(GMGraph gm, int node_id, map<string,pair<string,vector<pt::ptree>>> valid_variables, map<int,AchieveCondition> valid_forAll_conditions, pt::ptree world_tree);
 
+std::map<std::string,std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> get_annot_var_maps(std::map<std::string,pair<std::string,std::vector<pt::ptree>>> valid_variables);
+
 #endif
