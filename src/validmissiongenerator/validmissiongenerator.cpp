@@ -188,12 +188,16 @@ map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float
        */
         string op = std::get<string>(current_node.second.content);
 
-        if(op == parallel_op) {
-            check_parallel_op_children(mission_queue, children_effects, depth, current_node);
-        } else if(op == sequential_op) {
-            check_sequential_op_children(mission_queue, children_effects, depth, current_node);
-        } else if(op == fallback_op) {
-            check_fallback_op_children(mission_queue, children_effects, depth, current_node);
+        if(!current_node.second.is_achieve_type) {
+            if(op == parallel_op) {
+                check_parallel_op_children(mission_queue, children_effects, depth, current_node);
+            } else if(op == sequential_op) {
+                check_sequential_op_children(mission_queue, children_effects, depth, current_node);
+            } else if(op == fallback_op) {
+                check_fallback_op_children(mission_queue, children_effects, depth, current_node);
+            }
+        } else {
+            children_effects = recursive_valid_mission_decomposition("#", mission_queue, depth, children_effects);
         }
 
         /*
@@ -746,7 +750,7 @@ queue<pair<int,ATNode>> ValidMissionGenerator::generate_mission_queue() {
                     }
                 }
 
-                if(out_edge_num > 1) {
+                if(out_edge_num > 1 || mission_decomposition[i].is_achieve_type) {
                     mission_queue.push(make_pair(i,mission_decomposition[i]));
                 }
             }
@@ -761,7 +765,7 @@ queue<pair<int,ATNode>> ValidMissionGenerator::generate_mission_queue() {
 		vector<int> vctr = vis.GetVector();
 
         for(int i : vctr) {
-            if(mission_decomposition[i].is_achieve_type && mission_decomposition[i].node_type != GOALNODE) {
+            if(mission_decomposition[i].is_forall && mission_decomposition[i].node_type != GOALNODE) {
                 mission_queue.push(make_pair(i,mission_decomposition[i]));
             }
 
@@ -801,7 +805,7 @@ queue<pair<int,ATNode>> ValidMissionGenerator::generate_mission_queue() {
     @ Output: Void. The valid mission decompositions will be trimmed (if needed)
 */
 void ValidMissionGenerator::check_conditions(map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float>>>>,vector<pair<literal,vector<string>>>>> effects_to_apply, pair<int,ATNode> current_node) {
-    if(current_node.second.is_achieve_type) {
+    if(current_node.second.is_forall || current_node.second.is_achieve_type) {
         string achievel_goal_id = current_node.second.achieve_goal_id;
 
         int gm_node_id = find_gm_node_by_id(achievel_goal_id, gm); 
@@ -921,6 +925,8 @@ void ValidMissionGenerator::solve_conflicts(map<int,pair<vector<variant<ground_l
                         if(!found_conflict) {
                             applied_effs.push_back(e);
                         }
+                    } else {
+                        // TODO : Check conflicts with function effects!
                     }
                 }
             }
