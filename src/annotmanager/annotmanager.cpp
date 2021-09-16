@@ -202,7 +202,13 @@ void AnnotManager::expand_forall_annot(general_annot* node_annot, int generated_
         string var_type = valid_variables[iterated_var].first;
         vector<pt::ptree> iteration_var_value;
         iteration_var_value.push_back(valid_variables[iterated_var].second.at(index));
+        
+        if(parse_gm_var_type(var_type) == "COLLECTION") {
+            size_t type_begin = var_type.find("(")+1;
+            size_t type_end = var_type.find(")",type_begin);
 
+            var_type = var_type.substr(type_begin,type_end-type_begin);
+        }
         valid_variables[iteration_var] = make_pair(var_type, iteration_var_value);
 
         for(general_annot* child : node_ch->children) {

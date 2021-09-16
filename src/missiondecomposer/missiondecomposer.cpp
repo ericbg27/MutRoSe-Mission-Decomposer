@@ -117,7 +117,7 @@ void MissionDecomposer::trim_at_graph() {
 				}
 			}
 
-			if(out_edge_num > 1) {
+			if(out_edge_num > 1 || mission_decomposition[current_vertex_id].is_achieve_type) {
 				if(parent != -1) {
 					node.parent = ids_map[parent];
 				} else { 
@@ -570,7 +570,7 @@ void MissionDecomposer::create_execution_constraint_edges() {
 					
 					inactive_constraint_branches.pop();
 				}
-			} else if((mission_decomposition[parent].is_achieve_type && active_constraint_branch.second >= parent) || (or_nodes.find(parent) != or_nodes.end())) { 
+			} else if((mission_decomposition[parent].is_forall && active_constraint_branch.second >= parent) || (or_nodes.find(parent) != or_nodes.end())) { 
 				current_active_tasks = nodes_active_tasks[parent];
 			}
 		}
@@ -588,7 +588,7 @@ void MissionDecomposer::create_execution_constraint_edges() {
 			}
 		}
 
-		if(mission_decomposition[current_node].is_achieve_type || is_or) {
+		if(mission_decomposition[current_node].is_forall || is_or) {
 			nodes_active_tasks[current_node] = current_active_tasks;
 		}
 
@@ -690,9 +690,12 @@ int MissionDecomposer::add_goal_op_node(ATNode& node, general_annot* rannot, int
 	}
 	node.content = rannot->content;
 	node.parent = parent;
-	node.is_achieve_type = is_forAll;
+	node.is_forall = is_forAll;
+	node.is_achieve_type = is_achieve && !mission_decomposition[parent].is_forall;
 	if(is_forAll) {
 		node.achieve_goal_id = rannot->children.at(0)->related_goal;
+	} else if(is_achieve) {
+		node.achieve_goal_id = rannot->related_goal;
 	}
 
 	int node_id = boost::add_vertex(node, mission_decomposition);
