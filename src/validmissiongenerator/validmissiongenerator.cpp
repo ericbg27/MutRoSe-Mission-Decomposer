@@ -188,16 +188,12 @@ map<int,pair<vector<variant<ground_literal,pair<ground_literal,variant<int,float
        */
         string op = std::get<string>(current_node.second.content);
 
-        if(!current_node.second.is_achieve_type) {
-            if(op == parallel_op) {
-                check_parallel_op_children(mission_queue, children_effects, depth, current_node);
-            } else if(op == sequential_op) {
-                check_sequential_op_children(mission_queue, children_effects, depth, current_node);
-            } else if(op == fallback_op) {
-                check_fallback_op_children(mission_queue, children_effects, depth, current_node);
-            }
-        } else {
-            children_effects = recursive_valid_mission_decomposition("#", mission_queue, depth, children_effects);
+        if(op == parallel_op) {
+            check_parallel_op_children(mission_queue, children_effects, depth, current_node);
+        } else if(op == sequential_op) {
+            check_sequential_op_children(mission_queue, children_effects, depth, current_node);
+        } else if(op == fallback_op) {
+            check_fallback_op_children(mission_queue, children_effects, depth, current_node);
         }
 
         /*
