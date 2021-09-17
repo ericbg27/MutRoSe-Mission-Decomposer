@@ -357,7 +357,10 @@ pair<vector<pt::ptree>,set<string>> solve_query_statement(pt::ptree queried_tree
         if(!queried_tree.empty()) {
             BOOST_FOREACH(pt::ptree::value_type& child, queried_tree) {
                 if(child.first == q.query_var.second) {
-                    if(query_item.size() == 1) {
+                    if(query_item.size() == 0) {
+                        aux.push_back(child.second);
+                        accepted_records.insert(child.second.get<string>(unique_id));
+                    } else if(query_item.size() == 1) {
                         if(query_item.at(0) != "") {
                             string prop = query_item.at(0).substr(query_item.at(0).find('.')+1);
 
@@ -400,81 +403,169 @@ pair<vector<pt::ptree>,set<string>> solve_query_statement(pt::ptree queried_tree
                                 }
                             }
                         } else if(query_item.at(1) == ocl_in) {
-                            string prop = query_item.at(0).substr(query_item.at(0).find('.')+1);
+                            bool in_for_ownership = false;
+							if(query_item.at(2).find(".") != std::string::npos) {
+								string attr_to_search = query_item.at(2);
+								std::replace(attr_to_search.begin(), attr_to_search.end(), '.', ' ');
 
-                            boost::optional prop_val_opt = child.second.get_optional<string>(prop);
+								vector<string> split_query_attr;
 
-                            if(prop_val_opt) {
-                                string prop_val = prop_val_opt.get();
-                                
-                                string attr_to_search = query_item.at(2);
-                                std::replace(attr_to_search.begin(), attr_to_search.end(), '.', ' ');
-                                
-                                vector<string> split_attr;
-                                
-                                stringstream ss(attr_to_search);
-                                string tmp;
-                                while(ss >> tmp) {
-                                    split_attr.push_back(tmp);
-                                }
+								stringstream ss(attr_to_search);
+								string tmp;
+								while(ss >> tmp) {
+									split_query_attr.push_back(tmp);
+								}
 
-                                /*
-                                    If we have [VAR].[ATTR] in [VAR].[ÁTTR] we search in the ptree
+								if(split_query_attr.at(0) == q.query_var.first) {
+									in_for_ownership = true;
+								}
+							}
 
-                                    If we have [VAR].[ATTR] in [VAR], where VAR is a collection variable, we search in the variable value
-                                */
-                                if(split_attr.size() == 1) {
-                                    vector<pt::ptree> var_value = valid_variables[split_attr.at(0)].second;
+                            if(in_for_ownership) {
+                                if(std::count(query_item.at(2).begin(),query_item.at(2).end(),'.') > 1) {
+									string too_many_levels_for_ownership_in = "The in operator for ownership relations currently only accepts a variable direct attribute ([var].[attr])";
+
+									throw std::runtime_error(too_many_levels_for_ownership_in);
+								}
+
+								string tree_prop = query_item.at(2).substr(query_item.at(2).find(".")+1);
+								boost::optional actual_queried_tree_opt = child.second.get_child_optional(tree_prop);
+
+								if(actual_queried_tree_opt) {
+									pt::ptree actual_queried_tree = actual_queried_tree_opt.get();
+
+									if(!actual_queried_tree.empty()) {
+										BOOST_FOREACH(pt::ptree::value_type& actual_child, actual_queried_tree) {
+											string prop = query_item.at(0).substr(query_item.at(0).find('.')+1);
+
+											boost::optional prop_val_opt = actual_child.second.get_optional<string>(prop);
+
+											if(prop_val_opt) {
+												string prop_val = prop_val_opt.get();
+
+												string attr_to_search = query_item.at(0);
+												std::replace(attr_to_search.begin(), attr_to_search.end(), '.', ' ');
+												
+												vector<string> split_attr;
+												
+												stringstream ss(attr_to_search);
+												string tmp;
+												while(ss >> tmp) {
+													split_attr.push_back(tmp);
+												}
+
+												pt::ptree attr_tree = valid_variables[split_attr.at(0)].second.at(0).get_child(split_attr.at(1));
+
+												string attr_data = attr_tree.data();
+												boost::trim(attr_data);
+												if(attr_tree.empty() && attr_data != "") {
+													vector<string> attr_values;
+
+													stringstream ss(attr_data);
+													string tmp;
+													while(ss >> tmp) {
+														attr_values.push_back(tmp);
+													}
+
+													if(std::find(attr_values.begin(), attr_values.end(), prop_val) != attr_values.end()) {
+														aux.push_back(child.second);
+														accepted_records.insert(child.second.get<string>("name"));
+													}
+												} else if(!attr_tree.empty() && attr_data == "") {
+													BOOST_FOREACH(pt::ptree::value_type val, attr_tree) {
+														if(prop_val == val.second.data()) {
+															aux.push_back(child.second);
+															accepted_records.insert(child.second.get<string>("name"));
+
+															break;
+														}
+													}
+												} else {
+													string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
+
+													throw std::runtime_error(bad_condition);
+												}
+											}
+										}
+									}
+								}
+                            } else {
+                                string prop = query_item.at(0).substr(query_item.at(0).find('.')+1);
+
+                                boost::optional prop_val_opt = child.second.get_optional<string>(prop);
+
+                                if(prop_val_opt) {
+                                    string prop_val = prop_val_opt.get();
                                     
-                                    bool found_attr = false;
-                                    for(pt::ptree val : var_value) {
-                                        if(val.get<string>(unique_id) == prop_val) {
-                                            found_attr = true;
-                                            
-                                            break;
-                                        }
+                                    string attr_to_search = query_item.at(2);
+                                    std::replace(attr_to_search.begin(), attr_to_search.end(), '.', ' ');
+                                    
+                                    vector<string> split_attr;
+                                    
+                                    stringstream ss(attr_to_search);
+                                    string tmp;
+                                    while(ss >> tmp) {
+                                        split_attr.push_back(tmp);
                                     }
 
-                                    if(found_attr) {
-                                        aux.push_back(child.second);
-                                        accepted_records.insert(child.second.get<string>(unique_id));
-                                    }
-                                } else if(split_attr.size() == 2) {
-                                    // Here we need to get the query ptree for the second attribute
-                                    pt::ptree attr_tree = valid_variables[split_attr.at(0)].second.at(0).get_child(split_attr.at(1));
+                                    /*
+                                        If we have [VAR].[ATTR] in [VAR].[ÁTTR] we search in the ptree
 
-                                    string attr_data = attr_tree.data();
-                                    boost::trim(attr_data);
-                                    if(attr_tree.empty() && attr_data != "") {
-                                        vector<string> attr_values;
-
-                                        stringstream ss(attr_data);
-                                        string tmp;
-                                        while(ss >> tmp) {
-                                            attr_values.push_back(tmp);
+                                        If we have [VAR].[ATTR] in [VAR], where VAR is a collection variable, we search in the variable value
+                                    */
+                                    if(split_attr.size() == 1) {
+                                        vector<pt::ptree> var_value = valid_variables[split_attr.at(0)].second;
+                                        
+                                        bool found_attr = false;
+                                        for(pt::ptree val : var_value) {
+                                            if(val.get<string>(unique_id) == prop_val) {
+                                                found_attr = true;
+                                                
+                                                break;
+                                            }
                                         }
 
-                                        if(std::find(attr_values.begin(), attr_values.end(), prop_val) != attr_values.end()) {
+                                        if(found_attr) {
                                             aux.push_back(child.second);
                                             accepted_records.insert(child.second.get<string>(unique_id));
                                         }
-                                    } else if(!attr_tree.empty() && attr_data == "") {
-                                        BOOST_FOREACH(pt::ptree::value_type val, attr_tree) {
-                                            if(prop_val == val.second.data()) {
-                                                aux.push_back(child.second);
+                                    } else if(split_attr.size() == 2) {
+                                        // Here we need to get the query ptree for the second attribute
+                                        pt::ptree attr_tree = valid_variables[split_attr.at(0)].second.at(0).get_child(split_attr.at(1));
 
-                                                break;
+                                        string attr_data = attr_tree.data();
+                                        boost::trim(attr_data);
+                                        if(attr_tree.empty() && attr_data != "") {
+                                            vector<string> attr_values;
+
+                                            stringstream ss(attr_data);
+                                            string tmp;
+                                            while(ss >> tmp) {
+                                                attr_values.push_back(tmp);
                                             }
+
+                                            if(std::find(attr_values.begin(), attr_values.end(), prop_val) != attr_values.end()) {
+                                                aux.push_back(child.second);
+                                                accepted_records.insert(child.second.get<string>(unique_id));
+                                            }
+                                        } else if(!attr_tree.empty() && attr_data == "") {
+                                            BOOST_FOREACH(pt::ptree::value_type val, attr_tree) {
+                                                if(prop_val == val.second.data()) {
+                                                    aux.push_back(child.second);
+
+                                                    break;
+                                                }
+                                            }
+                                        } else {
+                                            string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
+
+                                            throw std::runtime_error(bad_condition);
                                         }
                                     } else {
                                         string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
 
                                         throw std::runtime_error(bad_condition);
                                     }
-                                } else {
-                                    string bad_condition = "Cannot solve condition in QueriedProperty of Goal " + get_node_name(gm[node_id].text); 
-
-                                    throw std::runtime_error(bad_condition);
                                 }
                             }
                         } else if(query_item.at(1) == ocl_gt || query_item.at(1) == ocl_lt || query_item.at(1) == ocl_geq || query_item.at(1) == ocl_leq) {
