@@ -692,9 +692,9 @@ int MissionDecomposer::add_goal_op_node(ATNode& node, general_annot* rannot, int
 	node.parent = parent;
 	node.is_forall = is_forAll;
 	node.is_achieve_type = is_achieve && !mission_decomposition[parent].is_forall;
-	if(is_forAll) {
+	if(node.is_forall) {
 		node.achieve_goal_id = rannot->children.at(0)->related_goal;
-	} else if(is_achieve) {
+	} else if(node.is_achieve_type) {
 		node.achieve_goal_id = rannot->related_goal;
 	}
 
