@@ -952,10 +952,13 @@ void TDG::variable_renaming(task& t, vector<pair<string,string>> var_mapping) {
 */ 
 vector<vector<int>> TDG::find_method_possible_orderings(method m, vector<int> children) {
     map<string,int> plan_step_id_map;
+
+    set<int> considered_children;
     for(plan_step ps : m.ps) {
         for(int c : children) {
-            if(tdg[c].t.name == ps.task) {
+            if(tdg[c].t.name == ps.task && considered_children.find(c) == considered_children.end()) {
                 plan_step_id_map[ps.id] = c;
+                considered_children.insert(c);
                 break;
             }
         }

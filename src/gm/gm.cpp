@@ -418,14 +418,14 @@ GMGraph graph_from_property_tree(pt::ptree root) {
 		}
 	}
 
-    vector<pair<int,VertexData>> vertices;
-    vertices = parse_gm_nodes(nodes);
+    vector<pair<int,VertexData>> gm_vertices;
+    gm_vertices = parse_gm_nodes(nodes);
 
     //Retrieve edges from Goal Model
     links = root.get_child("links");
 
     vector<pair<pair<int,int>, EdgeData>> edges;
-    edges = parse_gm_edges(links, gm, vertices);
+    edges = parse_gm_edges(links, gm, gm_vertices);
 
     vector<pair<pair<int,int>, EdgeData>>::iterator edges_it;
     for(edges_it = edges.begin();edges_it != edges.end();++edges_it) {
@@ -434,6 +434,11 @@ GMGraph graph_from_property_tree(pt::ptree root) {
         EdgeData e = edges_it->second;
 
         boost::add_edge(boost::vertex(t, gm), boost::vertex(s, gm), e, gm);
+    }
+
+    GMGraph::vertex_iterator i, e;
+    for(boost::tie(i,e) = vertices(gm); i != e; ++i) {
+        std::sort(gm[*i].children.begin(),gm[*i].children.end());
     }
 
     return gm;
