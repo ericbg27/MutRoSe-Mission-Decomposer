@@ -290,92 +290,144 @@ void instantiate_decomposition_predicates(AbstractTask at, Decomposition& d, boo
 	vector<variant<pair<ground_literal,variant<int,float>>,literal>> combined_func_effects; //DEAL WITH LITERALS FOR FUNC EFFECTS
 
 	for(task t : d.path.decomposition) {
-		if(task_counter == 1) { //First task defines preconditions
-			for(literal prec : t.prec) {
-				bool can_ground = true;
-				for(string arg : prec.arguments) {
-					bool found_arg = false;
-					for(pair<pair<variant<vector<string>,string>,string>,string> var_map : at.variable_mapping) {
-						if(arg == var_map.second) {
-							found_arg = true;
-							break;
-						}
-					}
-
-					if(!found_arg) {
-						if(verbose) {
-							std::cout << "Could not find argument [" << arg << "] for predicate [" << prec.predicate << "]" << std::endl;
-						}
-						can_ground = false;
+		for(literal prec : t.prec) {
+			bool can_ground = true;
+			for(string arg : prec.arguments) {
+				bool found_arg = false;
+				for(pair<pair<variant<vector<string>,string>,string>,string> var_map : at.variable_mapping) {
+					if(arg == var_map.second) {
+						found_arg = true;
 						break;
 					}
 				}
 
-				if(can_ground) {
-					vector<ground_literal> inst_prec;
+				if(!found_arg) {
+					if(verbose) {
+						std::cout << "Could not find argument [" << arg << "] for predicate [" << prec.predicate << "]" << std::endl;
+					}
+					can_ground = false;
+					break;
+				}
+			}
 
-					// Here one place where we have to expand collection related predicates
-					for(string arg : prec.arguments) {
-						for(pair<pair<variant<vector<string>,string>,string>,string> var_map : at.variable_mapping) {
-							if(arg == var_map.second) {
-								if(holds_alternative<string>(var_map.first.first)) {
-									if(inst_prec.size() == 0) {
+			if(can_ground) {
+				vector<ground_literal> inst_prec;
+
+				// Here one place where we have to expand collection related predicates
+				for(string arg : prec.arguments) {
+					for(pair<pair<variant<vector<string>,string>,string>,string> var_map : at.variable_mapping) {
+						if(arg == var_map.second) {
+							if(holds_alternative<string>(var_map.first.first)) {
+								if(inst_prec.size() == 0) {
+									ground_literal p;
+									p.positive = prec.positive;
+									p.predicate = prec.predicate; 
+									p.args.push_back(std::get<string>(var_map.first.first));
+
+									if(prec.isComparisonExpression) {
+										p.isComparison = true;
+										p.comparison_op_and_value = prec.comparison_op_and_value;
+									}
+
+									inst_prec.push_back(p);
+								} else {
+									vector<ground_literal> new_inst_prec;
+
+									for(ground_literal p : inst_prec) {
+										p.args.push_back(std::get<string>(var_map.first.first));
+
+										new_inst_prec.push_back(p);
+									}
+
+									inst_prec = new_inst_prec;
+								}
+							} else { // We cannot have function predicates when collection-related variables are used
+								vector<string> prec_vars = std::get<vector<string>>(var_map.first.first);
+								if(inst_prec.size() == 0) {
+									for(string var : prec_vars) {
 										ground_literal p;
 										p.positive = prec.positive;
 										p.predicate = prec.predicate; 
-										p.args.push_back(std::get<string>(var_map.first.first));
-
-										if(prec.isComparisonExpression) {
-											p.isComparison = true;
-											p.comparison_op_and_value = prec.comparison_op_and_value;
-										}
+										p.args.push_back(var);
 
 										inst_prec.push_back(p);
-									} else {
-										vector<ground_literal> new_inst_prec;
-
-										for(ground_literal p : inst_prec) {
-											p.args.push_back(std::get<string>(var_map.first.first));
-
-											new_inst_prec.push_back(p);
-										}
-
-										inst_prec = new_inst_prec;
 									}
-								} else { // We cannot have function predicates when collection-related variables are used
-									vector<string> prec_vars = std::get<vector<string>>(var_map.first.first);
-									if(inst_prec.size() == 0) {
+								} else {
+									vector<ground_literal> new_inst_prec;
+
+									for(ground_literal p : inst_prec) {
 										for(string var : prec_vars) {
-											ground_literal p;
-											p.positive = prec.positive;
-											p.predicate = prec.predicate; 
-											p.args.push_back(var);
+											ground_literal aux = p;
+											aux.args.push_back(var);
 
-											inst_prec.push_back(p);
+											new_inst_prec.push_back(aux);
 										}
-									} else {
-										vector<ground_literal> new_inst_prec;
-
-										for(ground_literal p : inst_prec) {
-											for(string var : prec_vars) {
-												ground_literal aux = p;
-												aux.args.push_back(var);
-
-												new_inst_prec.push_back(aux);
-											}
-										}
-
-										inst_prec = new_inst_prec;
 									}
+
+									inst_prec = new_inst_prec;
 								}
 							}
 						}
 					}
+				}
 
-					for(ground_literal p : inst_prec) {
+				for(ground_literal p : inst_prec) {
+					bool precondition_satisfied_by_eff = false;
+					if(!p.isComparison) {
+						for(auto eff : combined_effects) {
+							if(holds_alternative<ground_literal>(eff)) {
+								ground_literal e = std::get<ground_literal>(eff);
+
+								if(is_same_predicate(p, e)) {
+									precondition_satisfied_by_eff = true;
+
+									break;
+								}
+							}
+						}
+					} else { // TODO: Check if this is indeed correct
+						for(auto f_eff : combined_func_effects) {
+							if(holds_alternative<pair<ground_literal,variant<int,float>>>(f_eff)) {
+								pair<ground_literal,variant<int,float>> fe = std::get<pair<ground_literal,variant<int,float>>>(f_eff);
+
+								if(is_same_predicate(p, fe.first)) {
+									precondition_satisfied_by_eff = true;
+
+									break;
+								}
+							}
+						}
+					}
+					
+					if(!precondition_satisfied_by_eff) {
 						d.prec.push_back(p);
 					}
+				}
+			} else {
+				bool precondition_satisfied_by_eff = false;
+				if(!prec.isComparisonExpression) {
+					for(auto eff : combined_effects) {
+						literal e = std::get<literal>(eff);
+
+						if(is_same_predicate(prec, e)) {
+							precondition_satisfied_by_eff = true;
+
+							break;
+						}
+					}
 				} else {
+					for(auto f_eff : combined_func_effects) {
+						literal fe = std::get<literal>(f_eff);
+
+						if(is_same_predicate(prec, fe)) {
+							precondition_satisfied_by_eff = false;
+
+							break;
+						}
+					}
+				}
+
+				if(!precondition_satisfied_by_eff) {
 					d.prec.push_back(prec);
 				}
 			}
