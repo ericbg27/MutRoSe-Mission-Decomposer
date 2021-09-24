@@ -87,37 +87,80 @@ vector<Constraint> ConstraintManager::generate_mission_constraints() {
                 fallback_constraints.push_back(c);
             }
         }
+
+        int ctr_counter = 0;
+
         std::cout << "Number of Sequential Mission Constraints: " << sequential_constraints.size() << std::endl;
         std::cout << "Sequential Constraints:" << std::endl; 
+        int seq_ctr = 0;
         for(Constraint c : sequential_constraints) {
-            std::cout << std::get<Decomposition>(c.nodes_involved.first.second.content).id;
+            if(ctr_counter == 5) {
+                std::cout << std::endl;
+                ctr_counter = 0;
+            }
+            std::cout << "[" << std::get<Decomposition>(c.nodes_involved.first.second.content).id;
             
             std::cout << " ; ";
 
-            std::cout << std::get<Decomposition>(c.nodes_involved.second.second.content).id;
-            std::cout << std::endl;
+            std::cout << std::get<Decomposition>(c.nodes_involved.second.second.content).id << "]";
+            if(seq_ctr < sequential_constraints.size()-1) {
+                std::cout << " AND ";
+            } else {
+                std::cout << std::endl;
+            }
+
+            ctr_counter++;
+            seq_ctr++;
         }
+
+        ctr_counter = 0;
 
         std::cout << std::endl;
         std::cout << "Number of execution constraints: " << execution_constraints.size() << std::endl;
-        std::cout << "Execution Constraints:" << std::endl; 
+        std::cout << "Execution Constraints:" << std::endl;
+        int ec_ctr = 0;
         for(Constraint c : execution_constraints) {
-            std::cout << get<Decomposition>(c.nodes_involved.first.second.content).id;
+            if(ctr_counter == 5) {
+                std::cout << std::endl;
+                ctr_counter = 0;
+            }
+            std::cout << "[" << get<Decomposition>(c.nodes_involved.first.second.content).id;
             std::cout << " EC ";
-            std::cout << get<Decomposition>(c.nodes_involved.second.second.content).id;
-            std::cout << std::endl;
+            std::cout << get<Decomposition>(c.nodes_involved.second.second.content).id << "]";
+            if(ec_ctr < execution_constraints.size()-1) {
+                std::cout << " AND ";
+            } else {
+                std::cout << std::endl;
+            }
+
+            ctr_counter++;
+            ec_ctr++;
         }
+
+        ctr_counter = 0;
 
         std::cout << std::endl;
         std::cout << "Number of fallback constraints: " << fallback_constraints.size() << std::endl;
         std::cout << "Fallback Constraints:" << std::endl; 
+        int fb_ctr = 0;
         for(Constraint c : fallback_constraints) {
-            std::cout << get<Decomposition>(c.nodes_involved.first.second.content).id;
+            if(ctr_counter == 5) {
+                std::cout << std::endl;
+                ctr_counter = 0;
+            }
+            std::cout << "[" << get<Decomposition>(c.nodes_involved.first.second.content).id;
             std::cout << " FB ";
-            std::cout << get<Decomposition>(c.nodes_involved.second.second.content).id;
-            std::cout << std::endl;
+            std::cout << get<Decomposition>(c.nodes_involved.second.second.content).id << "]";
+            if(fb_ctr < fallback_constraints.size()-1) {
+                std::cout << " AND ";
+            } else {
+                std::cout << std::endl;
+            }
+
+            ctr_counter++;
+            fb_ctr++;
         }
-        std::cout << "-------------------------------------------------------------------------------------------------------------" << std::endl;
+        std::cout << "-------------------------------------------------------------------------------------------------------------" << std::endl << std::endl;
     }
 
     return mission_constraints;

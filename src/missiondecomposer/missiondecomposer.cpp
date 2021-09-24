@@ -882,7 +882,7 @@ ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string, variant<pair<
 	}
 
 	if(pretty_print) {
-		std::cout << "-------------------------------------- GENERATED TASK INSTANCES --------------------------------------" << std::endl;
+		std::cout << "----------------------------------------- GENERATED TASK INSTANCES ------------------------------------------" << std::endl;
 
 		bool print_endline = false;
 
@@ -1015,7 +1015,7 @@ ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string, variant<pair<
 			}
 		}
 
-		std::cout << "------------------------------------------------------------------------------------------------------" << std::endl;
+		std::cout << "-------------------------------------------------------------------------------------------------------------" << std::endl << std::endl;
 	}
 
 	return mission_decomposition;
