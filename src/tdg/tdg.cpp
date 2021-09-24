@@ -126,14 +126,17 @@ vector<DecompositionPath> TDG::decomposition_recursion(vector<int> dfs_nodes, in
             vector<literal> world_state_copy = world_state;
 
             unsigned int ordering_index = 0;
+            set<int> considered_tasks;
             for(int c : ordering) {
                 vector<int>::iterator it = std::find(dfs_nodes.begin(),dfs_nodes.end(),c);
                 int c_pos = std::distance(dfs_nodes.begin(),it);
 
                 task child_task = tdg[c].t;
                 vector<pair<string,string>> child_var_mapping;
+
+                int plan_step_index = 0;
                 for(auto subtask : n.m.ps) {
-                    if(subtask.task == child_task.name) {
+                    if(subtask.task == child_task.name && considered_tasks.find(plan_step_index) == considered_tasks.end()) {
                         int index = 0;
                         for(string var : subtask.args) {
                             string aux;
@@ -141,6 +144,7 @@ vector<DecompositionPath> TDG::decomposition_recursion(vector<int> dfs_nodes, in
                                 if(mapping.first == var) { //Found mapping from methods
                                     aux = mapping.second;
                                     child_var_mapping.push_back(make_pair(child_task.vars.at(index).first,aux));
+
                                     break;
                                 }
                             }
@@ -148,8 +152,11 @@ vector<DecompositionPath> TDG::decomposition_recursion(vector<int> dfs_nodes, in
                             index++;
                         }
 
+                        considered_tasks.insert(plan_step_index);
                         break;
                     }
+
+                    plan_step_index++;
                 }
 
                 /*
@@ -354,6 +361,7 @@ vector<DecompositionPath> TDG::decomposition_recursion(vector<int> dfs_nodes, in
                 int index = 0;
                 for(string arg : child_method.atargs) {
                     child_var_mapping.push_back(make_pair(arg,variable_mapping.at(index).second)); //Mapping to original vars
+                    index++;
                 }
             }
 
