@@ -52,6 +52,7 @@ class MissionDecomposer {
         void add_decomposition_path_nodes(ATNode node, int node_id);
         
         void set_verbose(bool verb);
+        void set_pretty_print(bool pretty);
         void set_mission_decomposer_type(mission_decomposer_type mdt);
         void set_world_state(std::vector<ground_literal> ws);
         void set_world_state_functions(std::vector<std::pair<ground_literal,std::variant<int,float>>> wsf);
@@ -64,6 +65,7 @@ class MissionDecomposer {
     
     protected:
         bool verbose;
+        bool pretty_print;
         ATGraph mission_decomposition;
         std::vector<ground_literal> world_state;
         std::vector<std::pair<ground_literal,std::variant<int,float>>> world_state_functions;
@@ -91,7 +93,7 @@ class FileKnowledgeMissionDecomposer : public MissionDecomposer {
 
 class MissionDecomposerFactory {
     public:
-        std::shared_ptr<MissionDecomposer> create_mission_decomposer(std::shared_ptr<KnowledgeManager> k_manager, std::vector<ground_literal> ws, std::vector<std::pair<ground_literal,std::variant<int,float>>> wsf, std::map<std::string,std::vector<DecompositionPath>> atpaths, std::map<std::string,std::vector<AbstractTask>> atinst, general_annot* gma, GMGraph g, bool verb);
+        std::shared_ptr<MissionDecomposer> create_mission_decomposer(std::shared_ptr<KnowledgeManager> k_manager, std::vector<ground_literal> ws, std::vector<std::pair<ground_literal,std::variant<int,float>>> wsf, std::map<std::string,std::vector<DecompositionPath>> atpaths, std::map<std::string,std::vector<AbstractTask>> atinst, general_annot* gma, GMGraph g, bool verb, bool pretty);
 };
 
 #endif

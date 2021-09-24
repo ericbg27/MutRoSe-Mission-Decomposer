@@ -21,7 +21,7 @@ using namespace std;
 */
 void XMLOutputGenerator::generate_instances_output(vector<SemanticMapping> semantic_mapping, map<string,set<string>> sorts, vector<sort_definition> sort_definitions, vector<predicate_definition> predicate_definitions,
                                                         map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map, set<string> robot_related_sorts) {
-    ConstraintManager constraint_generator(gm, mission_decomposition, verbose);
+    ConstraintManager constraint_generator(gm, mission_decomposition, verbose, pretty_print);
     vector<Constraint> mission_constraints = constraint_generator.generate_mission_constraints();
     
     // With the final constraints and the mission decomposition graph we generate our output
@@ -160,6 +160,42 @@ map<string,string> XMLOutputGenerator::output_tasks(pt::ptree& output_file, vect
 
         task_attr = task_name + ".name";
         output_file.put(task_attr,instance.at.name);
+
+        task_attr = task_name + ".arguments";
+        
+        int arg_index = 0;
+        for(auto arg : instance.arguments) {
+            string arg_name = task_attr + ".arg" + to_string(arg_index);
+
+            string arg_name_attr = arg_name + ".name";
+            output_file.put(arg_name_attr,arg.second.first);
+            
+            string arg_type_attr = arg_name + ".type";
+            output_file.put(arg_type_attr,arg.second.second);
+
+            string arg_val_str; 
+            if(holds_alternative<vector<string>>(arg.first)) {
+                vector<string> arg_val = std::get<vector<string>>(arg.first);
+
+                int arg_index = 0;
+                for(string val : arg_val) {
+                    if(arg_index == arg_val.size()-1) {
+                        arg_val_str += val;
+                    } else {
+                        arg_val_str += val + " ";
+                    }
+
+                    arg_index++;
+                }
+            } else {
+                arg_val_str = std::get<string>(arg.first);
+            }
+
+            string arg_val_attr = arg_name + ".value";
+            output_file.put(arg_val_attr, arg_val_str);
+
+            arg_index++;
+        }
 
         task_attr = task_name + ".locations";
         if(holds_alternative<vector<string>>(instance.at.location.first)) {
