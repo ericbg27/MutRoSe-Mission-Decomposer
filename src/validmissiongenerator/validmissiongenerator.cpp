@@ -85,6 +85,7 @@ pair<vector<vector<pair<int,ATNode>>>,set<Decomposition>> ValidMissionGenerator:
         std::cout << "-------------------------------------- POSSIBLE MISSION DECOMPOSITIONS --------------------------------------" << std::endl;
         unsigned int mission_index = 1;
         for(auto mission_decomposition : final_valid_mission_decompositions) {
+            std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ MISSION " + to_string(mission_index) + " @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl;
             unsigned int index = 1;
             for(pair<int,ATNode> node : mission_decomposition) {
                 Decomposition d = std::get<Decomposition>(node.second.content);
@@ -98,7 +99,7 @@ pair<vector<vector<pair<int,ATNode>>>,set<Decomposition>> ValidMissionGenerator:
 
                 variant<vector<string>,string> location = d.at.location.first;
 
-                std::cout << "Task [" + d.id << "] ";
+                std::cout << "Task [" + d.at.at.name << "] With ID [" + d.id + "] ";
                 if(required_capabilities.size() > 0) {
                     if(required_capabilities.size() > 1) {
                         std::cout << "with required capabilities [";
@@ -112,11 +113,12 @@ pair<vector<vector<pair<int,ATNode>>>,set<Decomposition>> ValidMissionGenerator:
                         if(cap_index < cap_size-1) {
                             std::cout << cap << ", ";
                         } else {
-                            std::cout << cap << "] ";
+                            std::cout << cap;
                         }
 
                         cap_index++;
                     }
+                    std::cout << "] ";
                 }
                 if(holds_alternative<vector<string>>(location)) {
                     vector<string> loc = std::get<vector<string>>(location);
@@ -128,31 +130,97 @@ pair<vector<vector<pair<int,ATNode>>>,set<Decomposition>> ValidMissionGenerator:
                         if(loc_index < loc_size-1) {
                             std::cout << l << ", ";
                         } else {
-                            std::cout << l << "]";
+                            std::cout << l;
                         }
 
                         loc_index++;
                     }
+                    std::cout << "] ";
                 } else {
                     string loc = std::get<string>(location);
-                    std::cout << "at location [" + loc + "]";
+                    std::cout << "at location [" + loc + "] ";
                 }
-                if(index == mission_decomposition.size()) {
-                    std::cout << std::endl;
-                } else {
-                    std::cout << " AND" << std::endl;
+
+                std::cout << "with arguments [";
+                int arg_index = 0;
+                for(auto arg : d.arguments) {
+                    bool grounded = true;
+                    if(holds_alternative<string>(arg.first)) {
+                        string arg_val = std::get<string>(arg.first);
+
+                        if(arg_val == "") {
+                            grounded = false;
+                        }
+                    }
+
+                    if(grounded) {
+                        if(holds_alternative<vector<string>>(arg.first)) {
+                            vector<string> arg_val = std::get<vector<string>>(arg.first);
+                        
+                            std::cout << arg.second.first << "=(";
+                            int val_index = 0;
+                            for(string val : arg_val) {
+                                if(val_index == arg_val.size()-1) {
+                                    std::cout << val << ")";
+                                } else {
+                                    std::cout << val << ",";
+                                }
+                            }
+                        } else {
+                            string arg_val = std::get<string>(arg.first);
+
+                            std::cout << arg.second.first << "=" << arg_val;
+                        }
+
+                        if(arg_index < d.arguments.size()-1) {
+                            std::cout << ",";
+                        }
+                    } else {
+                        if(arg_index < d.arguments.size()-1) {
+                            std::cout << arg.second.first << ",";
+                        } else {
+                            std::cout << arg.second.first;
+                        }
+                    }
+
+                    arg_index++;
+                }
+                std::cout << "] ";
+
+                std::cout << "decomposed into actions: " << std::endl;
+                int action_index = 0;
+                for(task act : d.path.decomposition) {
+                    if(act.name.find(method_precondition_action_name) == std::string::npos) {
+                        std::cout << "\t-> " << act.name << " ";
+                        for(int arg_index = 0; arg_index < act.number_of_original_vars; arg_index++) {
+                            if(arg_index < act.number_of_original_vars-1) {
+                                std::cout << act.vars.at(arg_index).first << " ";
+                            } else {
+                                std::cout << act.vars.at(arg_index).first;
+                            }
+                        }
+
+                        std::cout << std::endl;
+                    }
+
+                    action_index++;
+                }
+
+                if(index < mission_decomposition.size()) {
+                    std::cout << "AND" << std::endl;
                 }
 
                 index++;
             }
 
+            std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl;
             if(mission_index < final_valid_mission_decompositions.size()) {
                 std::cout << std::endl;
             }
 
             mission_index++;
         }
-        std::cout << "-------------------------------------------------------------------------------------------------------------" << std::endl;
+        std::cout << "-------------------------------------------------------------------------------------------------------------" << std::endl << std::endl;
     }
 
     return make_pair(final_valid_mission_decompositions,expanded_decompositions);

@@ -8,7 +8,7 @@ using namespace std;
 
 void JSONOutputGenerator::generate_instances_output(vector<SemanticMapping> semantic_mapping, map<string,set<string>> sorts, vector<sort_definition> sort_definitions, vector<predicate_definition> predicate_definitions,
                                                         map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map, set<string> robot_related_sorts) {
-    ConstraintManager constraint_generator(gm, mission_decomposition, verbose);
+    ConstraintManager constraint_generator(gm, mission_decomposition, verbose, pretty_print);
     vector<Constraint> mission_constraints = constraint_generator.generate_mission_constraints();
     
     // With the final constraints and the mission decomposition graph we generate our output

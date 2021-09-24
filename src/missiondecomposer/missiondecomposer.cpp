@@ -10,6 +10,10 @@ void MissionDecomposer::set_verbose(bool verb) {
 	verbose = verb;
 }
 
+void MissionDecomposer::set_pretty_print(bool pretty) {
+	pretty_print = pretty;
+}
+
 void MissionDecomposer::set_mission_decomposer_type(mission_decomposer_type mdt) {
 	md_type = mdt;
 }
@@ -877,6 +881,143 @@ ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string, variant<pair<
 		trim_at_graph();
 	}
 
+	if(pretty_print) {
+		std::cout << "-------------------------------------- GENERATED TASK INSTANCES --------------------------------------" << std::endl;
+
+		bool print_endline = false;
+
+		ATGraph::vertex_iterator i, end;
+		for(boost::tie(i,end) = vertices(mission_decomposition); i != end; ++i) {
+			if(mission_decomposition[*i].node_type == DECOMPOSITION) {
+				if(print_endline) {
+					std::cout << std::endl;
+				} else {
+					print_endline = true;
+				}
+
+				Decomposition d = std::get<Decomposition>(mission_decomposition[*i].content);
+
+                set<string> required_capabilities;
+                for(task t : d.path.decomposition) {
+                    for(string cap : t.required_capabilities) {
+                        required_capabilities.insert(cap);
+                    }
+                }
+
+                variant<vector<string>,string> location = d.at.location.first;
+
+                std::cout << "Task [" + d.at.at.name << "] With ID [" + d.id + "] ";
+                if(required_capabilities.size() > 0) {
+                    if(required_capabilities.size() > 1) {
+                        std::cout << "with required capabilities [";
+                    } else {
+                        std::cout << "with required capability [";
+                    }
+
+                    int cap_size = required_capabilities.size();
+                    int cap_index = 0;
+                    for(string cap : required_capabilities) {
+                        if(cap_index < cap_size-1) {
+                            std::cout << cap << ", ";
+                        } else {
+                            std::cout << cap;
+                        }
+
+                        cap_index++;
+                    }
+                    std::cout << "] ";
+                }
+                if(holds_alternative<vector<string>>(location)) {
+                    vector<string> loc = std::get<vector<string>>(location);
+                    std::cout << "at locations [";
+
+                    int loc_size = loc.size();
+                    int loc_index = 0;
+                    for(string l : loc) {
+                        if(loc_index < loc_size-1) {
+                            std::cout << l << ", ";
+                        } else {
+                            std::cout << l;
+                        }
+
+                        loc_index++;
+                    }
+                    std::cout << "] ";
+                } else {
+                    string loc = std::get<string>(location);
+                    std::cout << "at location [" + loc + "] ";
+                }
+
+                std::cout << "with arguments [";
+                int arg_index = 0;
+                for(auto arg : d.arguments) {
+                    bool grounded = true;
+                    if(holds_alternative<string>(arg.first)) {
+                        string arg_val = std::get<string>(arg.first);
+
+                        if(arg_val == "") {
+                            grounded = false;
+                        }
+                    }
+
+                    if(grounded) {
+                        if(holds_alternative<vector<string>>(arg.first)) {
+                            vector<string> arg_val = std::get<vector<string>>(arg.first);
+                        
+                            std::cout << arg.second.first << "=(";
+                            int val_index = 0;
+                            for(string val : arg_val) {
+                                if(val_index == arg_val.size()-1) {
+                                    std::cout << val << ")";
+                                } else {
+                                    std::cout << val << ",";
+                                }
+                            }
+                        } else {
+                            string arg_val = std::get<string>(arg.first);
+
+                            std::cout << arg.second.first << "=" << arg_val;
+                        }
+
+                        if(arg_index < d.arguments.size()-1) {
+                            std::cout << ",";
+                        }
+                    } else {
+                        if(arg_index < d.arguments.size()-1) {
+                            std::cout << arg.second.first << ",";
+                        } else {
+                            std::cout << arg.second.first;
+                        }
+                    }
+
+                    arg_index++;
+                }
+                std::cout << "] ";
+
+                std::cout << "decomposed into actions: " << std::endl;
+                int action_index = 0;
+                for(task act : d.path.decomposition) {
+                    if(act.name.find(method_precondition_action_name) == std::string::npos) {
+                        std::cout << "\t-> " << act.name << " ";
+                        for(int arg_index = 0; arg_index < act.number_of_original_vars; arg_index++) {
+                            if(arg_index < act.number_of_original_vars-1) {
+                                std::cout << act.vars.at(arg_index).first << " ";
+                            } else {
+                                std::cout << act.vars.at(arg_index).first;
+                            }
+                        }
+
+                        std::cout << std::endl;
+                    }
+
+                    action_index++;
+                }
+			}
+		}
+
+		std::cout << "------------------------------------------------------------------------------------------------------" << std::endl;
+	}
+
 	return mission_decomposition;
 }
 
@@ -1060,7 +1201,7 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 }
 
 shared_ptr<MissionDecomposer> MissionDecomposerFactory::create_mission_decomposer(shared_ptr<KnowledgeManager> k_manager, vector<ground_literal> ws, vector<pair<ground_literal,variant<int,float>>> wsf, map<string,vector<DecompositionPath>> atpaths, 
-																							map<string,vector<AbstractTask>> atinst, general_annot* gma, GMGraph g, bool verb) {
+																							map<string,vector<AbstractTask>> atinst, general_annot* gma, GMGraph g, bool verb, bool pretty) {
 	shared_ptr<MissionDecomposer> mission_decomposer;
 	
 	if(k_manager->get_knowledge_type() == FILEKNOWLEDGE) {
@@ -1079,6 +1220,7 @@ shared_ptr<MissionDecomposer> MissionDecomposerFactory::create_mission_decompose
 	mission_decomposer->set_gm_annot(gma);
 	mission_decomposer->set_gm(g);
 	mission_decomposer->set_verbose(verb);
+	mission_decomposer->set_pretty_print(pretty);
 
 	return mission_decomposer;
 }

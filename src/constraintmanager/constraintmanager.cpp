@@ -4,10 +4,11 @@
 
 using namespace std;
 
-ConstraintManager::ConstraintManager(GMGraph g, ATGraph md, bool verb) {
+ConstraintManager::ConstraintManager(GMGraph g, ATGraph md, bool verb, bool pretty) {
     this->mission_decomposition = md;
     this->gm = g;
     this->verbose = verb;
+    this->pretty_print = pretty;
 }
 
 /*
@@ -74,6 +75,49 @@ vector<Constraint> ConstraintManager::generate_mission_constraints() {
             std::cout << std::endl;
         }
         std::cout << std::endl;
+    } else if(pretty_print) {
+        std::cout << "-------------------------------------------- MISSION CONSTRAINTS --------------------------------------------" << std::endl;
+        vector<Constraint> sequential_constraints, execution_constraints, fallback_constraints;
+        for(Constraint c : mission_constraints) {
+            if(c.type == SEQ) {
+                sequential_constraints.push_back(c);
+            } else if(c.type == NC) {
+                execution_constraints.push_back(c);
+            } else if(c.type == FB) {
+                fallback_constraints.push_back(c);
+            }
+        }
+        std::cout << "Number of Sequential Mission Constraints: " << sequential_constraints.size() << std::endl;
+        std::cout << "Sequential Constraints:" << std::endl; 
+        for(Constraint c : sequential_constraints) {
+            std::cout << std::get<Decomposition>(c.nodes_involved.first.second.content).id;
+            
+            std::cout << " ; ";
+
+            std::cout << std::get<Decomposition>(c.nodes_involved.second.second.content).id;
+            std::cout << std::endl;
+        }
+
+        std::cout << std::endl;
+        std::cout << "Number of execution constraints: " << execution_constraints.size() << std::endl;
+        std::cout << "Execution Constraints:" << std::endl; 
+        for(Constraint c : execution_constraints) {
+            std::cout << get<Decomposition>(c.nodes_involved.first.second.content).id;
+            std::cout << " EC ";
+            std::cout << get<Decomposition>(c.nodes_involved.second.second.content).id;
+            std::cout << std::endl;
+        }
+
+        std::cout << std::endl;
+        std::cout << "Number of fallback constraints: " << fallback_constraints.size() << std::endl;
+        std::cout << "Fallback Constraints:" << std::endl; 
+        for(Constraint c : fallback_constraints) {
+            std::cout << get<Decomposition>(c.nodes_involved.first.second.content).id;
+            std::cout << " FB ";
+            std::cout << get<Decomposition>(c.nodes_involved.second.second.content).id;
+            std::cout << std::endl;
+        }
+        std::cout << "-------------------------------------------------------------------------------------------------------------" << std::endl;
     }
 
     return mission_constraints;

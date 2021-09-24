@@ -45,7 +45,7 @@ struct ParallelConstraintTree : ConstraintTree {
 
 class ConstraintManager {
     public:
-        ConstraintManager(GMGraph g, ATGraph md, bool verb);
+        ConstraintManager(GMGraph g, ATGraph md, bool verb, bool pretty);
 
         std::vector<Constraint> generate_mission_constraints();
 
@@ -61,6 +61,7 @@ class ConstraintManager {
         ATGraph mission_decomposition;
         GMGraph gm;
         bool verbose;
+        bool pretty_print;
         std::vector<Constraint> mission_constraints;
 };
 

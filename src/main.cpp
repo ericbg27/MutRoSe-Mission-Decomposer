@@ -464,7 +464,7 @@ int main(int argc, char** argv) {
 	*/
 
 	MissionDecomposerFactory mission_decomposer_factory;
-	shared_ptr<MissionDecomposer> mission_decomposer_ptr = mission_decomposer_factory.create_mission_decomposer(knowledge_manager, init, init_functions, at_decomposition_paths, at_instances, gmannot, gm, verbose);
+	shared_ptr<MissionDecomposer> mission_decomposer_ptr = mission_decomposer_factory.create_mission_decomposer(knowledge_manager, init, init_functions, at_decomposition_paths, at_instances, gmannot, gm, verbose, pretty_print);
 	
 	ATGraph mission_decomposition;
 
