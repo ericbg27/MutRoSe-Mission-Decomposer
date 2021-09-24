@@ -98,6 +98,37 @@ map<string,string> JSONOutputGenerator::output_tasks(pt::ptree& output_file, vec
 
         task_node.put("id", instance.id);
         task_node.put("name", instance.at.name);
+
+        pt::ptree arguments_node;
+        pt::ptree arguments_value_node;
+        for(auto arg : instance.arguments) {
+            arguments_node.put(arg.second.first, arg.second.second);
+
+            if(holds_alternative<vector<string>>(arg.first)) {
+                vector<string> arg_val = std::get<vector<string>>(arg.first);
+
+                string arg_val_str = "[";
+
+                int arg_index = 0;
+                for(string val : arg_val) {
+                    if(arg_index == arg_val.size()-1) {
+                        arg_val_str += val + "]";
+                    } else {
+                        arg_val_str += val + ",";
+                    }
+
+                    arg_index++;
+                }
+
+                arguments_value_node.put(arg.second.first,arg_val_str);
+            } else {
+                string arg_val = std::get<string>(arg.first);
+
+                arguments_value_node.put(arg.second.first,arg_val);
+            }
+        }
+        task_node.add_child("arguments", arguments_node);
+        task_node.add_child("arguments_values", arguments_value_node);
         
         pt::ptree locations_node;
         if(holds_alternative<vector<string>>(instance.at.location.first)) {
@@ -340,13 +371,25 @@ map<string,string> JSONOutputGenerator::output_tasks(pt::ptree& output_file, vec
         task_node.add_child("triggering_events", events_node);
 
         pt::ptree decomposition_node;
+        
+        int action_index = 0;
         for(task a : instance.path.decomposition) {
             pt::ptree action_node;
 
             if(a.name.find(method_precondition_action_name) == string::npos) {
-                action_node.put("", a.name);
+                action_node.put("name", a.name);
+                
+                string args_str;
+                for(int arg_index = 0; arg_index < a.number_of_original_vars; arg_index++) {
+                    args_str += a.vars.at(arg_index).first + " ";
+                }
+                args_str = args_str.substr(0,args_str.size()-1);
+                action_node.put("arguments", args_str);
+                
+                string action_name = "a" + to_string(action_index);
+                decomposition_node.push_back(std::make_pair(action_name, action_node));
 
-                decomposition_node.push_back(std::make_pair("", action_node));
+                action_index++;
             }
         }
         task_node.add_child("decomposition", decomposition_node);

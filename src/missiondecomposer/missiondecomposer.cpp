@@ -789,6 +789,32 @@ void MissionDecomposer::add_decomposition_path_nodes(ATNode node, int node_id) {
 		d.at = at;
 		instantiate_decomposition_predicates(at,d,verbose);
 
+		task at_def = at.at;
+		for(int arg_index = 0; arg_index < at_def.number_of_original_vars; arg_index++) {
+			bool found_arg = false;
+			for(auto v_map : at.variable_mapping) {
+				if(at_def.vars.at(arg_index).first == v_map.second) {
+					if(holds_alternative<vector<string>>(v_map.first.first)) {
+						vector<string> var_value = std::get<vector<string>>(v_map.first.first);
+						//string var_type = v_map.first.second;
+
+						d.arguments.push_back(make_pair(var_value,at_def.vars.at(arg_index)));
+					} else {
+						string var_value = std::get<string>(v_map.first.first);
+						//string var_type = v_map.first.second;
+
+						d.arguments.push_back(make_pair(var_value,at_def.vars.at(arg_index)));
+					}
+
+					found_arg = true;
+				}
+			}
+
+			if(!found_arg) {
+				d.arguments.push_back(make_pair("",at_def.vars.at(arg_index)));
+			}
+		}
+
 		path_id++;
 
 		path_node.content = d;

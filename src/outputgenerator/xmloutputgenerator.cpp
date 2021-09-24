@@ -161,6 +161,42 @@ map<string,string> XMLOutputGenerator::output_tasks(pt::ptree& output_file, vect
         task_attr = task_name + ".name";
         output_file.put(task_attr,instance.at.name);
 
+        task_attr = task_name + ".arguments";
+        
+        int arg_index = 0;
+        for(auto arg : instance.arguments) {
+            string arg_name = task_attr + ".arg" + to_string(arg_index);
+
+            string arg_name_attr = arg_name + ".name";
+            output_file.put(arg_name_attr,arg.second.first);
+            
+            string arg_type_attr = arg_name + ".type";
+            output_file.put(arg_type_attr,arg.second.second);
+
+            string arg_val_str; 
+            if(holds_alternative<vector<string>>(arg.first)) {
+                vector<string> arg_val = std::get<vector<string>>(arg.first);
+
+                int arg_index = 0;
+                for(string val : arg_val) {
+                    if(arg_index == arg_val.size()-1) {
+                        arg_val_str += val;
+                    } else {
+                        arg_val_str += val + " ";
+                    }
+
+                    arg_index++;
+                }
+            } else {
+                arg_val_str = std::get<string>(arg.first);
+            }
+
+            string arg_val_attr = arg_name + ".value";
+            output_file.put(arg_val_attr, arg_val_str);
+
+            arg_index++;
+        }
+
         task_attr = task_name + ".locations";
         if(holds_alternative<vector<string>>(instance.at.location.first)) {
             vector<string> locations = get<vector<string>>(instance.at.location.first);

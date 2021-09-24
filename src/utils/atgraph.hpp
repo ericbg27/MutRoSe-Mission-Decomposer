@@ -16,6 +16,7 @@
 struct Decomposition {
     std::string id;
     AbstractTask at;
+    std::vector<std::pair<std::variant<std::string,std::vector<std::string>>,std::pair<std::string,std::string>>> arguments;
     DecompositionPath path;
     std::vector<std::variant<ground_literal,literal>> prec;
     std::vector<std::variant<ground_literal,literal>> eff;
