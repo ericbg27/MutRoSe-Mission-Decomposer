@@ -172,6 +172,7 @@ map<string,string> JSONOutputGenerator::output_tasks(pt::ptree& output_file, vec
 
             pair<SemanticMapping,bool> prec_mapping = find_predicate_mapping(prec,semantic_mapping,sorts,task_vars,sort_definitions);
 
+            bool is_literal_robot_related_predicate = false;
             if(!prec_mapping.second) {
                 string semantic_mapping_error;
                 if(holds_alternative<ground_literal>(prec)) {
@@ -187,19 +188,31 @@ map<string,string> JSONOutputGenerator::output_tasks(pt::ptree& output_file, vec
                     }
                 } else {
                     literal p = get<literal>(prec);
-                    semantic_mapping_error = "No Semantic Mapping exists for predicate [" + p.predicate + " ";
-                    unsigned int index = 0;
+
                     for(string arg : p.arguments) {
-                        if(index == p.arguments.size()-1) {
-                            semantic_mapping_error += arg + "] ";
-                        } else {
-                            semantic_mapping_error += arg + " "; 
+                        if(task_vars[arg] == "robot" || task_vars[arg] == "robotteam") {
+                            is_literal_robot_related_predicate = true;
+                        }
+                    }
+
+                    if(!is_literal_robot_related_predicate) {
+                        semantic_mapping_error = "No Semantic Mapping exists for predicate [" + p.predicate + " ";
+                        unsigned int index = 0;
+                        for(string arg : p.arguments) {
+                            if(index == p.arguments.size()-1) {
+                                semantic_mapping_error += arg + "] ";
+                            } else {
+                                semantic_mapping_error += arg + " "; 
+                            }
                         }
                     }
                 }
-                semantic_mapping_error += "] when trying to generate output for task " + instance.id + ": " + instance.at.name;
+                
+                if(!is_literal_robot_related_predicate) {
+                    semantic_mapping_error += "] when trying to generate output for task " + instance.id + ": " + instance.at.name;
 
-                throw std::runtime_error(semantic_mapping_error);
+                    throw std::runtime_error(semantic_mapping_error);
+                }
             } else {
                 string prec_output;
 
@@ -276,6 +289,8 @@ map<string,string> JSONOutputGenerator::output_tasks(pt::ptree& output_file, vec
 
             if(!eff_mapping.second) {
                 string semantic_mapping_error;
+
+                bool is_literal_robot_related_predicate = false;
                 if(holds_alternative<ground_literal>(eff)) {
                     ground_literal e = get<ground_literal>(eff);
                     semantic_mapping_error += "No Semantic Mapping exists for predicate [" + e.predicate + " ";
@@ -289,18 +304,31 @@ map<string,string> JSONOutputGenerator::output_tasks(pt::ptree& output_file, vec
                     }
                 } else {
                     literal e = get<literal>(eff);
-                    semantic_mapping_error += "No Semantic Mapping exists for predicate [" + e.predicate + " ";
-                    unsigned int index = 0;
+
                     for(string arg : e.arguments) {
-                        if(index == e.arguments.size()-1) {
-                            semantic_mapping_error += arg + "] ";
-                        } else {
-                            semantic_mapping_error += arg + " "; 
+                        if(task_vars[arg] == "robot" || task_vars[arg] == "robotteam") {
+                            is_literal_robot_related_predicate = true;
+                        }
+                    }
+
+                    if(!is_literal_robot_related_predicate) {
+                        semantic_mapping_error += "No Semantic Mapping exists for predicate [" + e.predicate + " ";
+                        unsigned int index = 0;
+                        for(string arg : e.arguments) {
+                            if(index == e.arguments.size()-1) {
+                                semantic_mapping_error += arg + "] ";
+                            } else {
+                                semantic_mapping_error += arg + " "; 
+                            }
                         }
                     }
                 }
-                semantic_mapping_error += "when trying to generate output for task " + instance.id + ": " + instance.at.name;
-                throw std::runtime_error(semantic_mapping_error);
+
+                if(!is_literal_robot_related_predicate) {
+                    semantic_mapping_error += "when trying to generate output for task " + instance.id + ": " + instance.at.name;
+                    
+                    throw std::runtime_error(semantic_mapping_error);
+                }
             } else {
                 /*
                     Here we output the predicate as an attribute in the preconditions attribute of the XML
