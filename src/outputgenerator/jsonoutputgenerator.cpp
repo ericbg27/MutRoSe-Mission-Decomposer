@@ -62,7 +62,17 @@ void JSONOutputGenerator::generate_instances_output(vector<SemanticMapping> sema
     string file_type = output.second;
     std::transform(file_type.begin(),file_type.end(),file_type.begin(),::toupper);
 
-    pt::write_json(output.first, output_file, std::locale());
+    //pt::write_json(output.first, output_file, std::locale());
+    
+    std::stringstream oss;
+    pt::write_json(oss, output_file);
+    std::regex reg("\\\"([0-9]+\\.{0,1}[0-9]*)\\\"");
+    std::string result = std::regex_replace(oss.str(), reg, "$1");
+
+    std::ofstream file;
+    file.open(output.first);
+    file << result;
+    file.close();
 }
 
 void JSONOutputGenerator::output_actions(pt::ptree& output_file, map<string,task> actions) {

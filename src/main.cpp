@@ -160,7 +160,7 @@ int main(int argc, char** argv) {
 		cout << "I can't open " << argv[configfile] << "!" << endl;
 		return 2;
 	}
-	if(!knowledgefile) {
+	if(!knowledge_file) {
 		cout << "I can't open " << argv[knowledgefile] << "!" << endl;
 		return 2;
 	}

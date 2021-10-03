@@ -9,6 +9,8 @@
 #include <queue>
 #include <set>
 #include <memory>
+#include <sstream>
+#include <regex>
 
 #include <boost/graph/adjacency_list.hpp>
 
