@@ -4,14 +4,14 @@ CWARN=-Wno-unused-parameter
 CERROR=
 
 COMPILEFLAGS=-O3 -pipe -Wall -Wextra -pedantic -std=c++17 $(CWARN) $(CERROR)
-LINKERFLAG=-O3 -lm -flto -static -static-libgcc
+LINKERFLAG=-O3 -lm -flto
 #COMPILEFLAGS=-O0 -ggdb -pipe -Wall -Wextra -pedantic -std=c++17 $(CWARN) $(CERROR)
 #LINKERFLAG=-O0 -ggdb
 
 .PHONY = parser clean
 
 MRSDecomposer: src/hddl/hddl-token.o src/hddl/hddl.o src/main.o src/utils/sortexpansion.o src/utils/parsetree.o src/utils/config_utils.o src/utils/util.o src/utils/domain.o src/utils/predicate_utils.o src/utils/output.o src/utils/parametersplitting.o src/utils/cwa.o src/utils/typeof.o src/utils/orderingDecomposition.o src/utils/plan.o src/utils/verify.o src/utils/properties.o src/utils/condition.o src/queryparser/queryparser-token.o src/queryparser/queryparser.o src/conditionparser/conditionparser-token.o src/conditionparser/conditionparser.o src/utils/gm_utils.o src/contextmanager/contextmanager.o src/gm/gm.o src/tdg/tdg.o src/utils/annotmanagerutils.o src/annotmanager/annotmanager.o src/rannot/rannot-token.o src/rannot/rannot.o src/utils/atmanagerutils.o src/atmanager/at_manager.o src/config/config.o src/knowledgemanager/knowledgemanager.o src/knowledgemanager/fileknowledgemanager.o src/knowledgemanager/knowledgemanagerfactory.o src/knowledgebase/knowledgebase.o src/utils/mission_decomposer_utils.o src/missiondecomposer/missiondecomposer.o src/constraintmanager/constraintmanager.o src/utils/validmissiongeneratorutils.o src/validmissiongenerator/validmissiongenerator.o src/utils/outputgeneratorutils.o src/outputgenerator/outputgenerator.o src/outputgenerator/xmloutputgenerator.o src/outputgenerator/jsonoutputgenerator.o src/outputgenerator/fileoutputgeneratorfactory.o src/configchecker/configchecker.o
-	${CC} ${LINKERFLAG} $^ -o MRSDecomposer 
+	${CC} ${LINKERFLAG} $^ -o MRSDecomposer -L/lib64/ -lzip
 
 %.o: %.cpp %.hpp src/hddl/hddl.hpp
 	${CC} ${COMPILEFLAGS} -o $@ -c $<

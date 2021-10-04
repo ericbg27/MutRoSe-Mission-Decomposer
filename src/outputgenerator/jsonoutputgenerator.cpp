@@ -1,6 +1,7 @@
 #include "jsonoutputgenerator.hpp"
 
 #include <boost/property_tree/json_parser.hpp>
+#include <zip.h>
 
 #include "../validmissiongenerator/validmissiongenerator.hpp"
 
@@ -69,10 +70,59 @@ void JSONOutputGenerator::generate_instances_output(vector<SemanticMapping> sema
     std::regex reg("\\\"([0-9]+\\.{0,1}[0-9]*)\\\"");
     std::string result = std::regex_replace(oss.str(), reg, "$1");
 
-    std::ofstream file;
-    file.open(output.first);
-    file << result;
-    file.close();
+    string zip_file_name, json_file_name;
+    if(output.first.find("/") != std::string::npos) {
+        zip_file_name = output.first.substr(0,output.first.rfind("/")+1);
+        json_file_name = output.first.substr(output.first.rfind("/")+1);
+    } else {
+        json_file_name = output.first;
+    } 
+    zip_file_name += "output.zip";
+    
+
+    int err = 0;
+
+    zip_t *z;
+    
+    z = zip_open(zip_file_name.c_str(), ZIP_CREATE, &err);
+
+    if(err == ZIP_ER_EXISTS) {
+        err = 0;
+        z = zip_open(zip_file_name.c_str(), ZIP_TRUNCATE, &err);
+    }
+    
+    zip_source_t *s;
+    s = zip_source_buffer(z, result.c_str(), sizeof(char)*result.size(), 0);
+
+    if(s == NULL) {
+        zip_source_free(s);
+
+        string zip_err;
+        if(zip_strerror(z) != NULL) {
+            string aux(zip_strerror(z));
+
+            zip_err = aux;
+        }
+
+        string zip_file_error = "Error adding zip file: " + zip_err;
+        throw std::runtime_error(zip_file_error);
+    }
+ 
+    if(zip_file_add(z, json_file_name.c_str(), s, ZIP_FL_OVERWRITE) < 0) {
+        zip_source_free(s);
+
+        string zip_err;
+        if(zip_strerror(z) != NULL) {
+            string aux(zip_strerror(z));
+
+            zip_err = aux;
+        }
+
+        string zip_file_error = "Error adding zip file: " + zip_err;
+        throw std::runtime_error(zip_file_error);
+    }
+
+    zip_close(z);
 }
 
 void JSONOutputGenerator::output_actions(pt::ptree& output_file, map<string,task> actions) {
