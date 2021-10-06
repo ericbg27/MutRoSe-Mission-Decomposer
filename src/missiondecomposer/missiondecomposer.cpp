@@ -544,10 +544,12 @@ void MissionDecomposer::create_execution_constraint_edges() {
 					
 					inactive_constraint_branches.pop();
 				}
-			} else if((mission_decomposition[parent].is_forall && active_constraint_branch.second >= parent) || (or_nodes.find(parent) != or_nodes.end())) { 
+			} 
+			
+			if((mission_decomposition[parent].is_forall && active_constraint_branch.second >= parent) || (or_nodes.find(parent) != or_nodes.end())) { 
 				current_active_tasks = nodes_active_tasks[parent];
 			}
-		}
+		} 
 
 		bool is_or = false;
 		ATGraph::out_edge_iterator ei, ei_end;
@@ -576,15 +578,11 @@ void MissionDecomposer::create_execution_constraint_edges() {
 				} else {
 					pair<bool,bool> active_constraint = constraint_nodes[active_constraint_branch.second];
 
-					// If active constraint is a group and the one just found isn't, replace active constraint
 					if(active_constraint.first) {
-						if(!is_group) {
-							constraint_nodes[current_node] = make_pair(is_group,is_divisible);
-							constraint_nodes[active_constraint_branch.second] = make_pair(is_group,is_divisible); // Change the current constraint due to constraint priority
+						constraint_nodes[current_node] = make_pair(is_group,is_divisible);
 
-							inactive_constraint_branches.push(active_constraint_branch);
-							active_constraint_branch = make_pair(true,current_node);
-						}
+						inactive_constraint_branches.push(active_constraint_branch);
+						active_constraint_branch = make_pair(true,current_node);
 					}
 				}
 			}
@@ -629,34 +627,10 @@ void MissionDecomposer::create_execution_constraint_edges() {
 	}
 }
 
-void MissionDecomposer::group_and_divisible_attrs_instantiation(int parent, ATNode& node, general_annot* rannot) { 
-	if(parent != -1) {
-		if(!mission_decomposition[parent].group) {
-			node.group = false;
-			node.divisible = mission_decomposition[parent].divisible;
-		} else {
-			if(!mission_decomposition[parent].divisible) {
-				if(rannot->group) {
-					node.group = true;
-					node.divisible = false;
-				} else {
-					node.group = rannot->group;
-					node.divisible = false;
-				}
-			} else {
-				node.group = rannot->group;
-				node.divisible = rannot->divisible;
-			}
-		}
-	} else {
-		node.group = rannot->group;
-		node.divisible = rannot->divisible;
-	}
-}
-
 int MissionDecomposer::add_goal_op_node(ATNode& node, general_annot* rannot, int parent, bool is_forAll, bool is_achieve) {
 	node.non_coop = rannot->non_coop;
-	group_and_divisible_attrs_instantiation(parent, node, rannot);
+	node.group = rannot->group;
+	node.divisible = rannot->divisible;
 	if(rannot->type == MEANSEND) {
 		node.node_type = GOALNODE;
 	} else {

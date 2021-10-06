@@ -193,6 +193,8 @@ void AnnotManager::expand_forall_annot(general_annot* node_annot, int generated_
     node_annot->children.clear();
     node_annot->or_decomposition = false;
     node_annot->var_maps = map<string,variant<pair<string,string>,pair<vector<string>,string>>>();
+    node_annot->group = true;
+    node_annot->divisible = true;
     for(general_annot* annot : new_annots) {
         node_annot->children.push_back(annot);
     }
