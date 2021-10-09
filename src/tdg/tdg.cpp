@@ -388,6 +388,206 @@ vector<DecompositionPath> TDG::decomposition_recursion(vector<int> dfs_nodes, in
     return generated_paths;
 }
 
+vector<CompleteDecompositionPath> TDG::retrieve_possible_complete_decompositions() {
+    vector<int> depth_first_nodes = DFS_visit();
+
+    vector<CompleteDecompositionPath> paths;
+
+    vector<pair<string,string>> initial_vars = tdg[root].t.vars;
+    vector<literal> world_state; //Empty since root is an AT and doesn't introduce preconditions and effects
+    vector<pair<string,string>> variable_mapping; //Empty since we only have original root vars
+
+    paths = complete_decomposition_recursion(depth_first_nodes,0, initial_vars, world_state, variable_mapping, -1, 0);
+
+    return paths;
+}
+
+vector<CompleteDecompositionPath> TDG::complete_decomposition_recursion(vector<int> dfs_nodes, int current_pos, vector<pair<string,string>> original_vars, vector<literal>& world_state, vector<pair<string,string>> variable_mapping, int parent, int current_index) {
+    int node = dfs_nodes.at(current_pos);
+
+    NodeData n = tdg[node];
+
+    int node_index = current_index;
+
+    vector<CompleteDecompositionPath> generated_paths;
+    if(n.type == M) {
+        /*
+            If any task in the methods subtasks cannot be executed, the method can't be used.
+                - This needs checking in order to skip
+                - This only works if we have an and decomposition of subtasks (we are assuming we only have and)
+                - Also, we are assuming totally ordered methods
+        */
+        vector<vector<int>> possible_orderings = find_method_possible_orderings(n.m,n.children);
+
+        int children_num = -1;
+
+        vector<vector<CompleteDecompositionPath>> child_paths;
+        for(vector<int> ordering : possible_orderings) {
+            bool ordering_exec = true;
+            vector<literal> world_state_copy = world_state;
+
+            unsigned int ordering_index = 0;
+            set<int> considered_tasks;
+            int child_index = current_index+1;
+            for(int c : ordering) {
+                vector<int>::iterator it = std::find(dfs_nodes.begin(),dfs_nodes.end(),c);
+                int c_pos = std::distance(dfs_nodes.begin(),it);
+
+                task child_task = tdg[c].t;
+                vector<pair<string,string>> child_var_mapping;
+
+                int plan_step_index = 0;
+                for(auto subtask : n.m.ps) {
+                    if(subtask.task == child_task.name && considered_tasks.find(plan_step_index) == considered_tasks.end()) {
+                        int index = 0;
+                        for(string var : subtask.args) {
+                            string aux;
+                            for(auto mapping : variable_mapping) {
+                                if(mapping.first == var) { //Found mapping from methods
+                                    aux = mapping.second;
+                                    child_var_mapping.push_back(make_pair(child_task.vars.at(index).first,aux));
+
+                                    break;
+                                }
+                            }
+
+                            index++;
+                        }
+
+                        considered_tasks.insert(plan_step_index);
+                        break;
+                    }
+
+                    plan_step_index++;
+                }
+
+                /*
+                    If we have an action, check for preconditions based on the current world state and only call decomposition if they are met
+                */             
+                pair<bool,pair<literal,bool>> checking_result;
+                checking_result = check_predicates(child_task, n.m, child_var_mapping, variable_mapping, c, world_state_copy, make_pair(ordering,ordering_index));
+
+                bool executable = checking_result.first;
+
+                if(executable) {
+                    vector<CompleteDecompositionPath> aux = complete_decomposition_recursion(dfs_nodes,c_pos,original_vars,world_state_copy,child_var_mapping, node_index, child_index);
+
+                    child_paths.push_back(aux);
+                } else {
+                    ordering_exec = false;
+                    break;
+                }
+
+                ordering_index++;
+                child_index++;
+            }
+
+            // Here is one place where we need to check for expansion_needed flags
+            vector<CompleteDecompositionPath> ordering_paths;
+            if(ordering_exec) {
+                for(auto aux : child_paths) {
+                    if(aux.size() > 0) {
+                        vector<CompleteDecompositionPath> g_paths_temp = ordering_paths;
+                        ordering_paths.clear();
+
+                        for(auto p : aux) {
+                            if(g_paths_temp.size() > 0) {
+                                for(auto g_pt : g_paths_temp) {
+                                    CompleteDecompositionPath p_temp = p;
+                                    p_temp.decomposition.insert(p_temp.decomposition.begin(),g_pt.decomposition.begin(),g_pt.decomposition.end());
+
+                                    ordering_paths.push_back(p_temp);
+                                }
+                            } else {
+                                ordering_paths.push_back(p);
+                            }
+                        }
+                    }
+                }
+            }
+
+            generated_paths.insert(generated_paths.end(),ordering_paths.begin(),ordering_paths.end());
+            for(CompleteDecompositionPath& child_path : generated_paths) {
+                method m = n.m;
+                method_variable_renaming(m, variable_mapping);
+
+                DecompositionNode m_node;
+                m_node.content = m;
+                m_node.id = node_index;
+                m_node.parent = parent;
+                child_path.decomposition.insert(child_path.decomposition.begin(), m_node);
+            }
+
+            child_paths.clear();
+        }
+    } else if(n.type == AT) {
+        vector<literal> initial_world_state = world_state;
+
+        int child_index = current_index+1;
+        for(int c : n.children) {
+            vector<int>::iterator it = std::find(dfs_nodes.begin(),dfs_nodes.end(),c);
+            int c_pos = std::distance(dfs_nodes.begin(),it);
+
+            method child_method = tdg[c].m;
+            vector<pair<string,string>> child_var_mapping;
+            if(n.id == root) { //If we are dealing with the root
+                int index = 0;
+                for(string arg : child_method.atargs) {
+                    child_var_mapping.push_back(make_pair(arg,original_vars.at(index).first));
+                    index++; 
+                }
+            } else {
+                int index = 0;
+                for(string arg : child_method.atargs) {
+                    child_var_mapping.push_back(make_pair(arg,variable_mapping.at(index).second)); //Mapping to original vars
+                    index++;
+                }
+            }
+
+            /*
+                Methods preconditions are transformed into actions, so we only check for preconditions when checking methods children
+            */
+            vector<CompleteDecompositionPath> aux = complete_decomposition_recursion(dfs_nodes,c_pos,original_vars,world_state,child_var_mapping,node_index,child_index);
+            generated_paths.insert(generated_paths.end(),aux.begin(),aux.end());
+
+            world_state = initial_world_state;
+            child_index++;
+        }
+
+        for(CompleteDecompositionPath& path : generated_paths) {
+            task t = n.t;
+            variable_renaming(t, variable_mapping);
+
+            DecompositionNode at_node;
+            at_node.content = t;
+            at_node.id = node_index;
+            at_node.parent = parent;
+            at_node.is_primitive_task_node = false;
+            
+            path.decomposition.insert(path.decomposition.begin(), at_node);
+        }
+    } else if(n.type == PT) {
+        change_world_state(n.t,world_state,variable_mapping);
+        
+        CompleteDecompositionPath t;
+        
+        task nt = n.t;
+        variable_renaming(nt,variable_mapping);
+
+        DecompositionNode pt;
+        pt.content = nt;
+        pt.id = node_index;
+        pt.parent = parent;
+        pt.is_primitive_task_node = true;
+
+        t.decomposition.push_back(pt);
+
+        generated_paths.push_back(t);
+    }
+
+    return generated_paths;
+}
+
 /*
     Function: add_method_path
     Objective: Add method path in TDG by iterating through method decomposition tasks
@@ -941,6 +1141,18 @@ void TDG::variable_renaming(task& t, vector<pair<string,string>> var_mapping) {
 
     //Rename task variables
     for(pair<string,string>& var : t.vars) {
+        for(pair<string,string>& arg_mapping : var_mapping) {
+            if(arg_mapping.first == var.first) {
+                var.first = arg_mapping.second;
+                break;
+            }
+        }
+    }
+}
+
+void TDG::method_variable_renaming(method& m, vector<pair<string,string>> var_mapping) {
+    //Rename method variables
+    for(pair<string,string>& var : m.vars) {
         for(pair<string,string>& arg_mapping : var_mapping) {
             if(arg_mapping.first == var.first) {
                 var.first = arg_mapping.second;

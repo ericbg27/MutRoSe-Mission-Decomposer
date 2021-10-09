@@ -19,6 +19,7 @@ namespace pt = boost::property_tree;
 
 void print_at_instances_info(std::map<std::string,std::vector<AbstractTask>> at_instances);
 void print_at_paths_info(std::map<std::string,std::vector<DecompositionPath>> at_decomposition_paths);
+void print_complete_at_paths_info(std::map<std::string,std::vector<CompleteDecompositionPath>> at_complete_decomposition_paths);
 
 bool check_path_validity(std::vector<task> path, std::vector<ground_literal> world_state, AbstractTask at, std::vector<SemanticMapping> semantic_mappings);
 
