@@ -44,7 +44,7 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
                 seq_fb_constraints_map[c.nodes_involved.first.first].first.push_back(c.nodes_involved.second.first);
                 seq_fb_constraints_map[c.nodes_involved.first.first].second.push_back(c.type);
             }
-        } else if(c.type == NC) { // PROBLEM HERE!
+        } else if(c.type == NC) {
             if(exec_constraints_map.find(c.nodes_involved.first.first) == exec_constraints_map.end()) {
                 pair<vector<int>,vector<pair<bool,bool>>> aux1, aux2;
 
@@ -84,7 +84,7 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
     // For each valid decomposition generate a different iHTN
     int ihtn_counter = 1;
     for(vector<pair<int,ATNode>> decomposition : valid_mission_decompositions) {
-        map<int,set<string>> agents_map;
+        map<int,vector<string>> agents_map;
         set<string> agents_set;
         set<int> verified_tasks;
         map<string,string> non_ground_agents_map;
@@ -96,7 +96,7 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
 
             Decomposition d = std::get<Decomposition>(task_decomposition.second.content);
 
-            set<string> task_agents;
+            vector<string> task_agents;
             vector<pair<string,string>> task_non_ground_args;
             for(auto arg : d.arguments) {
                 if(holds_alternative<string>(arg.first)) {
@@ -120,7 +120,7 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
                         if(is_not_location_var) {
                             agents_set.insert(argument);
 
-                            task_agents.insert(argument);
+                            task_agents.push_back(argument);
                         }
                     } else {
                         task_non_ground_args.push_back(arg.second);
@@ -132,6 +132,7 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
                 }
             }
             
+            // TODO: Use the sorts vector to find types that inherit from robot and robotteam
             for(pair<string,string> ng_arg : task_non_ground_args) {
                 if(ng_arg.second != hddl_robot_type && ng_arg.second != hddl_robotteam_type) {
                     string non_ground_arg_error = "Variable " + ng_arg.first + " of HDDL type " + ng_arg.second + " is not grounded. iHTN generation does not support non-ground variables that are not robot-related";
@@ -144,6 +145,7 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
 
             bool found_ng_args = false;
             vector<string> ng_args;
+            vector<string> ng_args_found;
             for(int task_id : verified_tasks) {
                 vector<int>::iterator t_pos = std::find(exec_constraints.first.begin(), exec_constraints.first.end(), task_id);
                 if(t_pos != exec_constraints.first.end()) {
@@ -168,12 +170,90 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
                                 }
 
                                 break;
+                            } else {
+                                found_ng_args = true;
+
+                                for(string arg : agents_map[task_id]) {
+                                    if(arg.at(0) == '?') {
+                                        ng_args.push_back(arg);
+                                        ng_args_found.push_back(only_ng_arg.first);
+
+                                        break;
+                                    }
+                                }
+
+                                break;
                             }
-                        } else {
-                            // TODO: Verify if tasks involved in group non-divisible constraint can have their one argument matched
+                        } else { // The only argument is of robotteam type
+                            found_ng_args = true;
+
+                            for(string arg : agents_map[task_id]) {
+                                if(arg.at(0) == '?') {
+                                    ng_args.push_back(arg);
+
+                                    break;
+                                }
+                            }
                         }
                     } else {
-                        // TODO: Verify if tasks involved in group non-divisible constraint can have their arguments matched
+                        bool robot_type_vars = false;
+                        for(pair<string,string> ng_arg : task_non_ground_args) {
+                            if(ng_arg.second == hddl_robot_type) { // For now we assume that tasks can either have robotteam or robot type variables but not both
+                                robot_type_vars = true;
+
+                                break;
+                            } else if(ng_arg.second == hddl_robotteam_type) {
+                                break;
+                            }
+                        }
+
+                        if(robot_type_vars) {
+                            vector<string> constrained_task_agents = agents_map[task_id];
+                            
+                            vector<string>::iterator ct_ag_it;
+                            for(ct_ag_it = constrained_task_agents.begin(); ct_ag_it != constrained_task_agents.end(); ) {
+                                if(ct_ag_it->at(0) != '?') {
+                                    constrained_task_agents.erase(ct_ag_it);
+                                } else {
+                                    ct_ag_it++;
+                                }
+                            }
+
+                            if(ng_args_found.size() < constrained_task_agents.size()) {
+                                unsigned int agents_found = ng_args_found.size();
+                                for(unsigned int var_index = agents_found; var_index < task_non_ground_args.size(); var_index++) {
+                                    if(var_index == constrained_task_agents.size()) {
+                                        break;
+                                    }
+
+                                    unsigned int arg_index = 1;
+                                    for(string agent : constrained_task_agents) {
+                                        if(arg_index > ng_args_found.size()) {
+                                            ng_args.push_back(agent);
+                                            ng_args_found.push_back(task_non_ground_args.at(var_index).first);
+
+                                            if(ng_args_found.size() == task_non_ground_args.size()) {
+                                                found_ng_args = true;
+                                            }
+
+                                            break;
+                                        }
+
+                                        arg_index++;
+                                    }
+
+                                    if(found_ng_args) {
+                                        break;
+                                    }
+                                }
+                            }
+                        } else {
+                            // TODO: CHECK IF THIS CAN HAPPEN. CAN WE HAVE TWO robotteam type variables?
+                        }
+
+                        if(found_ng_args) {
+                            break;
+                        }
                     }
                 }
             }
@@ -184,18 +264,25 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
                 string d_id = d.id;
                 std::transform(d_id.begin(), d_id.end(), d_id.begin(), ::tolower);
 
+                int arg_index = 0;
                 for(pair<string,string> ng_arg : task_non_ground_args) {
-                    string arg_name = ng_arg.first + "@" + d_id;
+                    if(std::find(ng_args_found.begin(),ng_args_found.end(),ng_arg.first) == ng_args_found.end()) {
+                        string arg_name = ng_arg.first + "@" + d_id;
 
-                    int non_ground_agents_index = non_ground_agents_map.size() + 1;
-                    non_ground_agents_map[arg_name] = "r" + to_string(non_ground_agents_index);
+                        int non_ground_agents_index = non_ground_agents_map.size() + 1;
+                        non_ground_agents_map[arg_name] = "r" + to_string(non_ground_agents_index);
 
-                    agents_set.insert(arg_name);
-                    task_agents.insert(arg_name);
+                        agents_set.insert(arg_name);
+                        task_agents.push_back(arg_name);
+                    } else {
+                        task_agents.push_back(ng_args.at(arg_index));
+
+                        arg_index++;
+                    }
                 }
             } else {
                 for(string ng_arg : ng_args) {
-                    task_agents.insert(ng_arg);
+                    task_agents.push_back(ng_arg);
                 }
             }
 
@@ -360,7 +447,7 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
     }
 }
 
-IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, set<string> agents, map<int,set<string>> agents_map) {
+IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, set<string> agents, map<int,vector<string>> agents_map) {
     IHTN ihtn;
     
     TaskNode root;
@@ -395,7 +482,8 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
         TaskNode decomposition_node;
         decomposition_node.name = d.at.at.name;
         decomposition_node.id = d.id;
-        decomposition_node.agents = agents_map[node_id];
+        set<string> d_agents(agents_map[node_id].begin(),agents_map[node_id].end());
+        decomposition_node.agents = d_agents;
 
         IHTNNode decomposition_ithn_node;
         decomposition_ithn_node.content = decomposition_node;
@@ -423,6 +511,8 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
                     m_node.name = m.name;
                     //m_node.task_id
                     set<string> method_agents;
+
+                    int agent_index = 0;
                     for(pair<string,string> var : m.vars) {
                         string mapping_val;
                         for(auto arg : d.arguments) {
@@ -459,13 +549,24 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
                             }
 
                             if(is_not_location_var) {
-                                string agent_val = mapping_val;
-                                for(string agent : agents_map[node_id]) {
-                                    if(agent.find("@") != std::string::npos) {
-                                        if(mapping_val == agent.substr(0,agent.find("@"))) {
-                                            agent_val = agent;
+                                string agent_val;
+
+                                if(mapping_val.find("?") != std::string::npos) {
+                                    int map_index = 0;
+                                    for(string agent : agents_map[node_id]) {
+                                        if(agent.find("@") != std::string::npos) {
+                                            if(map_index == agent_index) {
+                                                agent_val = agent;
+                                                break;
+                                            }
+
+                                            map_index++;
                                         }
                                     }
+
+                                    agent_index++;
+                                } else {
+                                    agent_val = mapping_val;
                                 }
 
                                 method_agents.insert(agent_val);
@@ -482,78 +583,9 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
                     path_id_to_ihtn_id[path_index] = ihtn_node_id;
                 } else {
                     task t = std::get<task>(path_node.content);
-
-                    set<string> task_agents;
-                    for(int var_index = 0; var_index < t.number_of_original_vars; var_index++) {
-                        string var = t.vars.at(var_index).first;
-
-                        string mapping_val;
-                        for(auto arg : d.arguments) {
-                            if(arg.second.first == var) {
-                                if(holds_alternative<string>(arg.first)) { // Only alternative for now
-                                    string aux = std::get<string>(arg.first);
-
-                                    if(aux == "") {
-                                        mapping_val = arg.second.first;
-                                    } else {
-                                        mapping_val = aux;
-                                    }
-                                }
-
-                                break;
-                            }
-                        }
-
-                        if(mapping_val == "") {
-                            // TODO: DEAL WITH ERROR IF IT CAN HAPPEN!
-                            throw std::runtime_error("Could not find mapping for variable");
-                        } else {
-                            bool is_not_location_var = false;
-                            if(holds_alternative<vector<string>>(d.at.location.first)) {
-                                vector<string> aux = std::get<vector<string>>(d.at.location.first);
-
-                                if(std::find(aux.begin(), aux.end(), mapping_val) == aux.end()) {
-                                    is_not_location_var = true;
-                                }
-                            } else {
-                                if(std::get<string>(d.at.location.first) != mapping_val) {
-                                    is_not_location_var = true;
-                                }
-                            }
-
-                            if(is_not_location_var) {
-                                string agent_val = mapping_val;
-                                for(string agent : agents_map[node_id]) {
-                                    if(agent.find("@") != std::string::npos) {
-                                        if(mapping_val == agent.substr(0,agent.find("@"))) {
-                                            agent_val = agent;
-                                        }
-                                    }
-                                }
-
-                                task_agents.insert(agent_val);
-                            }
-                        }
-                    }
-
-                    if(!path_node.is_primitive_task_node) {
-                        TaskNode t_node;
-                        t_node.name = t.name;
-                        //t_node.id
-
-                        t_node.agents = task_agents;
-
-                        IHTNNode t_ihtn_node;
-                        t_ihtn_node.content = t_node;
-                        t_ihtn_node.type = IHTNTASK;
-
-                        ihtn_node_id = boost::add_vertex(t_ihtn_node, ihtn);
-                        path_id_to_ihtn_id[path_index] = ihtn_node_id;
-                    } else {
-                        ActionNode a_node;
-                        a_node.name = t.name;
-                        
-                        vector<string> action_locations;
+                    if(t.name.find(method_precondition_action_name) == std::string::npos) {
+                        set<string> task_agents;
+                        int agent_index = 0;
                         for(int var_index = 0; var_index < t.number_of_original_vars; var_index++) {
                             string var = t.vars.at(var_index).first;
 
@@ -578,35 +610,117 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
                                 // TODO: DEAL WITH ERROR IF IT CAN HAPPEN!
                                 throw std::runtime_error("Could not find mapping for variable");
                             } else {
-                                bool is_location_var = false;
+                                bool is_not_location_var = false;
                                 if(holds_alternative<vector<string>>(d.at.location.first)) {
                                     vector<string> aux = std::get<vector<string>>(d.at.location.first);
 
-                                    if(std::find(aux.begin(), aux.end(), mapping_val) != aux.end()) {
-                                        is_location_var = true;
+                                    if(std::find(aux.begin(), aux.end(), mapping_val) == aux.end()) {
+                                        is_not_location_var = true;
                                     }
                                 } else {
-                                    if(std::get<string>(d.at.location.first) == mapping_val) {
-                                        is_location_var = true;
+                                    if(std::get<string>(d.at.location.first) != mapping_val) {
+                                        is_not_location_var = true;
                                     }
                                 }
 
-                                if(is_location_var) {
-                                    action_locations.push_back(mapping_val);
-                                    break;
+                                if(is_not_location_var) {
+                                    string agent_val;
+
+                                    if(mapping_val.find("?") != std::string::npos) {
+                                        int map_index = 0;
+                                        for(string agent : agents_map[node_id]) {
+                                            if(agent.find("@") != std::string::npos) {
+                                                if(map_index == agent_index) {
+                                                    agent_val = agent;
+                                                    break;
+                                                }
+
+                                                map_index++;
+                                            }
+                                        }
+
+                                        agent_index++;
+                                    } else {
+                                        agent_val = mapping_val;
+                                    }
+
+                                    task_agents.insert(agent_val);
                                 }
                             }
                         }
-                        a_node.locations = action_locations;
 
-                        a_node.agents = task_agents;
+                        if(!path_node.is_primitive_task_node) {
+                            TaskNode t_node;
+                            t_node.name = t.name;
+                            //t_node.id
 
-                        IHTNNode a_ihtn_node;
-                        a_ihtn_node.content = a_node;
-                        a_ihtn_node.type = IHTNACTION;
+                            t_node.agents = task_agents;
 
-                        ihtn_node_id = boost::add_vertex(a_ihtn_node, ihtn);
-                        path_id_to_ihtn_id[path_index] = ihtn_node_id;
+                            IHTNNode t_ihtn_node;
+                            t_ihtn_node.content = t_node;
+                            t_ihtn_node.type = IHTNTASK;
+
+                            ihtn_node_id = boost::add_vertex(t_ihtn_node, ihtn);
+                            path_id_to_ihtn_id[path_index] = ihtn_node_id;
+                        } else {
+                            ActionNode a_node;
+                            a_node.name = t.name;
+                            
+                            vector<string> action_locations;
+                            for(int var_index = 0; var_index < t.number_of_original_vars; var_index++) {
+                                string var = t.vars.at(var_index).first;
+
+                                string mapping_val;
+                                for(auto arg : d.arguments) {
+                                    if(arg.second.first == var) {
+                                        if(holds_alternative<string>(arg.first)) { // Only alternative for now
+                                            string aux = std::get<string>(arg.first);
+
+                                            if(aux == "") {
+                                                mapping_val = arg.second.first;
+                                            } else {
+                                                mapping_val = aux;
+                                            }
+                                        }
+
+                                        break;
+                                    }
+                                }
+
+                                if(mapping_val == "") {
+                                    // TODO: DEAL WITH ERROR IF IT CAN HAPPEN!
+                                    throw std::runtime_error("Could not find mapping for variable");
+                                } else {
+                                    bool is_location_var = false;
+                                    if(holds_alternative<vector<string>>(d.at.location.first)) {
+                                        vector<string> aux = std::get<vector<string>>(d.at.location.first);
+
+                                        if(std::find(aux.begin(), aux.end(), mapping_val) != aux.end()) {
+                                            is_location_var = true;
+                                        }
+                                    } else {
+                                        if(std::get<string>(d.at.location.first) == mapping_val) {
+                                            is_location_var = true;
+                                        }
+                                    }
+
+                                    if(is_location_var) {
+                                        action_locations.push_back(mapping_val);
+                                        break;
+                                    }
+                                }
+                            }
+                            a_node.locations = action_locations;
+
+                            a_node.agents = task_agents;
+
+                            IHTNNode a_ihtn_node;
+                            a_ihtn_node.content = a_node;
+                            a_ihtn_node.type = IHTNACTION;
+
+                            ihtn_node_id = boost::add_vertex(a_ihtn_node, ihtn);
+                            path_id_to_ihtn_id[path_index] = ihtn_node_id;
+                        }
                     }
                 }
 
