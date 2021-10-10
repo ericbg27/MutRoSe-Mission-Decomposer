@@ -1,7 +1,0 @@
-<robots_db>
-	<robot>
-		<name>r1</name>
-		<pos>c3</pos>
-		<capabilities number="1">pickobject</capabilities>
-	</robot>
-</robots_db>

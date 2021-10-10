@@ -1,1 +1,0 @@
-./MRSDecomposer hddl/Room\ Preparation/Multiple\ Parameters/Room\ Preparation\ Param.hddl gm/Room\ Preparation/Multiple\ Parameters/Room\ Preparation\ Param.txt configs/XML/Room\ Preparation/Multiple\ Parameters/configurationParam.xml -v
