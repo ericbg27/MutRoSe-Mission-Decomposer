@@ -1,1 +1,0 @@
-./MRSDecomposer hddl/Object\ Picking/Multiple\ Args/V2/Object\ Picking.hddl gm/Object\ Picking/Multiple\ Args/V2/Object\ Picking.txt configs/XML/Object\ Picking/Multiple\ Args/V2/configuration.xml -v

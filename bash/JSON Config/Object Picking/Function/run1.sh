@@ -1,1 +1,0 @@
-./MRSDecomposer hddl/Object\ Picking/Function/Object\ Picking\ v1.hddl gm/Object\ Picking/Function/Object\ Picking.txt configs/JSON/Object\ Picking/Function/configuration.json -v

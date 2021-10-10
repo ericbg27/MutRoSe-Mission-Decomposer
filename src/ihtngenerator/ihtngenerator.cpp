@@ -1,6 +1,7 @@
 #include "ihtngenerator.hpp"
 
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/filesystem.hpp>
 
 #include "../validmissiongenerator/validmissiongenerator.hpp"
 
@@ -318,148 +319,161 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
 
         vector<vector<int>> decomposition_orderings = find_decomposition_orderings(decomposition_ids, seq_fb_constraints_map);
 
-        for(vector<int> ordering : decomposition_orderings) {
-            IHTN ordering_ihtn = ihtn_create(ordering, nodes_map, agents_set, agents_map);
+        boost::filesystem::path dir = boost::filesystem::current_path() / "ihtn";
 
-            auto indexmap = boost::get(boost::vertex_index, ordering_ihtn);
-            auto colormap = boost::make_vector_property_map<boost::default_color_type>(indexmap);
-
-            IHTNDFSVisitor vis;
-            boost::depth_first_search(ordering_ihtn, vis, colormap, 0);
-
-            vector<int> dfs_nodes = vis.GetVector();
-            
-            int node_id = 0;
-            map<int,int> ihtn_id_to_json_id;
-            map<int,int> parent_map;
-
-            pt::ptree ihtn_tree;
-            for(int ihtn_node : dfs_nodes) {
-                IHTNNode node = ordering_ihtn[ihtn_node];
-
-                int parent_id = -1;
-                if(parent_map.find(ihtn_node) != parent_map.end()) {
-                    parent_id = ihtn_id_to_json_id[parent_map[ihtn_node]];
-                }
-
-                IHTN::out_edge_iterator oi, oi_end;
-                for(boost::tie(oi,oi_end) = out_edges(ihtn_node,ordering_ihtn);oi != oi_end;++oi) {
-                    int target = boost::target(*oi,ordering_ihtn);
-                    
-                    parent_map[target] = ihtn_node;
-                }
-
-                if(node.type == IHTNACTION) {
-                    pt::ptree action_node;
-
-                    ActionNode a = std::get<ActionNode>(node.content);
-
-                    action_node.put("name", a.name);
-                    action_node.put("type", "action");
-                    action_node.put("parent", parent_id);
-
-                    pt::ptree locations_node;
-                    for(string loc : a.locations) {
-                        pt::ptree location_node;
-                        location_node.put("", loc);
-
-                        locations_node.push_back(std::make_pair("", location_node));
-                    }
-                    action_node.add_child("locations", locations_node);
-
-                    pt::ptree agents_node;
-                    for(string agent : a.agents) {
-                        pt::ptree agent_node;
-                        if(non_ground_agents_map.find(agent) == non_ground_agents_map.end()) {
-                            agent_node.put("", agent);
-                        } else {
-                            agent_node.put("", non_ground_agents_map[agent]);
-                        }
-
-                        agents_node.push_back(std::make_pair("", agent_node));
-                    }
-                    action_node.add_child("agents", agents_node);
-
-                    ihtn_tree.push_back(make_pair(to_string(node_id), action_node));
-                } else if(node.type == IHTNTASK) {
-                    pt::ptree task_node;
-
-                    TaskNode t = std::get<TaskNode>(node.content);
-
-                    task_node.put("name", t.name);
-                    task_node.put("type", "task");
-                    task_node.put("parent", parent_id);
-
-                    pt::ptree agents_node;
-                    for(string agent : t.agents) {
-                        pt::ptree agent_node;
-                        if(non_ground_agents_map.find(agent) == non_ground_agents_map.end()) {
-                            agent_node.put("", agent);
-                        } else {
-                            agent_node.put("", non_ground_agents_map[agent]);
-                        }
-
-                        agents_node.push_back(std::make_pair("", agent_node));
-                    }
-                    task_node.add_child("agents", agents_node);
-
-                    ihtn_tree.push_back(make_pair(to_string(node_id), task_node));
-                } else {
-                    pt::ptree method_node;
-
-                    MethodNode m = std::get<MethodNode>(node.content);
-
-                    method_node.put("name", m.name);
-                    method_node.put("type", "method");
-                    method_node.put("parent", parent_id);
-
-                    pt::ptree agents_node;
-                    for(string agent : m.agents) {
-                        pt::ptree agent_node;
-                        if(non_ground_agents_map.find(agent) == non_ground_agents_map.end()) {
-                            agent_node.put("", agent);
-                        } else {
-                            agent_node.put("", non_ground_agents_map[agent]);
-                        }
-
-                        agents_node.push_back(std::make_pair("", agent_node));
-                    }
-                    method_node.add_child("agents", agents_node);
-
-                    ihtn_tree.push_back(make_pair(to_string(node_id), method_node));
-                }
-
-                ihtn_id_to_json_id[ihtn_node] = node_id;
-                node_id++;
+        try {
+            if(!boost::filesystem::exists(dir.string()) || !boost::filesystem::is_directory(dir.string())) {
+                boost::filesystem::create_directory(dir);
             }
 
-            for(int ihtn_node : dfs_nodes) {
-                vector<int> children_ids;
-                IHTN::out_edge_iterator oi, oi_end;
-                for(boost::tie(oi,oi_end) = out_edges(ihtn_node,ordering_ihtn);oi != oi_end;++oi) {
-                    int target = boost::target(*oi,ordering_ihtn);
+            for(vector<int> ordering : decomposition_orderings) {
+                IHTN ordering_ihtn = ihtn_create(ordering, nodes_map, agents_set, agents_map);
 
-                    children_ids.push_back(ihtn_id_to_json_id[target]);
-                    parent_map[target] = ihtn_node;
+                auto indexmap = boost::get(boost::vertex_index, ordering_ihtn);
+                auto colormap = boost::make_vector_property_map<boost::default_color_type>(indexmap);
+
+                IHTNDFSVisitor vis;
+                boost::depth_first_search(ordering_ihtn, vis, colormap, 0);
+
+                vector<int> dfs_nodes = vis.GetVector();
+                
+                int node_id = 0;
+                map<int,int> ihtn_id_to_json_id;
+                map<int,int> parent_map;
+
+                pt::ptree ihtn_tree;
+                for(int ihtn_node : dfs_nodes) {
+                    IHTNNode node = ordering_ihtn[ihtn_node];
+
+                    int parent_id = -1;
+                    if(parent_map.find(ihtn_node) != parent_map.end()) {
+                        parent_id = ihtn_id_to_json_id[parent_map[ihtn_node]];
+                    }
+
+                    IHTN::out_edge_iterator oi, oi_end;
+                    for(boost::tie(oi,oi_end) = out_edges(ihtn_node,ordering_ihtn);oi != oi_end;++oi) {
+                        int target = boost::target(*oi,ordering_ihtn);
+                        
+                        parent_map[target] = ihtn_node;
+                    }
+
+                    if(node.type == IHTNACTION) {
+                        pt::ptree action_node;
+
+                        ActionNode a = std::get<ActionNode>(node.content);
+
+                        action_node.put("name", a.name);
+                        action_node.put("type", "action");
+                        action_node.put("parent", parent_id);
+
+                        pt::ptree locations_node;
+                        for(string loc : a.locations) {
+                            pt::ptree location_node;
+                            location_node.put("", loc);
+
+                            locations_node.push_back(std::make_pair("", location_node));
+                        }
+                        action_node.add_child("locations", locations_node);
+
+                        pt::ptree agents_node;
+                        for(string agent : a.agents) {
+                            pt::ptree agent_node;
+                            if(non_ground_agents_map.find(agent) == non_ground_agents_map.end()) {
+                                agent_node.put("", agent);
+                            } else {
+                                agent_node.put("", non_ground_agents_map[agent]);
+                            }
+
+                            agents_node.push_back(std::make_pair("", agent_node));
+                        }
+                        action_node.add_child("agents", agents_node);
+
+                        ihtn_tree.push_back(make_pair(to_string(node_id), action_node));
+                    } else if(node.type == IHTNTASK) {
+                        pt::ptree task_node;
+
+                        TaskNode t = std::get<TaskNode>(node.content);
+
+                        task_node.put("name", t.name);
+                        task_node.put("type", "task");
+                        task_node.put("parent", parent_id);
+
+                        pt::ptree agents_node;
+                        for(string agent : t.agents) {
+                            pt::ptree agent_node;
+                            if(non_ground_agents_map.find(agent) == non_ground_agents_map.end()) {
+                                agent_node.put("", agent);
+                            } else {
+                                agent_node.put("", non_ground_agents_map[agent]);
+                            }
+
+                            agents_node.push_back(std::make_pair("", agent_node));
+                        }
+                        task_node.add_child("agents", agents_node);
+
+                        ihtn_tree.push_back(make_pair(to_string(node_id), task_node));
+                    } else {
+                        pt::ptree method_node;
+
+                        MethodNode m = std::get<MethodNode>(node.content);
+
+                        method_node.put("name", m.name);
+                        method_node.put("type", "method");
+                        method_node.put("parent", parent_id);
+
+                        pt::ptree agents_node;
+                        for(string agent : m.agents) {
+                            pt::ptree agent_node;
+                            if(non_ground_agents_map.find(agent) == non_ground_agents_map.end()) {
+                                agent_node.put("", agent);
+                            } else {
+                                agent_node.put("", non_ground_agents_map[agent]);
+                            }
+
+                            agents_node.push_back(std::make_pair("", agent_node));
+                        }
+                        method_node.add_child("agents", agents_node);
+
+                        ihtn_tree.push_back(make_pair(to_string(node_id), method_node));
+                    }
+
+                    ihtn_id_to_json_id[ihtn_node] = node_id;
+                    node_id++;
                 }
 
-                int json_id = ihtn_id_to_json_id[ihtn_node];
-                auto node = ihtn_tree.find(to_string(json_id));
+                for(int ihtn_node : dfs_nodes) {
+                    vector<int> children_ids;
+                    IHTN::out_edge_iterator oi, oi_end;
+                    for(boost::tie(oi,oi_end) = out_edges(ihtn_node,ordering_ihtn);oi != oi_end;++oi) {
+                        int target = boost::target(*oi,ordering_ihtn);
 
-                pt::ptree children_node;
-                for(int child : children_ids) {
-                    pt::ptree child_node;
-                    child_node.put("", to_string(child));
+                        children_ids.push_back(ihtn_id_to_json_id[target]);
+                        parent_map[target] = ihtn_node;
+                    }
 
-                    children_node.push_back(make_pair("",child_node));
+                    int json_id = ihtn_id_to_json_id[ihtn_node];
+                    auto node = ihtn_tree.find(to_string(json_id));
+
+                    pt::ptree children_node;
+                    for(int child : children_ids) {
+                        pt::ptree child_node;
+                        child_node.put("", to_string(child));
+
+                        children_node.push_back(make_pair("",child_node));
+                    }
+                    node->second.add_child("children", children_node);
                 }
-                node->second.add_child("children", children_node);
+
+                string file_name = "ihtn_" + to_string(ihtn_counter) + ".json";
+                boost::filesystem::path file_path = dir / file_name;
+                pt::write_json(file_path.string(), ihtn_tree, std::locale());
+
+                ihtn_counter++;
             }
+        } catch(...) {
+            string ihtn_creation_error = "Could not create iHTN files/folder";
 
-            string file_name = "ihtn_" + to_string(ihtn_counter) + ".json";
-            pt::write_json(file_name, ihtn_tree, std::locale());
-
-            ihtn_counter++;
+            throw std::runtime_error(ihtn_creation_error);
         }
     }
 }

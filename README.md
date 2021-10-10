@@ -1,17 +1,31 @@
-# MRS-Mission-Decomposer
-A MRS mission decomposer based on a JSON Goal Model (generated in [GODA](http://pistar-goda.herokuapp.com/)), modified HDDL specification (the original language syntax can be found in [1]), which aims at introducing new constructs to the language, and XML input files. This software is built upon the PANDA HDDL parser (original can be found [here](https://github.com/panda-planner-dev/pandaPIparser)).
+
+# MutRoSe-Mission-Decomposer
+This is the mission decomposer for the MutRoSe (Multi-Robot systems mission Specification and Decomposition) framework. This decomposer works given: (i) a JSON Goal Model (generated in [GODA](http://pistar-goda.herokuapp.com/)), (ii) a modified HDDL specification (the original language syntax can be found in [1]), which consists of a subset of the language with the addition of new constructs, (iii) a JSON/XML configuration file and (iv) an XML world knowledge file. 
+
+The HDDL parsing part of this software is built upon the PANDA HDDL parser, where the original PANDA HDDL parser code can be found [here](https://github.com/panda-planner-dev/pandaPIparser).
 
 ## Versions
-This is work in progress. The main branch contais partial work under test.
+The only working version is given in the main branch.
 
 ## Installation
-To use this modified PANDA parser just clone or download the repository and run it using the following syntax:
+To use the MutRoSe Mission Decomposer just clone this repository or download its source-code. There is an already compiled 64-bits Linux binary. To run it, simply insert the following command on a Linux terminal: 
 
-./MRSDecomposer [Modified HDDL Domain File] [Goal Model JSON file] [XML configuration file]
+`./MutroseMissionDecomposer [Modified HDDL Domain File] [Goal Model JSON file] [JSON/XML configuration file]`
 
-## Modified HDDL and Modified Goal Model
+If you want to compile it by yourself you will need to install:
 
-A docs folder will be created in order for further explanation of the specification languages used here. As previously noted, this is still work in progress and the author(s) is(are) working in order to provide a complete, stable and well-documented version of this repository.
+ - [Boost C++ Library](https://www.boost.org/) (>= 1.74.0)
+ - [GNU Bison Parser](https://www.gnu.org/software/bison/) (>= v3.7.5)
+ - [Flex (Fast Lexical Analyzer Generator)](https://github.com/westes/flex)(>= v2.6.4)
+ - C++17 (or greater)
+
+When all of the dependencies are installed, one simply go to the root folder of the source-code and run:
+
+    make -j4
+
+## Instructions and Examples
+
+You can find instructions on how to properly use the MutRoSe Mission Decomposer and examples of mission models [here](https://github.com/ericbg27/MutRoSe-Docs).
 
 ## References
 [1] https://www.uni-ulm.de/fileadmin/website_uni_ulm/iui.inst.090/Publikationen/2020/Hoeller2020HDDL.pdf

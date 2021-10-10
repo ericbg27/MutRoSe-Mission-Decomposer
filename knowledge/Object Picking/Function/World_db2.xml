@@ -1,7 +1,0 @@
-<world_db>
-    <Room>
-        <name>RoomA</name>
-        <num_objects>6</num_objects>
-        <needs_picking>True</needs_picking>
-    </Room>
-</world_db>

@@ -1,1 +1,0 @@
-./MRSDecomposer hddl/Room\ Cleaning/OR/Room\ Cleaning\ OR\ 2.hddl gm/Room\ Cleaning/OR/Room\ Cleaning\ OR\ 2.txt configs/JSON/Room\ Cleaning/OR/configuration2.json -v
