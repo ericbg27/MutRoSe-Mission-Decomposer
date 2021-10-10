@@ -46,22 +46,39 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
             }
         } else if(c.type == NC) {
             if(exec_constraints_map.find(c.nodes_involved.first.first) == exec_constraints_map.end()) {
-                pair<vector<int>,vector<pair<bool,bool>>> aux1, aux2;
+                pair<vector<int>,vector<pair<bool,bool>>> aux1;
 
                 aux1.first.push_back(c.nodes_involved.second.first);
                 aux1.second.push_back(make_pair(c.group,c.divisible));
 
-                aux2.first.push_back(c.nodes_involved.first.first);
-                aux2.second.push_back(make_pair(c.group,c.divisible));
-
                 exec_constraints_map[c.nodes_involved.first.first] = aux1;
-                exec_constraints_map[c.nodes_involved.second.first] = aux2;
+
+                if(exec_constraints_map.find(c.nodes_involved.second.first) == exec_constraints_map.end()) {
+                    pair<vector<int>,vector<pair<bool,bool>>> aux2;
+
+                    aux2.first.push_back(c.nodes_involved.first.first);
+                    aux2.second.push_back(make_pair(c.group,c.divisible));
+
+                    exec_constraints_map[c.nodes_involved.second.first] = aux2;
+                } else {
+                    exec_constraints_map[c.nodes_involved.second.first].first.push_back(c.nodes_involved.first.first);
+                    exec_constraints_map[c.nodes_involved.second.first].second.push_back(make_pair(c.group,c.divisible));
+                }
             } else {
                 exec_constraints_map[c.nodes_involved.first.first].first.push_back(c.nodes_involved.second.first);
                 exec_constraints_map[c.nodes_involved.first.first].second.push_back(make_pair(c.group,c.divisible));
 
-                exec_constraints_map[c.nodes_involved.second.first].first.push_back(c.nodes_involved.first.first);
-                exec_constraints_map[c.nodes_involved.second.first].second.push_back(make_pair(c.group,c.divisible));
+                if(exec_constraints_map.find(c.nodes_involved.second.first) == exec_constraints_map.end()) {
+                    pair<vector<int>,vector<pair<bool,bool>>> aux2;
+
+                    aux2.first.push_back(c.nodes_involved.first.first);
+                    aux2.second.push_back(make_pair(c.group,c.divisible));
+
+                    exec_constraints_map[c.nodes_involved.second.first] = aux2;
+                } else {
+                    exec_constraints_map[c.nodes_involved.second.first].first.push_back(c.nodes_involved.first.first);
+                    exec_constraints_map[c.nodes_involved.second.first].second.push_back(make_pair(c.group,c.divisible));
+                }
             }
         }
     }
@@ -531,10 +548,7 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
                             }
                         }
 
-                        if(mapping_val == "") {
-                            // TODO: DEAL WITH ERROR IF IT CAN HAPPEN!
-                            throw std::runtime_error("Could not find mapping for variable");
-                        } else {
+                        if(mapping_val != "") {
                             bool is_not_location_var = false;
                             if(holds_alternative<vector<string>>(d.at.location.first)) {
                                 vector<string> aux = std::get<vector<string>>(d.at.location.first);
@@ -606,10 +620,7 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
                                 }
                             }
 
-                            if(mapping_val == "") {
-                                // TODO: DEAL WITH ERROR IF IT CAN HAPPEN!
-                                throw std::runtime_error("Could not find mapping for variable");
-                            } else {
+                            if(mapping_val != "") {
                                 bool is_not_location_var = false;
                                 if(holds_alternative<vector<string>>(d.at.location.first)) {
                                     vector<string> aux = std::get<vector<string>>(d.at.location.first);
@@ -687,10 +698,7 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
                                     }
                                 }
 
-                                if(mapping_val == "") {
-                                    // TODO: DEAL WITH ERROR IF IT CAN HAPPEN!
-                                    throw std::runtime_error("Could not find mapping for variable");
-                                } else {
+                                if(mapping_val != "") {
                                     bool is_location_var = false;
                                     if(holds_alternative<vector<string>>(d.at.location.first)) {
                                         vector<string> aux = std::get<vector<string>>(d.at.location.first);
