@@ -495,6 +495,31 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
         ATNode node = nodes_map[node_id];
 
         Decomposition d = std::get<Decomposition>(node.content);
+
+        vector<pair<variant<string,vector<string>>,pair<string,string>>> d_args;
+
+        vector<string> agents_aux = agents_map[node_id];
+        for(auto arg : d.arguments) {
+            if(holds_alternative<string>(arg.first)) {
+                string aux = std::get<string>(arg.first);
+
+                if(aux == "") {
+                    vector<string>::iterator d_agent_it;
+                    for(d_agent_it = agents_aux.begin(); d_agent_it != agents_aux.end(); ++d_agent_it) {
+                        if(d_agent_it->at(0) == '?') {
+                            d_args.push_back(make_pair(*d_agent_it,arg.second));
+
+                            agents_aux.erase(d_agent_it);
+                            break;
+                        }
+                    }
+                } else {
+                    d_args.push_back(arg);
+                }
+            } else {
+                d_args.push_back(arg);
+            }
+        }
         
         TaskNode decomposition_node;
         decomposition_node.name = d.at.at.name;
@@ -526,22 +551,17 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
 
                     MethodNode m_node;
                     m_node.name = m.name;
-                    //m_node.task_id
                     set<string> method_agents;
 
                     int agent_index = 0;
                     for(pair<string,string> var : m.vars) {
                         string mapping_val;
-                        for(auto arg : d.arguments) {
+                        for(auto arg : d_args) {
                             if(arg.second.first == var.first) {
                                 if(holds_alternative<string>(arg.first)) { // Only alternative for now
                                     string aux = std::get<string>(arg.first);
 
-                                    if(aux == "") {
-                                        mapping_val = arg.second.first;
-                                    } else {
-                                        mapping_val = aux;
-                                    }
+                                    mapping_val = aux;
                                 }
 
                                 break;
@@ -563,27 +583,7 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
                             }
 
                             if(is_not_location_var) {
-                                string agent_val;
-
-                                if(mapping_val.find("?") != std::string::npos) {
-                                    int map_index = 0;
-                                    for(string agent : agents_map[node_id]) {
-                                        if(agent.find("@") != std::string::npos) {
-                                            if(map_index == agent_index) {
-                                                agent_val = agent;
-                                                break;
-                                            }
-
-                                            map_index++;
-                                        }
-                                    }
-
-                                    agent_index++;
-                                } else {
-                                    agent_val = mapping_val;
-                                }
-
-                                method_agents.insert(agent_val);
+                                method_agents.insert(mapping_val);
                             }
                         }
                     }
@@ -604,16 +604,12 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
                             string var = t.vars.at(var_index).first;
 
                             string mapping_val;
-                            for(auto arg : d.arguments) {
+                            for(auto arg : d_args) {
                                 if(arg.second.first == var) {
                                     if(holds_alternative<string>(arg.first)) { // Only alternative for now
                                         string aux = std::get<string>(arg.first);
 
-                                        if(aux == "") {
-                                            mapping_val = arg.second.first;
-                                        } else {
-                                            mapping_val = aux;
-                                        }
+                                        mapping_val = aux;
                                     }
 
                                     break;
@@ -635,27 +631,7 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
                                 }
 
                                 if(is_not_location_var) {
-                                    string agent_val;
-
-                                    if(mapping_val.find("?") != std::string::npos) {
-                                        int map_index = 0;
-                                        for(string agent : agents_map[node_id]) {
-                                            if(agent.find("@") != std::string::npos) {
-                                                if(map_index == agent_index) {
-                                                    agent_val = agent;
-                                                    break;
-                                                }
-
-                                                map_index++;
-                                            }
-                                        }
-
-                                        agent_index++;
-                                    } else {
-                                        agent_val = mapping_val;
-                                    }
-
-                                    task_agents.insert(agent_val);
+                                    task_agents.insert(mapping_val);
                                 }
                             }
                         }
@@ -663,7 +639,6 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
                         if(!path_node.is_primitive_task_node) {
                             TaskNode t_node;
                             t_node.name = t.name;
-                            //t_node.id
 
                             t_node.agents = task_agents;
 
