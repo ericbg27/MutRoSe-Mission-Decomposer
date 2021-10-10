@@ -503,7 +503,7 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
             if(path_node.parent != -1) {
                 decomposition_id_to_path_id[path_node.id] = path_index;
 
-                int ihtn_node_id;
+                int ihtn_node_id = -1;
                 if(holds_alternative<method>(path_node.content)) {
                     method m = std::get<method>(path_node.content);
 
@@ -727,9 +727,11 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
                 if(path_node.parent == 0) {
                     boost::add_edge(decomposition_node_id, ihtn_node_id, ihtn);
                 } else {
-                    int parent_ihtn_id = path_id_to_ihtn_id[decomposition_id_to_path_id[path_node.parent]];
+                    if(ihtn_node_id != -1) {
+                        int parent_ihtn_id = path_id_to_ihtn_id[decomposition_id_to_path_id[path_node.parent]];
 
-                    boost::add_edge(parent_ihtn_id, ihtn_node_id, ihtn);
+                        boost::add_edge(parent_ihtn_id, ihtn_node_id, ihtn);
+                    }
                 }
             }
 
