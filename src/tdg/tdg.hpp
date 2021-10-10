@@ -60,11 +60,16 @@ class TDG {
         std::vector<DecompositionPath> decomposition_recursion(std::vector<int> dfs_nodes, int current_pos, std::vector<std::pair<std::string,std::string>> parent_vars, 
                                                         std::vector<literal>& world_state, std::vector<std::pair<std::string,std::string>> variable_mapping);
 
+        std::vector<CompleteDecompositionPath> retrieve_possible_complete_decompositions();
+        std::vector<CompleteDecompositionPath> complete_decomposition_recursion(std::vector<int> dfs_nodes, int current_pos, std::vector<std::pair<std::string,std::string>> parent_vars, 
+                                                        std::vector<literal>& world_state, std::vector<std::pair<std::string,std::string>> variable_mapping, int parent, int current_index);
+
         void add_method_path(NodeData m);
         void add_task_path(NodeData t);
         void add_edge(int s_id, int t_id);
         void change_world_state(task t,std::vector<literal>& world_state, std::vector<std::pair<std::string,std::string>> variable_mapping);
         void variable_renaming(task& t, std::vector<std::pair<std::string,std::string>> var_mapping);
+        void method_variable_renaming(method& m, std::vector<std::pair<std::string,std::string>> var_mapping);
         void print_edges();
         void print_method_possible_orderings(std::vector<std::vector<int>> possible_orderings, NodeData n);
 

@@ -112,6 +112,44 @@ void print_at_paths_info(map<string,vector<DecompositionPath>> at_decomposition_
 	}
 }
 
+void print_complete_at_paths_info(map<string,vector<CompleteDecompositionPath>> at_complete_decomposition_paths) {
+	map<string,vector<CompleteDecompositionPath>>::iterator at_paths_it;
+
+	for(at_paths_it = at_complete_decomposition_paths.begin();at_paths_it != at_complete_decomposition_paths.end();++at_paths_it) {
+		cout << "Abstract task " << at_paths_it->first << " complete decomposition paths:" << endl;
+
+		for(auto path : at_paths_it->second) {
+			cout << "#####################################" << endl;
+			cout << "Path: ";
+			int path_index = 0;
+			for(auto node : path.decomposition) {
+				variant<task,method> n = node.content;
+				if(holds_alternative<task>(n)) {
+					task t = std::get<task>(n);
+
+					cout << t.name << "(" << node.parent << ")";
+				} else {
+					method m = std::get<method>(n);
+
+					cout << m.name << "(" << node.parent << ")";
+				}
+
+				if(path_index < path.decomposition.size() - 1) {
+					cout << " -> ";
+				} else {
+					cout << endl;
+				}
+
+				path_index++;
+			}
+			cout << endl;
+			cout << "#####################################" << endl;
+		}
+
+		cout << endl;
+	}
+}
+
 /*
     Function: check_path_validity
     Objective: Check if a path of tasks is valid given a world state

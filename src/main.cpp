@@ -26,6 +26,7 @@
 #include "utils/util.hpp"
 #include "utils/verify.hpp"
 #include "utils/properties.hpp"
+#include "utils/ihtn_generator_utils.hpp"
 #include "hddl/hddl.hpp"
 #include "tdg/tdg.hpp"
 #include "knowledgemanager/knowledgemanager.hpp"
@@ -39,11 +40,13 @@
 #include "outputgenerator/xmloutputgenerator.hpp"
 #include "outputgenerator/fileoutputgeneratorfactory.hpp"
 #include "configchecker/configchecker.hpp"
+#include "ihtngenerator/ihtngenerator.hpp"
 
 using namespace std;
 
 const string verbose_command = "-v";
 const string pretty_print_command = "-p";
+const string ihtn_output_command = "-h";
 
 // declare parser function manually
 void run_parser_on_file(FILE* f, char* filename);
@@ -78,6 +81,7 @@ bool has_when = false;
 bool has_capabilities_definitions = false;
 bool verbose = false;
 bool pretty_print = false;
+bool ihtn_output = false;
 
 int main(int argc, char** argv) {
 	cin.sync_with_stdio(false);
@@ -105,6 +109,8 @@ int main(int argc, char** argv) {
 			verbose = true;
 		} else if(opt == pretty_print_command) {
 			pretty_print = true;
+		} else if(opt == ihtn_output_command) {
+			ihtn_output = true;
 		} else {
 			if(!option_not_found) {
 				std::cout << std::endl;
@@ -408,15 +414,20 @@ int main(int argc, char** argv) {
 	*/
 
 	map<string,vector<DecompositionPath>> at_decomposition_paths;
+	map<string,vector<CompleteDecompositionPath>> at_complete_decomposition_paths;
 
 	for(task at : abstract_tasks) {
 		TDG t(at, abstract_tasks, primitive_tasks, methods, verbose);
 
 		at_decomposition_paths[at.name] = t.retrieve_possible_decompositions();
+		if(ihtn_output) {
+			at_complete_decomposition_paths[at.name] = t.retrieve_possible_complete_decompositions();
+		}
 	}
 
 	if(verbose) {
 		print_at_paths_info(at_decomposition_paths);
+		print_complete_at_paths_info(at_complete_decomposition_paths);
 	}
 
 	knowledge_manager->initialize_objects(sorts, high_level_loc_types, at_instances);
@@ -481,20 +492,29 @@ int main(int argc, char** argv) {
 		print_mission_decomposition(mission_decomposition); 
 	}
 
-	if(output.at(0) == "FILE") {
-		FileOutputGeneratorFactory output_gen_factory;
+	if(!ihtn_output) {
+		if(output.at(0) == "FILE") {
+			FileOutputGeneratorFactory output_gen_factory;
 
-		pair<string,string> file_output_data = std::make_pair(output.at(1),output.at(2));
-		std::shared_ptr<FileOutputGenerator> output_generator_ptr = output_gen_factory.create_file_output_generator(gm, mission_decomposition, init, init_functions, file_output_data, verbose, pretty_print);
+			pair<string,string> file_output_data = std::make_pair(output.at(1),output.at(2));
+			std::shared_ptr<FileOutputGenerator> output_generator_ptr = output_gen_factory.create_file_output_generator(gm, mission_decomposition, init, init_functions, file_output_data, verbose, pretty_print);
 
-		if(output_generator_ptr->get_file_output_generator_type() == XMLFILEOUTGEN) {
-			XMLOutputGenerator* output_generator = dynamic_cast<XMLOutputGenerator*>(output_generator_ptr.get());
+			if(output_generator_ptr->get_file_output_generator_type() == XMLFILEOUTGEN) {
+				XMLOutputGenerator* output_generator = dynamic_cast<XMLOutputGenerator*>(output_generator_ptr.get());
 
-			output_generator->generate_instances_output(semantic_mapping, sorts, sort_definitions, predicate_definitions, gm_var_map, robot_related_sorts);
-		} else if(output_generator_ptr->get_file_output_generator_type() == JSONFILEOUTGEN) {
-			JSONOutputGenerator* output_generator = dynamic_cast<JSONOutputGenerator*>(output_generator_ptr.get());
+				output_generator->generate_instances_output(semantic_mapping, sorts, sort_definitions, predicate_definitions, gm_var_map, robot_related_sorts);
+			} else if(output_generator_ptr->get_file_output_generator_type() == JSONFILEOUTGEN) {
+				JSONOutputGenerator* output_generator = dynamic_cast<JSONOutputGenerator*>(output_generator_ptr.get());
 
-			output_generator->generate_instances_output(semantic_mapping, sorts, sort_definitions, predicate_definitions, gm_var_map, robot_related_sorts);
+				output_generator->generate_instances_output(semantic_mapping, sorts, sort_definitions, predicate_definitions, gm_var_map, robot_related_sorts);
+			}
 		}
+	} else {
+		map<string,CompleteDecompositionPath> decomposition_mapping;
+		decomposition_mapping = map_complete_decompositions(mission_decomposition, at_complete_decomposition_paths);
+
+		IHTNGenerator ihtn_gen(gm, mission_decomposition, verbose, pretty_print, init, init_functions, high_level_loc_types, type_mapping, decomposition_mapping);
+
+		ihtn_gen.generate_ihtn(semantic_mapping, gm_var_map, robot_related_sorts);
 	}
 }
