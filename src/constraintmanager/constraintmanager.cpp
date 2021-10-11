@@ -92,7 +92,7 @@ vector<Constraint> ConstraintManager::generate_mission_constraints() {
 
         std::cout << "Number of Sequential Mission Constraints: " << sequential_constraints.size() << std::endl;
         std::cout << "Sequential Constraints:" << std::endl; 
-        int seq_ctr = 0;
+        unsigned int seq_ctr = 0;
         for(Constraint c : sequential_constraints) {
             if(ctr_counter == 5) {
                 std::cout << std::endl;
@@ -118,7 +118,7 @@ vector<Constraint> ConstraintManager::generate_mission_constraints() {
         std::cout << std::endl;
         std::cout << "Number of execution constraints: " << execution_constraints.size() << std::endl;
         std::cout << "Execution Constraints:" << std::endl;
-        int ec_ctr = 0;
+        unsigned int ec_ctr = 0;
         for(Constraint c : execution_constraints) {
             if(ctr_counter == 5) {
                 std::cout << std::endl;
@@ -142,7 +142,7 @@ vector<Constraint> ConstraintManager::generate_mission_constraints() {
         std::cout << std::endl;
         std::cout << "Number of fallback constraints: " << fallback_constraints.size() << std::endl;
         std::cout << "Fallback Constraints:" << std::endl; 
-        int fb_ctr = 0;
+        unsigned int fb_ctr = 0;
         for(Constraint c : fallback_constraints) {
             if(ctr_counter == 5) {
                 std::cout << std::endl;

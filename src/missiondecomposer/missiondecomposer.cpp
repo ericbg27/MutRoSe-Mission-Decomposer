@@ -417,7 +417,6 @@ bool MissionDecomposer::recursive_context_dependency_checking(int current_node, 
 		
 		for(boost::tie(ei,ei_end) = out_edges(current_node,mission_decomposition);ei != ei_end;++ei) {
 			int target = boost::target(*ei,mission_decomposition);
-			ATEdge e = mission_decomposition[*ei];
 
 			if(target != context_node && (std::find(visited_nodes.begin(), visited_nodes.end(), target) == visited_nodes.end())) {
 				context_satisfied = recursive_context_dependency_checking(target, context_node, inactive_ctx_predicates, instantiated_vars, semantic_mapping, visited_nodes, parallel);
@@ -893,7 +892,7 @@ ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string, variant<pair<
                 }
 
                 std::cout << "with arguments [";
-                int arg_index = 0;
+                unsigned int arg_index = 0;
                 for(auto arg : d.arguments) {
                     bool grounded = true;
                     if(holds_alternative<string>(arg.first)) {
@@ -909,7 +908,7 @@ ATGraph FileKnowledgeMissionDecomposer::build_at_graph(map<string, variant<pair<
                             vector<string> arg_val = std::get<vector<string>>(arg.first);
                         
                             std::cout << arg.second.first << "=(";
-                            int val_index = 0;
+                            unsigned int val_index = 0;
                             for(string val : arg_val) {
                                 if(val_index == arg_val.size()-1) {
                                     std::cout << val << ")";

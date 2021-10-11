@@ -142,7 +142,7 @@ pair<vector<vector<pair<int,ATNode>>>,set<Decomposition>> ValidMissionGenerator:
                 }
 
                 std::cout << "with arguments [";
-                int arg_index = 0;
+                unsigned int arg_index = 0;
                 for(auto arg : d.arguments) {
                     bool grounded = true;
                     if(holds_alternative<string>(arg.first)) {
@@ -158,7 +158,7 @@ pair<vector<vector<pair<int,ATNode>>>,set<Decomposition>> ValidMissionGenerator:
                             vector<string> arg_val = std::get<vector<string>>(arg.first);
                         
                             std::cout << arg.second.first << "=(";
-                            int val_index = 0;
+                            unsigned int val_index = 0;
                             for(string val : arg_val) {
                                 if(val_index == arg_val.size()-1) {
                                     std::cout << val << ")";
