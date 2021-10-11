@@ -163,7 +163,7 @@ map<string,string> XMLOutputGenerator::output_tasks(pt::ptree& output_file, vect
 
         task_attr = task_name + ".arguments";
         
-        int arg_index = 0;
+        unsigned int arg_index = 0;
         for(auto arg : instance.arguments) {
             string arg_name = task_attr + ".arg" + to_string(arg_index);
 
