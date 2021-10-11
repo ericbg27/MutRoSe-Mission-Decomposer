@@ -440,7 +440,7 @@ int main(int argc, char** argv) {
 	AnnotManagerFactory annot_manager_factory;
 	shared_ptr<AnnotManager> annot_manager_ptr = annot_manager_factory.create_annot_manager(knowledge_manager, gm, high_level_loc_types, at_instances);
 
-	general_annot* gmannot;
+	general_annot* gmannot = NULL;
 
 	if(annot_manager_ptr->get_annot_manager_type() == FILEANNOTMANAGER) {
 		FileKnowledgeAnnotManager* annot_manager = dynamic_cast<FileKnowledgeAnnotManager*>(annot_manager_ptr.get());
@@ -449,6 +449,12 @@ int main(int argc, char** argv) {
 		annot_manager->set_fk_manager(aux);
 
 		gmannot = annot_manager->retrieve_gm_annot();
+	}
+
+	if(gmannot == NULL) {
+		string gmannot_could_not_be_generated_error = "Could not generate Runtime Annotation Tree";
+
+		throw std::runtime_error(gmannot_could_not_be_generated_error);
 	}
 
 	rename_at_instances_in_runtime_annot(gmannot, at_instances, gm);
