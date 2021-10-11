@@ -1,0 +1,22 @@
+language: cpp
+compiler: gcc
+sudo: true
+os: linux
+
+- os: linux
+  compiler: gcc
+  addons:
+    apt:
+      sources:
+        - ubuntu-toolchain-r-test
+        - llvm-toolchain-trusty-6.0
+      packages:
+        - g++-10.3
+        - libstdc++-7-dev
+
+install:
+  - sudo apt-get install libboost-all-dev
+  - sudo apt-get install bison
+  - sudo apt-get install flex
+
+script: make -j4
