@@ -1,3 +1,6 @@
+[![Build Status](https://app.travis-ci.com/ericbg27/MutRoSe-Mission-Decomposer.svg?branch=main)](https://app.travis-ci.com/ericbg27/MutRoSe-Mission-Decomposer)  [![License](https://img.shields.io/badge/License-Boost%201.0-lightblue.svg)](https://www.boost.org/LICENSE_1_0.txt) [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
+
 # MutRoSe-Mission-Decomposer
 This is the mission decomposer for the MutRoSe (Multi-Robot systems mission Specification and Decomposition) framework. This decomposer works given: (i) a JSON Goal Model (generated in [GODA](http://pistar-goda.herokuapp.com/)), (ii) a modified HDDL specification (the original language syntax can be found in [1]), which consists of a subset of the language with the addition of new constructs, (iii) a JSON/XML configuration file and (iv) an XML world knowledge file. 
 
