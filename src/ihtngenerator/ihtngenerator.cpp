@@ -169,7 +169,6 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
                 if(t_pos != exec_constraints.first.end()) {
                     int t_pos_index = std::distance(exec_constraints.first.begin(), t_pos);
 
-                    int t_id = exec_constraints.first.at(t_pos_index);
                     pair<bool,bool> t_ctr = exec_constraints.second.at(t_pos_index);
 
                     if(task_non_ground_args.size() == 1) {
@@ -324,6 +323,10 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
         try {
             if(!boost::filesystem::exists(dir.string()) || !boost::filesystem::is_directory(dir.string())) {
                 boost::filesystem::create_directory(dir);
+            } else {
+                for(boost::filesystem::directory_iterator dir_it(dir); dir_it != boost::filesystem::directory_iterator(); ++dir_it) {
+                    boost::filesystem::remove_all(dir_it->path());
+                }
             }
 
             for(vector<int> ordering : decomposition_orderings) {
@@ -567,7 +570,6 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
                     m_node.name = m.name;
                     set<string> method_agents;
 
-                    int agent_index = 0;
                     for(pair<string,string> var : m.vars) {
                         string mapping_val;
                         for(auto arg : d_args) {
@@ -613,7 +615,7 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
                     task t = std::get<task>(path_node.content);
                     if(t.name.find(method_precondition_action_name) == std::string::npos) {
                         set<string> task_agents;
-                        int agent_index = 0;
+
                         for(int var_index = 0; var_index < t.number_of_original_vars; var_index++) {
                             string var = t.vars.at(var_index).first;
 
@@ -742,7 +744,7 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
 vector<vector<int>> find_decomposition_orderings(vector<int> decomposition, map<int,pair<vector<int>,vector<constraint_type>>> seq_fb_constraints_map) {
     vector<vector<int>> possible_orderings;
     
-    for(int decomposition_index = 0; decomposition_index < decomposition.size(); decomposition_index++) {
+    for(unsigned int decomposition_index = 0; decomposition_index < decomposition.size(); decomposition_index++) {
         vector<int> aux = decomposition;
         aux.erase(aux.begin()+decomposition_index);
 
@@ -768,8 +770,7 @@ vector<vector<int>> recursive_decomposition_ordering_find(vector<vector<int>> cu
         vector<vector<int>> new_orderings;
         pair<vector<int>,vector<constraint_type>> current_node_constraints = seq_fb_constraints_map[*decomposition_it];
 
-        int current_orderings_index;
-        for(current_orderings_index = 0; current_orderings_index < current_orderings.size(); ) {
+        for(unsigned int current_orderings_index = 0; current_orderings_index < current_orderings.size(); ) {
             bool is_possible_ordering = true;
             for(int element : current_orderings.at(current_orderings_index)) {
                 if(std::find(current_node_constraints.first.begin(), current_node_constraints.first.end(), element) != current_node_constraints.first.end()) {
