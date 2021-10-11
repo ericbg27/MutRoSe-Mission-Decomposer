@@ -1,0 +1,12 @@
+compiler: gcc
+install: 
+  - "sudo apt install gcc-10 g++-10"
+  - "sudo apt install libstdc++-10-dev"
+  - "sudo apt-get install libboost-all-dev"
+  - "sudo apt-get install bison"
+  - "sudo apt-get install flex"
+language: cpp
+os: linux
+dist: focal
+script: "make -j4"
+sudo: true
