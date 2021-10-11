@@ -419,8 +419,6 @@ vector<CompleteDecompositionPath> TDG::complete_decomposition_recursion(vector<i
         */
         vector<vector<int>> possible_orderings = find_method_possible_orderings(n.m,n.children);
 
-        int children_num = -1;
-
         vector<vector<CompleteDecompositionPath>> child_paths;
         for(vector<int> ordering : possible_orderings) {
             bool ordering_exec = true;

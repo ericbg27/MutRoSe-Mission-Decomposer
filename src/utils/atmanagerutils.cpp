@@ -121,7 +121,7 @@ void print_complete_at_paths_info(map<string,vector<CompleteDecompositionPath>> 
 		for(auto path : at_paths_it->second) {
 			cout << "#####################################" << endl;
 			cout << "Path: ";
-			int path_index = 0;
+			unsigned int path_index = 0;
 			for(auto node : path.decomposition) {
 				variant<task,method> n = node.content;
 				if(holds_alternative<task>(n)) {

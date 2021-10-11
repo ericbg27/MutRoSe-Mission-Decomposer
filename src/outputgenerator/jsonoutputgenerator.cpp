@@ -109,7 +109,7 @@ map<string,string> JSONOutputGenerator::output_tasks(pt::ptree& output_file, vec
 
                 string arg_val_str = "[";
 
-                int arg_index = 0;
+                unsigned int arg_index = 0;
                 for(string val : arg_val) {
                     if(arg_index == arg_val.size()-1) {
                         arg_val_str += val + "]";

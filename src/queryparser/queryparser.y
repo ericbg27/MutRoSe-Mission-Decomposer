@@ -147,7 +147,7 @@ name-no-pt: STRNAME {
             std::regex_search(split_query.at(2),m,e3);
             v.push_back(m[0]);
         } else {
-            char op;
+            char op = '\0';
 
             if(aux.find(ocl_gt) != std::string::npos) {
                 op = ocl_gt[0];
