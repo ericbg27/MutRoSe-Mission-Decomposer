@@ -360,8 +360,6 @@ vector<pair<int,VertexData>> parse_gm_nodes(pt::ptree nodes) {
         }
     }
 
-    //std::sort(vertex.begin(), vertex.end(), sort_by_id());
-
     return vertex;
 }
 
@@ -574,7 +572,6 @@ void print_gm_nodes_info(GMGraph gm) {
 			c = get<Context>(node.custom_props[context_prop]);
 
 			std::cout << "\tType: " << c.get_context_type() << std::endl;
-			//std::cout << "\tCondition: " << c.get_condition() << std::endl;
 		} else {
 			std::cout << "\tNo Context" << std::endl;
 		}
@@ -625,6 +622,13 @@ void print_gm_var_map_info(map<string, variant<pair<string,string>,pair<vector<s
 	}
 }
 
+/*
+    Function: print_gm
+    Objective: Print GMGraph to cout
+
+    @ Input: The GMGraph representing a Goal Model
+    @ Output: void. There is only printing to a terminal
+*/ 
 void print_gm(GMGraph gm) {
     GMGraph::vertex_iterator i, end;
 	GMGraph::adjacency_iterator ai, a_end;
