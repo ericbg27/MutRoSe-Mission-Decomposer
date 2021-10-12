@@ -237,12 +237,16 @@ int main(int argc, char** argv) {
 		while(sort_def_it != sort_definitions.end()) {
 			bool next = false;
 
-			if(current_sort.has_parent_sort && (current_sort.parent_sort == hddl_robot_type || current_sort.parent_sort == hddl_robotteam_type)) {
+			if(current_sort.has_parent_sort && (current_sort.parent_sort == hddl_robot_type /*|| current_sort.parent_sort == hddl_robotteam_type*/)) {
 				for(string sort : current_sort.declared_sorts) {
 					robot_related_sorts.insert(sort);
 				}
 
 				next = true;
+			} else if(current_sort.has_parent_sort && current_sort.parent_sort == hddl_robotteam_type) {
+				string robotteam_user_defined_type_error = "User-defined type that inherit from robotteam are currently not accepted!";
+
+				throw std::runtime_error(robotteam_user_defined_type_error);
 			} else if(current_sort.has_parent_sort && current_sort.parent_sort != hddl_robot_type && current_sort.parent_sort != hddl_robotteam_type) {
 				bool found_def = false;
 				
