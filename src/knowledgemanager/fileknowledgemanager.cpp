@@ -21,8 +21,9 @@ using namespace std;
 		   -> When (and if) more types are allowed we need to delegate the task of opening these files to functions
 		    passing the configuration file as a function parameter
 */ 
-void FileKnowledgeManager::construct_knowledge_base(string db_name, map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> cfg) {
+void FileKnowledgeManager::construct_knowledge_base(map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> cfg) {
 	string db_file_type = std::get<map<string,string>>(cfg[db_name])["file_type"];
+    string unique_id = std::get<map<string,string>>(cfg[db_name])["unique_id"];
     string db_root = "";
         
     if(db_file_type == "XML") {
@@ -32,7 +33,7 @@ void FileKnowledgeManager::construct_knowledge_base(string db_name, map<string, 
         db_root = std::get<map<string,string>>(cfg[db_name])["xml_root"];
 
         if(db_name == "world_db") {
-            XMLKnowledgeBase wk(db_name, db_knowledge, db_root);
+            XMLKnowledgeBase wk(db_name, db_knowledge, db_root, unique_id);
 
             world_knowledge = make_shared<XMLKnowledgeBase>(wk);
         }

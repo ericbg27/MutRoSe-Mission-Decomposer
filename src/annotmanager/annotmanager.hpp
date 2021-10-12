@@ -21,6 +21,7 @@ class AnnotManager {
         void set_gm(GMGraph g);
         void set_high_level_loc_types(std::vector<std::string> hllt);
         void set_at_instances(std::map<std::string,std::vector<AbstractTask>> atinst);
+        void set_knowledge_unique_id(std::string knowledge_unique_id);
 
         void expand_node_vector(std::vector<int>& vctr, int current, int generated_instances);
         void expand_forall_annot(general_annot* node_annot, int generated_instances, std::string iterated_var, std::string iteration_var, std::vector<int>& vctr, int current, pt::ptree worlddb, std::map<int,AchieveCondition> valid_forAll_conditions);
@@ -39,6 +40,7 @@ class AnnotManager {
         std::map<std::string,std::vector<AbstractTask>> at_instances;
         std::map<int,int> node_depths;
         std::map<std::string,pair<std::string,std::vector<pt::ptree>>> valid_variables;
+        std::string knowledge_unique_id;
 
     private:
         annot_manager_type am_type;
@@ -81,6 +83,6 @@ void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm
 
 pt::ptree get_query_ptree(GMGraph gm, int node_id, map<string,pair<string,vector<pt::ptree>>> valid_variables, map<int,AchieveCondition> valid_forAll_conditions, pt::ptree world_tree);
 
-std::map<std::string,std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> get_annot_var_maps(std::map<std::string,pair<std::string,std::vector<pt::ptree>>> valid_variables);
+std::map<std::string,std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> get_annot_var_maps(std::map<std::string,pair<std::string,std::vector<pt::ptree>>> valid_variables, std::string knowledge_unique_id);
 
 #endif
