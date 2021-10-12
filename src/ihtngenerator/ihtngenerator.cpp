@@ -108,6 +108,16 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
         }
     }
 
+    boost::filesystem::path dir = boost::filesystem::current_path() / "ihtn";
+
+    if(!boost::filesystem::exists(dir.string()) || !boost::filesystem::is_directory(dir.string())) {
+        boost::filesystem::create_directory(dir);
+    } else {
+        for(boost::filesystem::directory_iterator dir_it(dir); dir_it != boost::filesystem::directory_iterator(); ++dir_it) {
+            boost::filesystem::remove_all(dir_it->path());
+        }
+    }
+
     // For each valid decomposition generate a different iHTN
     int ihtn_counter = 1;
     for(vector<pair<int,ATNode>> decomposition : valid_mission_decompositions) {
@@ -153,15 +163,21 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
                         task_non_ground_args.push_back(arg.second);
                     }
                 } else {
-                    string vector_of_agents_error("Agent-related type container is not supported for iHTN generation");
+                    bool is_not_location_var = false;
 
-                    throw std::runtime_error(vector_of_agents_error);
+                    // Find if this type of variable is not of a high-level location type
+                    
+                    if(is_not_location_var) {
+                        string vector_of_agents_error("Agent-related type container is not supported for iHTN generation");
+
+                        throw std::runtime_error(vector_of_agents_error);
+                    }
                 }
             }
             
             // TODO: Use the sorts vector to find types that inherit from robot and robotteam
             for(pair<string,string> ng_arg : task_non_ground_args) {
-                if(ng_arg.second != hddl_robot_type && ng_arg.second != hddl_robotteam_type) {
+                if(robot_related_sorts.find(ng_arg.second) == robot_related_sorts.end() && ng_arg.second != hddl_robot_type && ng_arg.second != hddl_robotteam_type) {
                     string non_ground_arg_error = "Variable " + ng_arg.first + " of HDDL type " + ng_arg.second + " is not grounded. iHTN generation does not support non-ground variables that are not robot-related";
 
                     throw std::runtime_error(non_ground_arg_error);
@@ -183,7 +199,7 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
                     if(task_non_ground_args.size() == 1) {
                         pair<string,string> only_ng_arg = task_non_ground_args.at(0);
 
-                        if(only_ng_arg.second == hddl_robot_type) {
+                        if(only_ng_arg.second == hddl_robot_type || robot_related_sorts.find(only_ng_arg.second) != robot_related_sorts.end()) {
                             if(t_ctr.first == false) {
                                 found_ng_args = true;
 
@@ -224,7 +240,7 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
                     } else {
                         bool robot_type_vars = false;
                         for(pair<string,string> ng_arg : task_non_ground_args) {
-                            if(ng_arg.second == hddl_robot_type) { // For now we assume that tasks can either have robotteam or robot type variables but not both
+                            if(ng_arg.second == hddl_robot_type || robot_related_sorts.find(ng_arg.second) != robot_related_sorts.end()) { // For now we assume that tasks can either have robotteam or robot type variables but not both
                                 robot_type_vars = true;
 
                                 break;
@@ -327,17 +343,7 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
 
         vector<vector<int>> decomposition_orderings = find_decomposition_orderings(decomposition_ids, seq_fb_constraints_map);
 
-        boost::filesystem::path dir = boost::filesystem::current_path() / "ihtn";
-
         try {
-            if(!boost::filesystem::exists(dir.string()) || !boost::filesystem::is_directory(dir.string())) {
-                boost::filesystem::create_directory(dir);
-            } else {
-                for(boost::filesystem::directory_iterator dir_it(dir); dir_it != boost::filesystem::directory_iterator(); ++dir_it) {
-                    boost::filesystem::remove_all(dir_it->path());
-                }
-            }
-
             for(vector<int> ordering : decomposition_orderings) {
                 IHTN ordering_ihtn = ihtn_create(ordering, nodes_map, agents_set, agents_map);
 
