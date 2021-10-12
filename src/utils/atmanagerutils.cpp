@@ -112,6 +112,14 @@ void print_at_paths_info(map<string,vector<DecompositionPath>> at_decomposition_
 	}
 }
 
+/*
+    Function: print_complete_at_paths_info
+    Objective: Print abstract tasks complete decomposition paths info in terminal. Complete decomposition paths have methods and abstract tasks, in
+	addition to the actions
+
+    @ Input: The abstract tasks complete decomposition paths in a map format
+    @ Output: Void. We just print to the terminal
+*/ 
 void print_complete_at_paths_info(map<string,vector<CompleteDecompositionPath>> at_complete_decomposition_paths) {
 	map<string,vector<CompleteDecompositionPath>>::iterator at_paths_it;
 
@@ -289,6 +297,18 @@ bool check_path_validity(vector<task> path, vector<ground_literal> world_state, 
 	return valid_path;
 }
 
+/*
+    Function: solve_query_statement
+    Objective: Solve a given QueriedProperty in the ATManager context 
+
+	@ Input 1: The world knowledge tree that represents the queried variable
+	@ Input 2: The QueriedProperty to be solved
+	@ Input 3: The Goal Model as a GMGraph object
+	@ Input 4: The current GM node ID
+	@ Input 5: The valid GM variables map
+	@ Input 6: The current variable mappings of the Goal Model
+    @ Output: The world knowledge trees of the records that satisfied the queried property. In addition, a set of their unique knowledge ID's is given
+*/
 pair<vector<pt::ptree>,set<string>> solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm, int node_id, map<string,pair<string,vector<pt::ptree>>>& valid_variables, 
 							map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map) {
 	if(holds_alternative<pair<Query*,Query*>>(q.query->query)) {
@@ -648,24 +668,6 @@ pair<vector<pt::ptree>,set<string>> solve_query_statement(pt::ptree queried_tree
 					}
 				}
 			}
-
-			/*string var_name = std::get<vector<pair<string,string>>>(gm[node_id].custom_props[controls_prop]).at(0).first;
-			string var_type = std::get<vector<pair<string,string>>>(gm[node_id].custom_props[controls_prop]).at(0).second;
-
-			valid_variables[var_name] = make_pair(var_type,aux);
-						
-			string gm_var_type = parse_gm_var_type(var_type);
-			if(gm_var_type == "VALUE") {
-				//We assume everything has a name attribute
-				gm_var_map[var_name] = make_pair(aux.at(0).get<string>("name"),var_type); 
-			} else if(gm_var_type == "COLLECTION") {
-				vector<string> var_value;
-				for(pt::ptree t : aux) {
-					var_value.push_back(t.get<string>("name"));
-				}
-
-				gm_var_map[var_name] = make_pair(var_value,var_type);
-			}*/
 		}
 
 		return make_pair(aux,accepted_records);
