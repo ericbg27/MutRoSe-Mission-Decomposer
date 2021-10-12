@@ -68,18 +68,13 @@ class AnnotManagerFactory {
 general_annot* retrieve_runtime_annot(std::string id);
 
 void recursive_fill_up_runtime_annot(general_annot* rannot, VertexData gm_node);
-
 void recursive_child_replacement(general_annot* copy, general_annot* original);
-
 void rename_at_instances_in_runtime_annot(general_annot* gmannot, std::map<std::string,std::vector<AbstractTask>> at_instances, GMGraph gm);
-
 void recursive_at_instances_renaming(general_annot* rannot, std::map<std::string,int>& at_instances_counter, bool in_forAll, map<string,vector<AbstractTask>> at_instances, GMGraph gm);
-
 void print_runtime_annot_from_general_annot(general_annot* rt);
+void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm, int node_id, std::map<std::string,std::pair<std::string,std::vector<pt::ptree>>>& valid_variables);
 
 std::string recursive_rt_annot_build(general_annot* rt);
-
-void solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm, int node_id, std::map<std::string,std::pair<std::string,std::vector<pt::ptree>>>& valid_variables);
 
 pt::ptree get_query_ptree(GMGraph gm, int node_id, map<string,pair<string,vector<pt::ptree>>> valid_variables, map<int,AchieveCondition> valid_forAll_conditions, pt::ptree world_tree);
 
