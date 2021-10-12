@@ -177,7 +177,7 @@ map<string,string> XMLOutputGenerator::output_tasks(pt::ptree& output_file, vect
             if(holds_alternative<vector<string>>(arg.first)) {
                 vector<string> arg_val = std::get<vector<string>>(arg.first);
 
-                int arg_index = 0;
+                unsigned int arg_index = 0;
                 for(string val : arg_val) {
                     if(arg_index == arg_val.size()-1) {
                         arg_val_str += val;

@@ -109,57 +109,6 @@ AchieveCondition parse_achieve_condition(string cond) {
     return a;
 }
 
-IterationRule parse_iterate_expr(string expr) {
-    IterationRule it;
-    stringstream ss(expr);
-    string aux;
-
-    regex e1("[a-zA-Z]+[\\w.]*");
-    smatch m;
-
-    getline(ss, aux, '>');
-    regex_search(aux,m,e1);
-    it.iterated_var = m[0];
-
-    getline(ss, aux, ';');
-    aux.substr(aux.find('(')+1);
-    regex_search(aux,m,e1);
-    it.iteration_var = m[0];
-
-    if(ss.str().find(":") == string::npos) {
-        getline(ss, aux, '=');
-        regex_search(aux,m,e1);
-        it.result_var.first = m[0];
-        it.result_var.second = "";
-    } else {
-        getline(ss, aux, ':');
-        regex_search(aux,m,e1);
-        it.result_var.first = m[0];
-
-        getline(ss, aux, '=');
-        regex_search(aux,m,e1);
-        it.result_var.second = m[0];
-    }
-
-    regex e2("[a-zA-Z]+[\\w.]*");
-    getline(ss, aux, '|');
-    regex_search(aux,m,e2);
-    it.result_init = m[0];
-
-    regex e3("[a-zA-Z]{1}[a-zA-z0-9_]*(->([a-zA-z]+)[(]{1}[a-zA-Z]{1}[a-zA-z0-9]*[)]{1})?");
-    getline(ss, aux, ')');
-    string end_str;
-    getline(ss,end_str);
-
-    if(count(end_str.begin(),end_str.end(),')') > 0) {
-        aux += ')';
-    }
-    regex_search(aux,m,e3);
-    it.end_loop = m[0];
-
-    return it;
-}
-
 /*
     Function: parse_select_expr
     Objective: Parse OCL select expression, returning a QueriedProperty object. This is done due to

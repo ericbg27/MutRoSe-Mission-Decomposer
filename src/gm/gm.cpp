@@ -195,7 +195,6 @@ int find_gm_node_by_id(string id, GMGraph gm) {
     @ Output: Void
 */ 
 void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
-    v.periodic = false;
     v.group = true;
     v.divisible = true;
 
@@ -205,10 +204,7 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
     for(cp_it = custom_props.begin();cp_it != custom_props.end();++cp_it) {
         if(cp_it->first == goal_type_prop) {
             v.custom_props[goal_type_prop] = cp_it->second;
-        } else if(cp_it->first == "Period") {
-            stringstream ss(cp_it->second);
-            ss >> v.period;
-        } else if(cp_it->first == "Group") {
+        } else if(cp_it->first == group_prop) {
             string aux = cp_it->second;
             transform(aux.begin(), aux.end(), aux.begin(), ::tolower);
             if(aux == "true" || aux == "false") {
@@ -216,7 +212,7 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
             } else {
                 v.group = true;
             }
-        } else if(cp_it->first == "Divisible") {
+        } else if(cp_it->first == divisible_prop) {
             string aux = cp_it->second;
             transform(aux.begin(), aux.end(), aux.begin(), ::tolower);
             if(aux == "true" || aux == "false") {
@@ -282,11 +278,11 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
             AchieveCondition a;
             a = parse_achieve_condition(custom_props[achieve_condition_prop]);
             v.custom_props[achieve_condition_prop] = a;
-            if(custom_props.find(failure_condition_prop) != custom_props.end()) {
+            /*if(custom_props.find(failure_condition_prop) != custom_props.end()) {
                 FailureCondition f;
                 f.set_condition(custom_props[failure_condition_prop]);
                 v.custom_props[failure_condition_prop] = f;
-            }
+            }*/
         } else if(std::get<string>(v.custom_props[goal_type_prop]) == query_goal_type) {
             string aux = custom_props[queried_property_prop];
             std::transform(aux.begin(),aux.end(),aux.begin(),::tolower);
@@ -298,11 +294,11 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
                 throw std::runtime_error(missing_select_statement_error);
             }
         } else if(std::get<string>(v.custom_props[goal_type_prop]) == perform_goal_type) {
-            if(custom_props.find(failure_condition_prop) != custom_props.end()) {
+            /*if(custom_props.find(failure_condition_prop) != custom_props.end()) {
                 FailureCondition f;
                 f.set_condition(custom_props[failure_condition_prop]);
                 v.custom_props[failure_condition_prop] = f;
-            }
+            }*/
         } else {
             string goal_type_warning = "Invalid goal type on node [" + get_node_name(v.text) + "]: [" + std::get<string>(v.custom_props[goal_type_prop]) + "]. Defaulting to Perform type.";
             
