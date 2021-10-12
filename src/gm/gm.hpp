@@ -17,6 +17,7 @@
 #include "../contextmanager/contextmanager.hpp"
 #include "../utils/condition.hpp"
 #include "../utils/gm_utils.hpp"
+#include "../utils/math_utils.hpp"
 
 namespace pt = boost::property_tree;
 
@@ -67,6 +68,8 @@ class DFSVisitor : public boost::default_dfs_visitor {
 
 std::vector<int> get_dfs_gm_nodes(GMGraph gm);
 
+bool exists_path(int source, int target, GMGraph gm);
+
 void check_gm_validity(GMGraph gm);
 
 std::vector<std::pair<int,VertexData>> parse_gm_nodes(pt::ptree nodes);
@@ -84,6 +87,27 @@ int find_gm_node_by_id(std::string id, GMGraph gm);
 void print_gm_nodes_info(GMGraph gm);
 void print_gm_var_map_info(std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_var_map);
 void print_gm(GMGraph gm);
+
+struct sort_by_x_y {
+    inline bool operator() (const std::pair<int,VertexData> v1, const std::pair<int,VertexData> v2) {
+        std::pair<float,float> v1_x_y = make_pair(v1.second.x,v1.second.y);
+        std::pair<float,float> v2_x_y = make_pair(v2.second.x,v2.second.y);
+
+        if(greater_than_floats(v1_x_y.first,v2_x_y.first)) {
+            return false;
+        } else if(compare_floats(v1_x_y.first,v2_x_y.first)) {
+            if(greater_than_floats(v1_x_y.second,v2_x_y.second)) {
+                return true;
+            } else if(compare_floats(v1_x_y.second,v2_x_y.second)) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            return true;
+        }
+    }
+};
 
 struct sort_by_id {
     inline bool operator() (const std::pair<int,VertexData> v1, const std::pair<int,VertexData> v2) {
@@ -122,7 +146,7 @@ struct sort_by_id {
     }
 };
 
-struct sort_edges {
+/*struct sort_edges {
     inline bool operator() (const std::pair<std::pair<int,int>, EdgeData> e1, const std::pair<std::pair<int,int>, EdgeData> e2) {
         if(e1.first.first == e2.first.first) {
             return e1.first.second < e2.first.second;
@@ -130,6 +154,32 @@ struct sort_edges {
             return e1.first.first < e2.first.first;
         }
     }
+};*/
+
+struct sort_edges {
+    inline bool operator() (const std::pair<std::pair<int,int>, EdgeData> e1, const std::pair<std::pair<int,int>, EdgeData> e2) {
+        std::pair<VertexData,VertexData> e1_source_target = std::make_pair(gm[e1.first.first],gm[e1.first.second]);
+        std::pair<VertexData,VertexData> e2_source_target = std::make_pair(gm[e2.first.first],gm[e2.first.second]);
+
+        if(e1.first.first == e2.first.first) {
+            return !compare_floats(e1_source_target.second.x,e2_source_target.second.x) && !greater_than_floats(e1_source_target.second.x,e2_source_target.second.x);
+        } else {
+            if(!exists_path(e1.first.first, e2.first.first, gm) && !exists_path(e2.first.first, e1.first.first, gm)) {
+                return !compare_floats(e1_source_target.first.x,e2_source_target.first.x) && !greater_than_floats(e1_source_target.first.x,e2_source_target.first.x);
+            } else if(exists_path(e1.first.first, e2.first.first, gm)) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    sort_edges(GMGraph gm) {
+        this->gm = gm;
+    }
+
+    private:
+        GMGraph gm;
 };
 
 #endif

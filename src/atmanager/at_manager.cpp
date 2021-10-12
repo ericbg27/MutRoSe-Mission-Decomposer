@@ -199,8 +199,6 @@ bool ATManager::check_trigger_ctx(int current_node, int depth) {
     @ Output: The abstract task instances in a map format
 */
 map<string,vector<AbstractTask>> FileKnowledgeATManager::generate_at_instances(map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map, vector<VariableMapping> var_mapping) {
-	vector<int> vctr = get_dfs_gm_nodes(gm);
-
 	/*
 		Get the world knowledge ptree. We disconsider the root key, if any, since we expect it to be
 		just a name like world_db or similar
