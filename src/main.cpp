@@ -211,10 +211,7 @@ int main(int argc, char** argv) {
 	}
 
 	if(has_object_sort) {
-		aux.declared_sorts.push_back("capability");
 		aux.declared_sorts.push_back("robot");
-		aux.declared_sorts.push_back("robotlocation");
-		aux.declared_sorts.push_back("location");
 		aux.declared_sorts.push_back("robotteam");
 		added_native_sorts = true;
 
@@ -223,30 +220,15 @@ int main(int argc, char** argv) {
 	}
 
 	if(!added_native_sorts) {
-		sort_definition capability_sort;
-		capability_sort.declared_sorts.push_back("capability");
-		capability_sort.has_parent_sort = false;
-
 		sort_definition robot_sort;
 		robot_sort.declared_sorts.push_back("robot");
 		robot_sort.has_parent_sort = false;
-
-		sort_definition robotlocation_sort;
-		robotlocation_sort.declared_sorts.push_back("robotlocation");
-		robotlocation_sort.has_parent_sort = false;
-
-		sort_definition location_sort;
-		location_sort.declared_sorts.push_back("location");
-		location_sort.has_parent_sort = false;
 
 		sort_definition robotteam_sort;
 		robotteam_sort.declared_sorts.push_back("robotteam");
 		robotteam_sort.has_parent_sort = false;
 
-		sort_definitions.push_back(capability_sort);
 		sort_definitions.push_back(robot_sort);
-		sort_definitions.push_back(robotlocation_sort);
-		sort_definitions.push_back(location_sort);
 		sort_definitions.push_back(robotteam_sort);
 	}
 
@@ -259,29 +241,6 @@ int main(int argc, char** argv) {
 		sorts.erase(remove_sort);
 				
 		sorts["capability"].insert(c);
-	}
-
-	/*
-		Add native predicates
-	*/
-	predicate_definition* at_pred = new predicate_definition();
-	predicate_definition* hascapability_pred = new predicate_definition();
-
-	var_declaration* at_vars = new var_declaration();
-	var_declaration* hascapability_vars = new var_declaration();
-
-	at_vars->vars.push_back(make_pair("?r","robot"));
-	at_vars->vars.push_back(make_pair("?rloc","robotlocation"));
-	hascapability_vars->vars.push_back(make_pair("?r","robot"));
-	hascapability_vars->vars.push_back(make_pair("?c","capability"));
-
-	at_pred->name = "at";
-	for(unsigned int i = 0;i < at_vars->vars.size();i++) {
-		at_pred->argument_sorts.push_back(at_vars->vars[i].second);
-	}
-	hascapability_pred->name = "hascapability";
-	for(unsigned int i = 0;i < hascapability_vars->vars.size();i++) {
-		hascapability_pred->argument_sorts.push_back(hascapability_vars->vars[i].second);
 	}
 
 	if(sort_definitions.size() > 0) {
@@ -330,19 +289,8 @@ int main(int argc, char** argv) {
 	}
 
 	expand_sorts();
-	/*
-		Additional variables are added in lines 96-114 (14/10) of domain.cpp (in function flatten_mdp_tasks)
-		These are added for every constant, that's why capabilities appear with ?var_for_{capability name} and sort_for_{capability name}
-		- Added in var_or_const_list definition in hddl.y
-	*/
-
-	/*
-		For HDDL parsing we need to go through the abstract tasks and generate the TDG for each one of them. With the TDGs
-		in hand, we can find out which tasks form the abstract task
-	*/
 
 	flatten_mdp_tasks();
-
 	parsed_method_to_data_structures(false, false, false);
 
 	/*
@@ -462,23 +410,6 @@ int main(int argc, char** argv) {
 	if(verbose) {
 		print_runtime_annot_from_general_annot(gmannot);
 	}
-
-	/*
-		We need to associate to trim decomposition paths only to those paths that are allowed
-
-		-> For this we need to verify AT ordering in the GM
-			- With this we know how to check the initial state of the world for each and every instance of each AT
-			- We can use the goal model runtime annotation for this
-		-> With trimmed decomposition paths we know how many extra instances of the AT's we need to create
-		-> This is the information we need to finally know all of the AT instances we can execute
-			- When task allocation is performed, only one way of decomposing each AT will be chosen
-			
-		-> Let us note that we have two steps in AT generation
-			- One is analyzing the Goal Model and its forAll statements (in the future iterate statements possibly), generating instances that
-			NEED to be executed
-			- The second step is generation based on possible paths of decomposition, where we have a decision to be made between one of the instances
-			generated from this process
-	*/
 
 	MissionDecomposerFactory mission_decomposer_factory;
 	shared_ptr<MissionDecomposer> mission_decomposer_ptr = mission_decomposer_factory.create_mission_decomposer(knowledge_manager, init, init_functions, at_decomposition_paths, at_instances, gmannot, gm, verbose, pretty_print);
