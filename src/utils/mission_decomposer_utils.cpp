@@ -257,6 +257,13 @@ pair<ATGraph,map<int,int>> generate_trimmed_at_graph(ATGraph mission_decompositi
 	return make_pair(trimmed_mission_decomposition, reverse_ids_map);
 }
 
+/*
+    Function: generate_tree_like_at_graph
+    Objective: Generate ATGraph without context dependency and execution constraint edges
+
+    @ Input 1: The ATGraph for which the tree-like ATGraph will be built
+    @ Output: The tree-like ATGraph
+*/
 ATGraph generate_tree_like_at_graph(ATGraph mission_decomposition) {
 	ATGraph tree_like_at_graph = mission_decomposition;
 
@@ -938,6 +945,13 @@ void print_mission_decomposition(ATGraph mission_decomposition) {
 	std::cout << std::endl;
 }
 
+/*
+    Function: is_unique_branch
+    Objective: Verify if a given ATGraph is an unique branch ATGraph
+
+    @ Input 1: The ATGraph that will be checked
+    @ Output: A boolean flag indicating if the ATGraph is unique branch or not
+*/
 bool is_unique_branch(ATGraph mission_decomposition) {
     ATGraph::vertex_iterator i, end;
 
