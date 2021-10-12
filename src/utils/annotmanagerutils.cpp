@@ -646,11 +646,6 @@ pair<vector<pt::ptree>,set<string>> solve_query_statement(pt::ptree queried_tree
                     }
                 }
             }
-
-            /*string var_name = std::get<vector<pair<string,string>>>(gm[node_id].custom_props[controls_prop]).at(0).first;
-            string var_type = std::get<vector<pair<string,string>>>(gm[node_id].custom_props[controls_prop]).at(0).second;
-
-            valid_variables[var_name] = make_pair(var_type,aux);*/
         }
 
         return make_pair(aux,accepted_records);

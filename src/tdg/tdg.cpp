@@ -80,7 +80,7 @@ vector<DecompositionPath> TDG::retrieve_possible_decompositions() {
 /*
     Function: decomposition_recursion
     Objective: Recursively generate the decomposition based on a previously generated DFS nodes vector. World state is
-    create based on previous preconditions and effects and variables are mapped accordingly to the original root abstract
+    created based on previous preconditions and effects and variables are mapped accordingly to the original root abstract
     task variables.
 
     @ Input 1: The vector containing the TDG nodes visited using DFS
@@ -397,11 +397,25 @@ vector<CompleteDecompositionPath> TDG::retrieve_possible_complete_decompositions
     vector<literal> world_state; //Empty since root is an AT and doesn't introduce preconditions and effects
     vector<pair<string,string>> variable_mapping; //Empty since we only have original root vars
 
-    paths = complete_decomposition_recursion(depth_first_nodes,0, initial_vars, world_state, variable_mapping, -1, 0);
+    paths = complete_decomposition_recursion(depth_first_nodes, 0, initial_vars, world_state, variable_mapping, -1, 0);
 
     return paths;
 }
 
+/*
+    Function: complete_decomposition_recursion
+    Objective: Recursive function to generate complete decomposition paths. Complete decomposition paths are HTN decomposed paths which contain methods and abstract tasks
+    in addition to actions
+
+    @ Input 1: The TDG nodes in a DFS order
+    @ Input 2: The current node position in the DFS nodes vector
+    @ Input 3: The variables of the abstract task that is the root of the TDG
+    @ Input 4: The current non-ground world state
+    @ Input 5: The variable mappings with the original variables
+    @ Input 6: The node's parent in the TDG
+    @ Input 7: The current node's index in the TDG
+    @ Output: The vector of the complete decomposition paths of the TDG
+*/ 
 vector<CompleteDecompositionPath> TDG::complete_decomposition_recursion(vector<int> dfs_nodes, int current_pos, vector<pair<string,string>> original_vars, vector<literal>& world_state, vector<pair<string,string>> variable_mapping, int parent, int current_index) {
     int node = dfs_nodes.at(current_pos);
 

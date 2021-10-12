@@ -37,13 +37,9 @@ extern std::map<std::string,general_annot*> goals_and_rannots; //Map from goals 
 general_annot* retrieve_runtime_annot(std::string id);
 
 void recursive_fill_up_runtime_annot(general_annot* rannot, VertexData gm_node);
-
 void recursive_child_replacement(general_annot* copy, general_annot* original);
-
 void rename_at_instances_in_runtime_annot(general_annot* gmannot, std::map<std::string,std::vector<AbstractTask>> at_instances, GMGraph gm);
-
 void recursive_at_instances_renaming(general_annot* rannot, std::map<std::string,int>& at_instances_counter, bool in_forAll, map<string,vector<AbstractTask>> at_instances, GMGraph gm);
-
 void print_runtime_annot_from_general_annot(general_annot* rt);
 
 std::string recursive_rt_annot_build(general_annot* rt);
