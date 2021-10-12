@@ -108,6 +108,16 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
         }
     }
 
+    boost::filesystem::path dir = boost::filesystem::current_path() / "ihtn";
+
+    if(!boost::filesystem::exists(dir.string()) || !boost::filesystem::is_directory(dir.string())) {
+        boost::filesystem::create_directory(dir);
+    } else {
+        for(boost::filesystem::directory_iterator dir_it(dir); dir_it != boost::filesystem::directory_iterator(); ++dir_it) {
+            boost::filesystem::remove_all(dir_it->path());
+        }
+    }
+
     // For each valid decomposition generate a different iHTN
     int ihtn_counter = 1;
     for(vector<pair<int,ATNode>> decomposition : valid_mission_decompositions) {
@@ -333,17 +343,7 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
 
         vector<vector<int>> decomposition_orderings = find_decomposition_orderings(decomposition_ids, seq_fb_constraints_map);
 
-        boost::filesystem::path dir = boost::filesystem::current_path() / "ihtn";
-
         try {
-            if(!boost::filesystem::exists(dir.string()) || !boost::filesystem::is_directory(dir.string())) {
-                boost::filesystem::create_directory(dir);
-            } else {
-                for(boost::filesystem::directory_iterator dir_it(dir); dir_it != boost::filesystem::directory_iterator(); ++dir_it) {
-                    boost::filesystem::remove_all(dir_it->path());
-                }
-            }
-
             for(vector<int> ordering : decomposition_orderings) {
                 IHTN ordering_ihtn = ihtn_create(ordering, nodes_map, agents_set, agents_map);
 
