@@ -2,11 +2,15 @@
 
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/graph/dijkstra_shortest_paths.hpp>
 
 #include <iostream>
 #include <regex>
 #include <sstream>
 #include <set>
+
+typedef boost::graph_traits<GMGraph>::vertex_descriptor vertex_descriptor;
+typedef boost::graph_traits<GMGraph>::edge_descriptor edge_descriptor;
 
 using namespace std;
 
@@ -25,6 +29,30 @@ vector<int> get_dfs_gm_nodes(GMGraph gm) {
     boost::depth_first_search(gm, vis, colormap, 0);
 
     return vis.GetVector();
+}
+
+bool exists_path(int source, int target, GMGraph gm) {
+    int vertices_number = boost::num_vertices(gm);
+
+    vector<bool> visited(vertices_number, false);
+    visited[source] = true;
+    
+    std::stack<int> next;
+    next.push(source);
+
+    while(!next.empty()) {
+        int current_vertex = next.top();
+        next.pop();
+
+        for(int next_vertex = 0; next_vertex < vertices_number; next_vertex++) {
+            if(!visited[next_vertex] && std::find(gm[current_vertex].children.begin(), gm[current_vertex].children.end(), next_vertex) != gm[current_vertex].children.end()) {
+                visited[next_vertex] = true;
+                next.push(next_vertex);
+            }
+        }
+    }
+
+    return visited[target];
 }
 
 /*
@@ -167,7 +195,6 @@ int find_gm_node_by_id(string id, GMGraph gm) {
     @ Output: Void
 */ 
 void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
-    v.periodic = false;
     v.group = true;
     v.divisible = true;
 
@@ -175,20 +202,9 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
 
     map<string,string>::iterator cp_it;
     for(cp_it = custom_props.begin();cp_it != custom_props.end();++cp_it) {
-        if(cp_it->first == "Periodic") {
-            string aux = cp_it->second;
-            transform(aux.begin(), aux.end(), aux.begin(), ::tolower);
-            //istringstream(boost::to_lower_copy(cp_it->second)) >> std::boolalpha >> v.periodic;
-            istringstream(aux) >> std::boolalpha >> v.periodic;
-        } else if(cp_it->first == "Deadline") { //Problem if deadline is symbolic (solve this later!)
-            stringstream ss(cp_it->second);
-            ss >> v.deadline;
-        } else if(cp_it->first == goal_type_prop) {
+        if(cp_it->first == goal_type_prop) {
             v.custom_props[goal_type_prop] = cp_it->second;
-        } else if(cp_it->first == "Period") {
-            stringstream ss(cp_it->second);
-            ss >> v.period;
-        } else if(cp_it->first == "Group") {
+        } else if(cp_it->first == group_prop) {
             string aux = cp_it->second;
             transform(aux.begin(), aux.end(), aux.begin(), ::tolower);
             if(aux == "true" || aux == "false") {
@@ -196,7 +212,7 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
             } else {
                 v.group = true;
             }
-        } else if(cp_it->first == "Divisible") {
+        } else if(cp_it->first == divisible_prop) {
             string aux = cp_it->second;
             transform(aux.begin(), aux.end(), aux.begin(), ::tolower);
             if(aux == "true" || aux == "false") {
@@ -257,37 +273,40 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
         v.custom_props[goal_type_prop] = perform_goal_type;
     }
 
-    if(std::get<string>(v.custom_props[goal_type_prop]) == achieve_goal_type) {
-        AchieveCondition a;
-        a = parse_achieve_condition(custom_props[achieve_condition_prop]);
-        v.custom_props[achieve_condition_prop] = a;
-        if(custom_props.find(failure_condition_prop) != custom_props.end()) {
-            FailureCondition f;
-            f.set_condition(custom_props[failure_condition_prop]);
-            v.custom_props[failure_condition_prop] = f;
-        }
-    } else if(std::get<string>(v.custom_props[goal_type_prop]) == query_goal_type) {
-        string aux = custom_props[queried_property_prop];
-        std::transform(aux.begin(),aux.end(),aux.begin(),::tolower);
-        if(aux.find("select")) {
-            v.custom_props[queried_property_prop] = parse_select_expr(custom_props[queried_property_prop]);
+    if(v.custom_props.find(goal_type_prop) != v.custom_props.end()) {
+        if(std::get<string>(v.custom_props[goal_type_prop]) == achieve_goal_type) {
+            AchieveCondition a;
+            a = parse_achieve_condition(custom_props[achieve_condition_prop]);
+            v.custom_props[achieve_condition_prop] = a;
+            /*if(custom_props.find(failure_condition_prop) != custom_props.end()) {
+                FailureCondition f;
+                f.set_condition(custom_props[failure_condition_prop]);
+                v.custom_props[failure_condition_prop] = f;
+            }*/
+        } else if(std::get<string>(v.custom_props[goal_type_prop]) == query_goal_type) {
+            string aux = custom_props[queried_property_prop];
+            std::transform(aux.begin(),aux.end(),aux.begin(),::tolower);
+            if(aux.find("select")) {
+                v.custom_props[queried_property_prop] = parse_select_expr(custom_props[queried_property_prop]);
+            } else {
+                string missing_select_statement_error = "Missing select statement in Query Goal [" + parse_goal_text(v.text).first + "]";
+
+                throw std::runtime_error(missing_select_statement_error);
+            }
+        } else if(std::get<string>(v.custom_props[goal_type_prop]) == perform_goal_type) {
+            /*if(custom_props.find(failure_condition_prop) != custom_props.end()) {
+                FailureCondition f;
+                f.set_condition(custom_props[failure_condition_prop]);
+                v.custom_props[failure_condition_prop] = f;
+            }*/
         } else {
-            //v.custom_props[queried_property_prop] = custom_props[queried_property_prop];
-            string missing_select_statement_error = "Missing select statement in Query Goal [" + parse_goal_text(v.text).first + "]";
-
-            throw std::runtime_error(missing_select_statement_error);
+            string goal_type_warning = "Invalid goal type on node [" + get_node_name(v.text) + "]: [" + std::get<string>(v.custom_props[goal_type_prop]) + "]. Defaulting to Perform type.";
+            
+            std::cout << std::endl;
+            std::cout << "------------------------ WARNING ------------------------" << std::endl;
+            std::cout << goal_type_warning << std::endl;
+            std::cout << "---------------------------------------------------------" << std::endl << std::endl;
         }
-    } else if(std::get<string>(v.custom_props[goal_type_prop]) == perform_goal_type) {
-        if(custom_props.find(failure_condition_prop) != custom_props.end()) {
-            FailureCondition f;
-            f.set_condition(custom_props[failure_condition_prop]);
-            v.custom_props[failure_condition_prop] = f;
-        }
-    } else if(std::get<string>(v.custom_props[goal_type_prop]) == loop_goal_type) {
-        string not_implemented_loop_goal_error = "Current version of the tool does not support Loop goals yet.";
-
-        throw std::runtime_error(not_implemented_loop_goal_error);
-        //v.custom_props["IterationRule"] = parse_iterate_expr(custom_props["IterationRule"]);
     }
 }
 
@@ -337,8 +356,6 @@ vector<pair<int,VertexData>> parse_gm_nodes(pt::ptree nodes) {
         }
     }
 
-    std::sort(vertex.begin(), vertex.end(), sort_by_id());
-
     return vertex;
 }
 
@@ -380,13 +397,12 @@ vector<pair<pair<int,int>, EdgeData>> parse_gm_edges(pt::ptree links, GMGraph& g
             }
         }
 
-        gm[boost::vertex(s,gm)].parent = t;
-        gm[boost::vertex(t,gm)].children.push_back(s);
+        boost::add_edge(boost::vertex(t,gm), boost::vertex(s,gm), e, gm);
 
         edges.push_back(make_pair(make_pair(s,t),e));
     }
 
-    std::sort(edges.begin(), edges.end(), sort_edges());
+    std::sort(edges.begin(), edges.end(), sort_edges(gm));
 
     return edges;
 }
@@ -399,7 +415,7 @@ vector<pair<pair<int,int>, EdgeData>> parse_gm_edges(pt::ptree links, GMGraph& g
     @ Output: The GMGraph representing the Goal Model
 */ 
 GMGraph graph_from_property_tree(pt::ptree root) {
-    GMGraph gm;
+    GMGraph gm, aux;
 
     pt::ptree nodes;
     pt::ptree links;
@@ -418,22 +434,46 @@ GMGraph graph_from_property_tree(pt::ptree root) {
 		}
 	}
 
-    vector<pair<int,VertexData>> gm_vertices;
-    gm_vertices = parse_gm_nodes(nodes);
+    vector<pair<int,VertexData>> gm_vertices = parse_gm_nodes(nodes);
 
     //Retrieve edges from Goal Model
     links = root.get_child("links");
 
     vector<pair<pair<int,int>, EdgeData>> edges;
-    edges = parse_gm_edges(links, gm, gm_vertices);
+    edges = parse_gm_edges(links, aux, gm_vertices);
 
+    map<int,int> node_id_map;
+    
     vector<pair<pair<int,int>, EdgeData>>::iterator edges_it;
     for(edges_it = edges.begin();edges_it != edges.end();++edges_it) {
-        int s = edges_it->first.first;
-        int t = edges_it->first.second;
-        EdgeData e = edges_it->second;
+        int source_id;
+        if(node_id_map.find(edges_it->first.second) == node_id_map.end()) {
+            source_id = boost::add_vertex(aux[edges_it->first.second], gm);
 
-        boost::add_edge(boost::vertex(t, gm), boost::vertex(s, gm), e, gm);
+            node_id_map[edges_it->first.second] = source_id;
+        } else {
+            source_id = node_id_map[edges_it->first.second];
+        }
+
+        int target_id;
+        if(node_id_map.find(edges_it->first.first) == node_id_map.end()) {
+            target_id = boost::add_vertex(aux[edges_it->first.first], gm);
+
+            node_id_map[edges_it->first.first] = target_id;
+        } else {
+            target_id = node_id_map[edges_it->first.first];
+        }
+
+        EdgeData gm_edge;
+        gm_edge.id = edges_it->second.id;
+        gm_edge.type = edges_it->second.type;
+        gm_edge.source = edges_it->second.source;
+        gm_edge.target = edges_it->second.target;
+
+        boost::add_edge(boost::vertex(source_id, gm), boost::vertex(target_id, gm), gm_edge, gm);
+
+        gm[source_id].children.push_back(target_id);
+        gm[target_id].parent = source_id;
     }
 
     GMGraph::vertex_iterator i, e;
@@ -528,7 +568,6 @@ void print_gm_nodes_info(GMGraph gm) {
 			c = get<Context>(node.custom_props[context_prop]);
 
 			std::cout << "\tType: " << c.get_context_type() << std::endl;
-			//std::cout << "\tCondition: " << c.get_condition() << std::endl;
 		} else {
 			std::cout << "\tNo Context" << std::endl;
 		}
@@ -579,6 +618,13 @@ void print_gm_var_map_info(map<string, variant<pair<string,string>,pair<vector<s
 	}
 }
 
+/*
+    Function: print_gm
+    Objective: Print GMGraph to cout
+
+    @ Input: The GMGraph representing a Goal Model
+    @ Output: void. There is only printing to a terminal
+*/ 
 void print_gm(GMGraph gm) {
     GMGraph::vertex_iterator i, end;
 	GMGraph::adjacency_iterator ai, a_end;

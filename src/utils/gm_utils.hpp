@@ -22,7 +22,9 @@ const std::string params_prop = "Params";
 const std::string achieve_condition_prop = "AchieveCondition";
 const std::string queried_property_prop = "QueriedProperty";
 const std::string description_prop = "Description";
-const std::string failure_condition_prop = "FailureCondition";
+const std::string group_prop = "Group";
+const std::string divisible_prop = "Divisible";
+//const std::string failure_condition_prop = "FailureCondition";
 const std::string achieve_goal_type = "Achieve";
 const std::string perform_goal_type = "Perform";
 const std::string query_goal_type = "Query";
@@ -31,7 +33,7 @@ const std::string istar_goal = "istar.Goal";
 const std::string istar_task = "istar.Task";
 const std::string istar_and = "istar.AndRefinementLink";
 const std::string istar_or = "istar.OrRefinementLink";
-const std::set<std::string> default_props{description_prop, queried_property_prop, failure_condition_prop, achieve_condition_prop};
+const std::set<std::string> default_props{description_prop, queried_property_prop, achieve_condition_prop};
 
 const string world_db_query_var = "world_db";
 
@@ -68,23 +70,13 @@ class AchieveCondition : public Condition {
         std::string iteration_var;
 };
 
-class FailureCondition : public Condition {};
-
-struct IterationRule {
-    std::string iterated_var;
-    std::string iteration_var;
-    std::pair<std::string,std::string> result_var;
-    std::string result_init;
-    std::string end_loop;
-};
+class FailureCondition : public Condition {}; // TODO
 
 struct QueriedProperty {
     std::string queried_var;
     std::pair<std::string,std::string> query_var;
     Query* query;
 };
-
-IterationRule parse_iterate_expr(std::string expr);
 
 AchieveCondition parse_achieve_condition(std::string cond);
 

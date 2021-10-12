@@ -29,6 +29,13 @@ at_manager_type ATManager::get_at_manager_type() {
 	return atm_type;
 }
 
+/*
+    Function: erase_invalid_structures
+    Objective: Erase active achieve conditions and events that are not valid at a the new depth of the tree
+
+	@ Input 1: The new depth of the tree
+    @ Output: Void. Parameters of the ATManager are modified
+*/
 void ATManager::erase_invalid_structures(int depth) {
 	map<int,AchieveCondition>::iterator cond_it;
 	vector<int> to_erase;
@@ -54,6 +61,14 @@ void ATManager::erase_invalid_structures(int depth) {
 	}
 }
 
+/*
+    Function: at_id_instantiation
+    Objective: Instantiate ID of a given taks based on the current AT definitions
+
+	@ Input 1: The abstract task to instantiate the ID
+	@ Input 2: The current AT definitions
+    @ Output: Void. The abstract task has its ID modified
+*/
 void ATManager::at_id_instantiation(AbstractTask& at, pair<string,string> at_def) {
 	at.id = at_def.first;
 	if(!forAll_inst_id.empty()) {
@@ -66,6 +81,14 @@ void ATManager::at_id_instantiation(AbstractTask& at, pair<string,string> at_def
 	}
 }
 
+/*
+    Function: robotnumprop_instantiation
+    Objective: Instantiate the RobotNum property of a given AT based on the GM node
+
+	@ Input 1: The abstract task to instantiate the RobotNum property
+	@ Input 2: The current node of the GM
+    @ Output: Void. The abstract task has its RobotNum property instantiated
+*/
 void ATManager::robotnum_prop_instantiation(AbstractTask& at, int current_node) {
 	at.fixed_robot_num = gm[current_node].fixed_robot_num;
 	if(holds_alternative<int>(gm[current_node].robot_num)) {
@@ -75,6 +98,17 @@ void ATManager::robotnum_prop_instantiation(AbstractTask& at, int current_node) 
 	}
 }
 
+/*
+    Function: location_prop_instantiation
+    Objective: Instantiate the Location property of a task based on the current variable mappings
+
+	@ Input 1: The abstract task to instantiate the Location property
+	@ Input 2: The AT definitions
+	@ Input 3: The current node of the GM
+	@ Input 4: The variable mappings from the configuration file
+	@ Input 5: The current variable mappings obtained from the parsing of the GM
+    @ Output: Void. The abstract task has its Location property instantiated
+*/
 void ATManager::location_prop_instantiation(AbstractTask& at, pair<string,string> at_def, int current_node, vector<VariableMapping> var_mapping, 
 												map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
 	if(gm[current_node].custom_props.find(location_prop) != gm[current_node].custom_props.end()) {
@@ -111,6 +145,17 @@ void ATManager::location_prop_instantiation(AbstractTask& at, pair<string,string
 	}
 }
 
+/*
+    Function: params_prop_instantiation
+    Objective: Instantiate the Params property of a task based on the current variable mappings
+
+	@ Input 1: The abstract task to instantiate the Params property
+	@ Input 2: The AT definitions
+	@ Input 3: The current node of the GM
+	@ Input 4: The variable mappings from the configuration file
+	@ Input 5: The current variable mappings obtained from the parsing of the GM
+    @ Output: Void. The abstract task has its Params property instantiated
+*/
 void ATManager::params_prop_instantiation(AbstractTask& at, pair<string,string> at_def, int current_node, vector<VariableMapping> var_mapping, 
 												map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
 	if(gm[current_node].custom_props.find(params_prop) != gm[current_node].custom_props.end()) {
@@ -157,6 +202,14 @@ void ATManager::params_prop_instantiation(AbstractTask& at, pair<string,string> 
 	}
 }
 
+/*
+    Function: events_prop_instantiation
+    Objective: Instantiate the TriggeringEvents property of a task based on the events to insert and if events are to be inserted
+
+	@ Input 1: The abstract task to instantiate the TriggeringEvents property
+	@ Input 2: A boolean flag representing the need to insert events
+    @ Output: Void. The abstract task has its TriggeringEvents property instantiated
+*/
 void ATManager::events_prop_instantiation(AbstractTask& at, bool insert_events) {
 	if(!valid_events.empty() && insert_events) {
 		vector<string> events;
@@ -171,6 +224,14 @@ void ATManager::events_prop_instantiation(AbstractTask& at, bool insert_events) 
 	}
 }
 
+/*
+    Function: check_trigger_ctx
+    Objective: Check if current GM node instantiates a trigger context and update events accordingly
+
+	@ Input 1: The current GM node
+	@ Input 2: The current GM node depth
+    @ Output: A boolean flag representing the need to insert events. Furthermore, the valid events parameter is updated
+*/
 bool ATManager::check_trigger_ctx(int current_node, int depth) {
 	bool insert_events = false;
 
@@ -199,8 +260,6 @@ bool ATManager::check_trigger_ctx(int current_node, int depth) {
     @ Output: The abstract task instances in a map format
 */
 map<string,vector<AbstractTask>> FileKnowledgeATManager::generate_at_instances(map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map, vector<VariableMapping> var_mapping) {
-	vector<int> vctr = get_dfs_gm_nodes(gm);
-
 	/*
 		Get the world knowledge ptree. We disconsider the root key, if any, since we expect it to be
 		just a name like world_db or similar
@@ -327,6 +386,15 @@ void ATManager::recursive_at_instances_generation(int current, int depth, map<in
 	}
 }
 
+/*
+    Function: query_goal_resolution
+    Objective: Solve the QueriedProperty of a given GM node
+
+	@ Input 1: The index of the current GM node
+	@ Input 2: The world knowledge tree representation
+	@ Input 3: The current variable mappings of the Goal Model
+    @ Output: Void. Parameters are updated based on the results of solving the QueriedProperty
+*/
 void FileKnowledgeATManager::query_goal_resolution(int current_node, pt::ptree world_tree, map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map) {
 	pt::ptree queried_tree = get_query_ptree(gm, current_node, valid_variables, valid_forAll_conditions, world_tree, fk_manager->get_unique_id());
 	QueriedProperty q = std::get<QueriedProperty>(gm[current_node].custom_props[queried_property_prop]);
@@ -352,6 +420,19 @@ void FileKnowledgeATManager::query_goal_resolution(int current_node, pt::ptree w
 	}
 }
 
+/*
+    Function: achieve_goal_resolution
+    Objective: Solve the AchieveCondition of a given GM node and call the recursive function accordingly
+
+	@ Input 1: The index of the current GM node
+	@ Input 2: The depth of the current GM node
+	@ Input 3: The world knowledge tree representation
+	@ Input 4: A flag representing the need to insert events
+	@ Input 5: The node depths map
+	@ Input 6: The variable mappings from the configuration file
+	@ Input 7: The current variable mappings of the Goal Model
+    @ Output: Void. Parameters are updated based on the results of solving the AchieveCondition
+*/
 void FileKnowledgeATManager::achieve_goal_resolution(int current_node, int depth, pt::ptree world_tree, bool insert_events, map<int,int>& node_depths,
 														vector<VariableMapping> var_mapping, map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map) {
 	AchieveCondition a = std::get<AchieveCondition>(gm[current_node].custom_props[achieve_condition_prop]);
