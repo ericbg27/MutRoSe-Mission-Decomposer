@@ -232,17 +232,6 @@ int main(int argc, char** argv) {
 		sort_definitions.push_back(robotteam_sort);
 	}
 
-	/*
-		Add capabilities as constants to be used in the rest of the code
-	*/
-	string s = "sort_for_";
-	for(string c : capabilities_definitions) {
-		string remove_sort = s + c;
-		sorts.erase(remove_sort);
-				
-		sorts["capability"].insert(c);
-	}
-
 	if(sort_definitions.size() > 0) {
 		vector<sort_definition>::iterator sort_def_it = sort_definitions.begin();
 		sort_definition current_sort = *sort_def_it;
