@@ -19,6 +19,15 @@ IHTNGenerator::IHTNGenerator(GMGraph gm, ATGraph mission_decomposition, bool ver
     this->decomposition_path_mapping = decomposition_path_mapping;
 }
 
+/*
+    Function: generate_ihtn
+    Objective: Generate one iHTN for each valid mission decomposition
+
+    @ Input 1: The semantic mappings given in the configuration file
+	@ Input 2: The mappings of the OCL variables from the Goal Model
+	@ Input 3: The robot-related sorts
+    @ Output: Void. The iHTNs are generated in JSON files in a new ihtn folder. If the folder exists, its context is erased previous to the creation of the new files
+*/
 void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map, set<string> robot_related_sorts) {
     ConstraintManager constraint_generator(gm, mission_decomposition, verbose, pretty_print);
     vector<Constraint> mission_constraints = constraint_generator.generate_mission_constraints();
@@ -481,6 +490,16 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
     }
 }
 
+/*
+    Function: ihtn_create
+    Objective: Create an iHTN based on a given mission decomposition
+
+    @ Input 1: The nodes of the decomposition. These are totally ordered
+	@ Input 2: The map between node IDs and their content
+	@ Input 3: The set of agents that will execute this mission decomposition
+    @ Input 4: The map of agents to the decomposition nodes
+    @ Output: The iHTN that was built
+*/
 IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, set<string> agents, map<int,vector<string>> agents_map) {
     IHTN ihtn;
     
@@ -741,6 +760,14 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
     return ihtn;
 }   
 
+/*
+    Function: find_decomposition_orderings
+    Objective: Find the possible orderings for a given decomposition
+
+    @ Input 1: The decomposition node IDs
+	@ Input 2: The map of sequential/fallback constraints between tasks
+    @ Output: The vector of possible orderings
+*/
 vector<vector<int>> find_decomposition_orderings(vector<int> decomposition, map<int,pair<vector<int>,vector<constraint_type>>> seq_fb_constraints_map) {
     vector<vector<int>> possible_orderings;
     
@@ -758,6 +785,15 @@ vector<vector<int>> find_decomposition_orderings(vector<int> decomposition, map<
     return possible_orderings;
 }
 
+/*
+    Function: recursive_decomposition_ordering_find
+    Objective: Recursive function to find the possible decomposition orderings
+
+    @ Input 1: The current orderings that were built from previous nodes
+	@ Input 2: The totally ordered decomposition that is being checked
+    @ Input 3: The map of sequential/fallback constraints between tasks
+    @ Output: The vector of possible orderings at the given level of recursion
+*/
 vector<vector<int>> recursive_decomposition_ordering_find(vector<vector<int>> current_orderings, vector<int> decomposition, map<int,pair<vector<int>,vector<constraint_type>>> seq_fb_constraints_map) {
     if(decomposition.size() == 0) {
         return current_orderings;
