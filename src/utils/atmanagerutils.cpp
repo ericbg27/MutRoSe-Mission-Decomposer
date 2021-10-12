@@ -310,7 +310,7 @@ bool check_path_validity(vector<task> path, vector<ground_literal> world_state, 
     @ Output: The world knowledge trees of the records that satisfied the queried property. In addition, a set of their unique knowledge ID's is given
 */
 pair<vector<pt::ptree>,set<string>> solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm, int node_id, map<string,pair<string,vector<pt::ptree>>>& valid_variables, 
-							map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map) {
+							map<string, variant<pair<string,string>,pair<vector<string>,string>>>& gm_var_map, string knowledge_unique_id) {
 	if(holds_alternative<pair<Query*,Query*>>(q.query->query)) {
         pair<Query*,Query*> query_items = std::get<pair<Query*,Query*>>(q.query->query);
 
@@ -319,14 +319,14 @@ pair<vector<pt::ptree>,set<string>> solve_query_statement(pt::ptree queried_tree
         aux1.query_var = q.query_var;
         aux1.query = query_items.first;
 
-        pair<vector<pt::ptree>,set<string>> valid_query1 = solve_query_statement(queried_tree, aux1, gm, node_id, valid_variables, gm_var_map);
+        pair<vector<pt::ptree>,set<string>> valid_query1 = solve_query_statement(queried_tree, aux1, gm, node_id, valid_variables, gm_var_map, knowledge_unique_id);
 
         QueriedProperty aux2;
         aux2.queried_var = q.queried_var;
         aux2.query_var = q.query_var;
         aux2.query = query_items.second;
 
-        pair<vector<pt::ptree>,set<string>> valid_query2 = solve_query_statement(queried_tree, aux2, gm, node_id, valid_variables, gm_var_map);
+        pair<vector<pt::ptree>,set<string>> valid_query2 = solve_query_statement(queried_tree, aux2, gm, node_id, valid_variables, gm_var_map, knowledge_unique_id);
 
 		pair<vector<pt::ptree>,set<string>> final_result = valid_query1;
 
@@ -344,7 +344,7 @@ pair<vector<pt::ptree>,set<string>> solve_query_statement(pt::ptree queried_tree
 
             vector<pt::ptree>::iterator result_it;
             for(result_it = final_result.first.begin(); result_it != final_result.first.end(); ) {
-                string result_val = result_it->get<string>("name");
+                string result_val = result_it->get<string>(knowledge_unique_id);
 
                 if(final_result.second.find(result_val) == final_result.second.end()) {
                     final_result.first.erase(result_it);
@@ -365,7 +365,7 @@ pair<vector<pt::ptree>,set<string>> solve_query_statement(pt::ptree queried_tree
             }
 
 			for(pt::ptree res : valid_query2.first) {
-				if(aux.find(res.get<string>("name")) != aux.end()) {
+				if(aux.find(res.get<string>(knowledge_unique_id)) != aux.end()) {
 					final_result.first.push_back(res);
 				}
 			}
@@ -383,7 +383,7 @@ pair<vector<pt::ptree>,set<string>> solve_query_statement(pt::ptree queried_tree
 				if(child.first == q.query_var.second) {
 					if(query_item.size() == 0) {
 						aux.push_back(child.second);
-						accepted_records.insert(child.second.get<string>("name"));
+						accepted_records.insert(child.second.get<string>(knowledge_unique_id));
 					} else if(query_item.size() == 1) {
 						if(query_item.at(0) != "") {
 							string prop = query_item.at(0).substr(query_item.at(0).find('.')+1);
@@ -399,12 +399,12 @@ pair<vector<pt::ptree>,set<string>> solve_query_statement(pt::ptree queried_tree
 								}
 								if(prop_val) {
 									aux.push_back(child.second);
-									accepted_records.insert(child.second.get<string>("name"));
+									accepted_records.insert(child.second.get<string>(knowledge_unique_id));
 								}
 							}
 						} else {
 							aux.push_back(child.second);
-							accepted_records.insert(child.second.get<string>("name"));
+							accepted_records.insert(child.second.get<string>(knowledge_unique_id));
 						}
 					} else {
 						if(query_item.at(1) == ocl_equal || query_item.at(1) == ocl_different) {
@@ -423,7 +423,7 @@ pair<vector<pt::ptree>,set<string>> solve_query_statement(pt::ptree queried_tree
 								}
 								if(result) {
 									aux.push_back(child.second);
-									accepted_records.insert(child.second.get<string>("name"));
+									accepted_records.insert(child.second.get<string>(knowledge_unique_id));
 								}
 							}
 						} else if(query_item.at(1) == ocl_in) {
@@ -493,13 +493,13 @@ pair<vector<pt::ptree>,set<string>> solve_query_statement(pt::ptree queried_tree
 
 													if(std::find(attr_values.begin(), attr_values.end(), prop_val) != attr_values.end()) {
 														aux.push_back(child.second);
-														accepted_records.insert(child.second.get<string>("name"));
+														accepted_records.insert(child.second.get<string>(knowledge_unique_id));
 													}
 												} else if(!attr_tree.empty() && attr_data == "") {
 													BOOST_FOREACH(pt::ptree::value_type val, attr_tree) {
 														if(prop_val == val.second.data()) {
 															aux.push_back(child.second);
-															accepted_records.insert(child.second.get<string>("name"));
+															accepted_records.insert(child.second.get<string>(knowledge_unique_id));
 
 															break;
 														}
@@ -543,7 +543,7 @@ pair<vector<pt::ptree>,set<string>> solve_query_statement(pt::ptree queried_tree
 
 											if(std::find(var_value_and_type.first.begin(), var_value_and_type.first.end(), prop_val) != var_value_and_type.first.end()) {
 												aux.push_back(child.second);
-												accepted_records.insert(child.second.get<string>("name"));
+												accepted_records.insert(child.second.get<string>(knowledge_unique_id));
 											}
 										} else {
 											string query_statement_non_collection_var_error = "Wrong query statement in Goal " + get_node_name(gm[node_id].text) + ". Usage of in statement in non-collection variable.";
@@ -567,13 +567,13 @@ pair<vector<pt::ptree>,set<string>> solve_query_statement(pt::ptree queried_tree
 
 											if(std::find(attr_values.begin(), attr_values.end(), prop_val) != attr_values.end()) {
 												aux.push_back(child.second);
-												accepted_records.insert(child.second.get<string>("name"));
+												accepted_records.insert(child.second.get<string>(knowledge_unique_id));
 											}
 										} else if(!attr_tree.empty() && attr_data == "") {
 											BOOST_FOREACH(pt::ptree::value_type val, attr_tree) {
 												if(prop_val == val.second.data()) {
 													aux.push_back(child.second);
-													accepted_records.insert(child.second.get<string>("name"));
+													accepted_records.insert(child.second.get<string>(knowledge_unique_id));
 
 													break;
 												}
@@ -661,7 +661,7 @@ pair<vector<pt::ptree>,set<string>> solve_query_statement(pt::ptree queried_tree
 
 								if(result) {
 									aux.push_back(child.second);
-									accepted_records.insert(child.second.get<string>("name"));
+									accepted_records.insert(child.second.get<string>(knowledge_unique_id));
 								}
 							}
 						}

@@ -10,19 +10,23 @@
 using namespace std;
 
 void AnnotManager::set_annot_manager_type(annot_manager_type atm) {
-    am_type = FILEANNOTMANAGER;
+    this->am_type = FILEANNOTMANAGER;
 }
 
 void AnnotManager::set_gm(GMGraph g) {
-    gm = g;
+    this->gm = g;
 }
 
 void AnnotManager::set_high_level_loc_types(vector<string> hllt){
-    high_level_loc_types = hllt;
+    this->high_level_loc_types = hllt;
 }
 
 void AnnotManager::set_at_instances(map<string,vector<AbstractTask>> atinst) {
-    at_instances = atinst;
+    this->at_instances = atinst;
+}
+
+void AnnotManager::set_knowledge_unique_id(string knowledge_unique_id) {
+    this->knowledge_unique_id = knowledge_unique_id;
 }
 
 annot_manager_type AnnotManager::get_annot_manager_type() {
@@ -115,7 +119,7 @@ void FileKnowledgeAnnotManager::recursive_gm_annot_generation(general_annot* nod
             - We may be dealing with a non-leaf node, in which case we expand it and substitute it for its extension in the parent's children
     */
     if(gm[current_node].children.size() == 0) { // Leaf Node
-        node_annot->var_maps = get_annot_var_maps(valid_variables);
+        node_annot->var_maps = get_annot_var_maps(valid_variables, knowledge_unique_id);
         vctr.erase(vctr.begin());
         return;
     } 
@@ -259,9 +263,9 @@ bool FileKnowledgeAnnotManager::goal_node_resolution(general_annot* node_annot, 
     if(std::get<string>(gm[current_node].custom_props[goal_type_prop]) == query_goal_type) {
         QueriedProperty q = std::get<QueriedProperty>(gm[current_node].custom_props[queried_property_prop]);
 
-        pt::ptree query_ptree = get_query_ptree(gm, current_node, valid_variables, valid_forAll_conditions, worlddb, fk_manager->get_unique_id());
+        pt::ptree query_ptree = get_query_ptree(gm, current_node, valid_variables, valid_forAll_conditions, worlddb, knowledge_unique_id);
 
-        pair<vector<pt::ptree>,set<string>> query_result = solve_query_statement(query_ptree,q,gm,current_node,valid_variables, fk_manager->get_unique_id());
+        pair<vector<pt::ptree>,set<string>> query_result = solve_query_statement(query_ptree,q,gm,current_node,valid_variables, knowledge_unique_id);
 
         string var_name = std::get<vector<pair<string,string>>>(gm[current_node].custom_props[controls_prop]).at(0).first;
         string var_type = std::get<vector<pair<string,string>>>(gm[current_node].custom_props[controls_prop]).at(0).second;
@@ -355,7 +359,7 @@ void AnnotManager::expand_annotation(general_annot* node_annot, int current_node
         node_annot->type = expanded_annot->type;
         node_annot->children = expanded_annot->children;
         node_annot->related_goal = expanded_annot->related_goal;
-        map<string,variant<pair<string,string>,pair<vector<string>,string>>> vm = get_annot_var_maps(valid_variables);
+        map<string,variant<pair<string,string>,pair<vector<string>,string>>> vm = get_annot_var_maps(valid_variables, knowledge_unique_id);
         node_annot->var_maps = vm;
 
         bool expanded_in_forAll = false;
@@ -402,6 +406,7 @@ shared_ptr<AnnotManager> AnnotManagerFactory::create_annot_manager(shared_ptr<Kn
     if(k_manager->get_knowledge_type() == FILEKNOWLEDGE) {
 		annot_manager = std::make_shared<FileKnowledgeAnnotManager>();
 		annot_manager->set_annot_manager_type(FILEANNOTMANAGER);
+        annot_manager->set_knowledge_unique_id(k_manager->get_unique_id());
 	} else {
 		string unsupported_manager_type = "Unsupported manager type found";
 
@@ -415,7 +420,7 @@ shared_ptr<AnnotManager> AnnotManagerFactory::create_annot_manager(shared_ptr<Kn
     return annot_manager;
 }
 
-map<string,variant<pair<string,string>,pair<vector<string>,string>>> get_annot_var_maps(map<string,pair<string,vector<pt::ptree>>> valid_variables) {
+map<string,variant<pair<string,string>,pair<vector<string>,string>>> get_annot_var_maps(map<string,pair<string,vector<pt::ptree>>> valid_variables, string knowledge_unique_id) {
     map<string,variant<pair<string,string>,pair<vector<string>,string>>> var_maps;
     
     map<string,pair<string,vector<pt::ptree>>>::iterator var_it;
@@ -424,12 +429,12 @@ map<string,variant<pair<string,string>,pair<vector<string>,string>>> get_annot_v
             vector<string> var_value;
 
             for(pt::ptree v : var_it->second.second) {
-                var_value.push_back(v.get<string>("name"));
+                var_value.push_back(v.get<string>(knowledge_unique_id));
             }
 
             var_maps[var_it->first] = make_pair(var_value,var_it->second.first);
         } else if(var_it->second.second.size() == 1) {
-            string var_value = var_it->second.second.at(0).get<string>("name");
+            string var_value = var_it->second.second.at(0).get<string>(knowledge_unique_id);
 
             var_maps[var_it->first] = make_pair(var_value,var_it->second.first);
         }
