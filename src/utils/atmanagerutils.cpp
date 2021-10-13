@@ -485,11 +485,14 @@ pair<vector<pt::ptree>,set<string>> solve_query_statement(pt::ptree queried_tree
 												if(attr_tree.empty() && attr_data != "") {
 													vector<string> attr_values;
 
-													stringstream ss(attr_data);
-													string tmp;
-													while(ss >> tmp) {
-														attr_values.push_back(tmp);
+													size_t pos = 0;
+													while((pos = attr_data.find(',')) != std::string::npos) {
+                                                        string attr_val = attr_data.substr(0,pos);
+                                                        boost::trim(attr_val);
+														attr_values.push_back(attr_val);
+														attr_data.erase(0, pos+1);
 													}
+													attr_values.push_back(attr_data);
 
 													if(std::find(attr_values.begin(), attr_values.end(), prop_val) != attr_values.end()) {
 														aux.push_back(child.second);
@@ -559,11 +562,14 @@ pair<vector<pt::ptree>,set<string>> solve_query_statement(pt::ptree queried_tree
 										if(attr_tree.empty() && attr_data != "") {
 											vector<string> attr_values;
 
-											stringstream ss(attr_data);
-											string tmp;
-											while(ss >> tmp) {
-												attr_values.push_back(tmp);
+											size_t pos = 0;
+											while((pos = attr_data.find(',')) != std::string::npos) {
+												string attr_val = attr_data.substr(0,pos);
+												boost::trim(attr_val);
+												attr_values.push_back(attr_val);
+												attr_data.erase(0, pos+1);
 											}
+											attr_values.push_back(attr_data);
 
 											if(std::find(attr_values.begin(), attr_values.end(), prop_val) != attr_values.end()) {
 												aux.push_back(child.second);
