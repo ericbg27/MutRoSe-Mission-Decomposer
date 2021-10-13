@@ -410,8 +410,11 @@ void FileKnowledgeATManager::query_goal_resolution(int current_node, pt::ptree w
 		
 	string gm_var_type = parse_gm_var_type(var_type);
 	if(gm_var_type == "VALUE") {
-		//We assume everything has a name attribute
-		gm_var_map[var_name] = make_pair(query_result.first.at(0).get<string>(knowledge_unique_id),var_type); 
+		if(query_result.first.size() > 0) {
+			gm_var_map[var_name] = make_pair(query_result.first.at(0).get<string>(knowledge_unique_id),var_type); 
+		} else {
+			gm_var_map[var_name] = make_pair("",var_type);
+		}
 	} else if(gm_var_type == "COLLECTION") {
 		vector<string> var_value;
 		for(pt::ptree t : query_result.first) {

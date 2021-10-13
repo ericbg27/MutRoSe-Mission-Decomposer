@@ -135,7 +135,24 @@ void check_gm_validity(GMGraph gm) {
                 throw std::runtime_error(iteration_var_err);
             }
         } else if(goal_type == query_goal_type) {
-            // TODO: verify correctness of queried property
+            QueriedProperty qp = std::get<QueriedProperty>(gm[v].custom_props[queried_property_prop]);
+
+            if(controlled_vars.size() == 0) {
+                string no_controlled_variable_error = "No controlled variable was declared for Query goal [" + get_node_name(gm[v].text) + "]";
+
+		        throw std::runtime_error(no_controlled_variable_error);
+            }
+
+            string first_controlled_var_type = controlled_vars.at(0).second;
+            if(parse_gm_var_type(first_controlled_var_type) == "COLLECTION") {
+                first_controlled_var_type = first_controlled_var_type.substr(first_controlled_var_type.find("(")+1,first_controlled_var_type.find(")")-first_controlled_var_type.find("(")-1);
+            }
+
+            if(qp.query_var.second != first_controlled_var_type) {
+                string wrong_type_controlled_var = "Query variable [" + qp.query_var.first + "] type + [" + qp.query_var.second + "] is different than the base type of the first controlled variable [" + controlled_vars.at(0).first + "] ([" + first_controlled_var_type + "])";
+
+                throw std::runtime_error(wrong_type_controlled_var);
+            }
         }
 
         if(goal_type != achieve_goal_type) {
