@@ -441,7 +441,14 @@ int main(int argc, char** argv) {
 		map<string,CompleteDecompositionPath> decomposition_mapping;
 		decomposition_mapping = map_complete_decompositions(mission_decomposition, at_complete_decomposition_paths);
 
-		IHTNGenerator ihtn_gen(gm, mission_decomposition, verbose, pretty_print, init, init_functions, high_level_loc_types, type_mapping, decomposition_mapping);
+		map<string,string> hddl_to_ocl_type_mapping;
+		
+		map<string,string>::iterator t_mapping_it;
+		for(t_mapping_it = type_mapping.begin(); t_mapping_it != type_mapping.end(); t_mapping_it++) {
+			hddl_to_ocl_type_mapping[t_mapping_it->second] = t_mapping_it->first;
+		}
+
+		IHTNGenerator ihtn_gen(gm, mission_decomposition, verbose, pretty_print, init, init_functions, high_level_loc_types, hddl_to_ocl_type_mapping, decomposition_mapping);
 
 		ihtn_gen.generate_ihtn(semantic_mapping, gm_var_map, robot_related_sorts);
 	}
