@@ -65,6 +65,7 @@ string metric_target = dummy_function_type;
 
 map<string,set<string>> sorts;
 set<string> robot_related_sorts;
+map<string,set<string>> robot_related_sorts_map;
 vector<method> methods;
 vector<task> primitive_tasks;
 vector<task> abstract_tasks;
@@ -230,6 +231,8 @@ int main(int argc, char** argv) {
 		sort_definitions.push_back(robotteam_sort);
 	}
 
+	robot_related_sorts_map[hddl_robot_type] = set<string>();
+	robot_related_sorts_map[hddl_robotteam_type] = set<string>();
 	if(sort_definitions.size() > 0) {
 		vector<sort_definition>::iterator sort_def_it = sort_definitions.begin();
 		sort_definition current_sort = *sort_def_it;
@@ -237,16 +240,13 @@ int main(int argc, char** argv) {
 		while(sort_def_it != sort_definitions.end()) {
 			bool next = false;
 
-			if(current_sort.has_parent_sort && (current_sort.parent_sort == hddl_robot_type /*|| current_sort.parent_sort == hddl_robotteam_type*/)) {
+			if(current_sort.has_parent_sort && (current_sort.parent_sort == hddl_robot_type || current_sort.parent_sort == hddl_robotteam_type)) {
 				for(string sort : current_sort.declared_sorts) {
 					robot_related_sorts.insert(sort);
+					robot_related_sorts_map[current_sort.parent_sort].insert(sort);
 				}
 
 				next = true;
-			} else if(current_sort.has_parent_sort && current_sort.parent_sort == hddl_robotteam_type) {
-				string robotteam_user_defined_type_error = "User-defined type that inherit from robotteam are currently not accepted!";
-
-				throw std::runtime_error(robotteam_user_defined_type_error);
 			} else if(current_sort.has_parent_sort && current_sort.parent_sort != hddl_robot_type && current_sort.parent_sort != hddl_robotteam_type) {
 				bool found_def = false;
 				
@@ -450,6 +450,6 @@ int main(int argc, char** argv) {
 
 		IHTNGenerator ihtn_gen(gm, mission_decomposition, verbose, pretty_print, init, init_functions, high_level_loc_types, hddl_to_ocl_type_mapping, decomposition_mapping);
 
-		ihtn_gen.generate_ihtn(semantic_mapping, gm_var_map, robot_related_sorts);
+		ihtn_gen.generate_ihtn(semantic_mapping, gm_var_map, robot_related_sorts_map);
 	}
 }

@@ -28,9 +28,16 @@ IHTNGenerator::IHTNGenerator(GMGraph gm, ATGraph mission_decomposition, bool ver
 	@ Input 3: The robot-related sorts
     @ Output: Void. The iHTNs are generated in JSON files in a new ihtn folder. If the folder exists, its context is erased previous to the creation of the new files
 */
-void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map, set<string> robot_related_sorts) {
+void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map, map<string,set<string>> robot_related_sorts_map) {
     ConstraintManager constraint_generator(gm, mission_decomposition, verbose, pretty_print);
     vector<Constraint> mission_constraints = constraint_generator.generate_mission_constraints();
+
+    set<string> robot_related_sorts;
+
+    map<string,set<string>>::iterator r_sorts_it;
+    for(r_sorts_it = robot_related_sorts_map.begin(); r_sorts_it != robot_related_sorts_map.end(); r_sorts_it++) {
+        robot_related_sorts.insert(r_sorts_it->second.begin(),r_sorts_it->second.end());
+    }
 
     ValidMissionGenerator valid_missions_generator(mission_decomposition, gm, mission_constraints, world_state, world_state_functions, semantic_mapping, gm_var_map, verbose, robot_related_sorts, pretty_print);
     pair<vector<vector<pair<int,ATNode>>>,set<Decomposition>> valid_mission_decompositions_and_expanded_decompositions = valid_missions_generator.generate_valid_mission_decompositions();
@@ -182,9 +189,24 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
                 }
             }
             
-            // TODO: Use the sorts vector to find types that inherit from robot and robotteam
             for(pair<string,string> ng_arg : task_non_ground_args) {
-                if(robot_related_sorts.find(ng_arg.second) == robot_related_sorts.end() && ng_arg.second != hddl_robot_type && ng_arg.second != hddl_robotteam_type) {
+                bool is_robot_derived_type = false;
+
+                if(ng_arg.second == hddl_robot_type || ng_arg.second == hddl_robotteam_type) {
+                    is_robot_derived_type = true;
+                }
+
+                if(!is_robot_derived_type) {
+                    for(r_sorts_it = robot_related_sorts_map.begin(); r_sorts_it != robot_related_sorts_map.end(); ++r_sorts_it) {
+                        if(r_sorts_it->second.find(ng_arg.second) != r_sorts_it->second.end()) {
+                            is_robot_derived_type = true;
+
+                            break;
+                        }
+                    }
+                }
+
+                if(!is_robot_derived_type) {
                     string non_ground_arg_error = "Variable " + ng_arg.first + " of HDDL type " + ng_arg.second + " is not grounded. iHTN generation does not support non-ground variables that are not robot-related";
 
                     throw std::runtime_error(non_ground_arg_error);
@@ -206,7 +228,7 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
                     if(task_non_ground_args.size() == 1) {
                         pair<string,string> only_ng_arg = task_non_ground_args.at(0);
 
-                        if(only_ng_arg.second == hddl_robot_type || robot_related_sorts.find(only_ng_arg.second) != robot_related_sorts.end()) {
+                        if(only_ng_arg.second == hddl_robot_type || robot_related_sorts_map[hddl_robot_type].find(only_ng_arg.second) != robot_related_sorts_map[hddl_robot_type].end()) {
                             if(t_ctr.first == false) {
                                 found_ng_args = true;
 
@@ -245,13 +267,14 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
                             }
                         }
                     } else {
+                        // For now we assume that tasks can either have robotteam or robot type variables but not both
                         bool robot_type_vars = false;
                         for(pair<string,string> ng_arg : task_non_ground_args) {
-                            if(ng_arg.second == hddl_robot_type || robot_related_sorts.find(ng_arg.second) != robot_related_sorts.end()) { // For now we assume that tasks can either have robotteam or robot type variables but not both
+                            if(ng_arg.second == hddl_robot_type || robot_related_sorts_map[hddl_robot_type].find(ng_arg.second) != robot_related_sorts_map[hddl_robot_type].end()) {
                                 robot_type_vars = true;
 
                                 break;
-                            } else if(ng_arg.second == hddl_robotteam_type) {
+                            } else if(ng_arg.second == hddl_robotteam_type || robot_related_sorts_map[hddl_robotteam_type].find(ng_arg.second) != robot_related_sorts_map[hddl_robotteam_type].end()) {
                                 break;
                             }
                         }
