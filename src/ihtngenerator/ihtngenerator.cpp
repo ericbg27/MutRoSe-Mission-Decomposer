@@ -142,16 +142,10 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
                     bool ground = (argument == "") ? false : true;
                     if(ground) {
                         bool is_not_location_var = false;
-                        if(holds_alternative<vector<string>>(d.at.location.first)) {
-                            vector<string> aux = std::get<vector<string>>(d.at.location.first);
 
-                            if(std::find(aux.begin(), aux.end(), argument) == aux.end()) {
-                                is_not_location_var = true;
-                            }
-                        } else {
-                            if(std::get<string>(d.at.location.first) != argument) {
-                                is_not_location_var = true;
-                            }
+                        string mapped_arg_type = type_mappings[arg.second.second];
+                        if(std::find(high_level_loc_types.begin(), high_level_loc_types.end(), mapped_arg_type) == high_level_loc_types.end()) {
+                            is_not_location_var = true;
                         }
 
                         if(is_not_location_var) {
@@ -163,14 +157,27 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
                         task_non_ground_args.push_back(arg.second);
                     }
                 } else {
+                    vector<string> arguments = std::get<vector<string>>(arg.first);
+
+                    bool ground = (arguments.size() == 0) ? false : true;
+
                     bool is_not_location_var = false;
 
-                    // Find if this type of variable is not of a high-level location type
+                    string mapped_arg_type = type_mappings[arg.second.second];
+                    mapped_arg_type = mapped_arg_type.substr(mapped_arg_type.find("(")+1,mapped_arg_type.find(")")-mapped_arg_type.find("(")-1);
+                    
+                    if(std::find(high_level_loc_types.begin(), high_level_loc_types.end(), mapped_arg_type) == high_level_loc_types.end()) {
+                        is_not_location_var = true;
+                    }
                     
                     if(is_not_location_var) {
                         string vector_of_agents_error("Agent-related type container is not supported for iHTN generation");
 
                         throw std::runtime_error(vector_of_agents_error);
+                    }
+
+                    if(!ground) {
+                        task_non_ground_args.push_back(arg.second);
                     }
                 }
             }
@@ -596,35 +603,30 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
                     set<string> method_agents;
 
                     for(pair<string,string> var : m.vars) {
-                        string mapping_val;
+                        pair<string,string> mapping_val;
                         for(auto arg : d_args) {
                             if(arg.second.first == var.first) {
                                 if(holds_alternative<string>(arg.first)) { // Only alternative for now
                                     string aux = std::get<string>(arg.first);
 
-                                    mapping_val = aux;
+                                    mapping_val = make_pair(aux,arg.second.second);
                                 }
 
                                 break;
                             }
                         }
 
-                        if(mapping_val != "") {
+                        if(mapping_val.first != "") {
                             bool is_not_location_var = false;
-                            if(holds_alternative<vector<string>>(d.at.location.first)) {
-                                vector<string> aux = std::get<vector<string>>(d.at.location.first);
+                            
+                            string mapped_arg_type = type_mappings[mapping_val.second];
 
-                                if(std::find(aux.begin(), aux.end(), mapping_val) == aux.end()) {
-                                    is_not_location_var = true;
-                                }
-                            } else {
-                                if(std::get<string>(d.at.location.first) != mapping_val) {
-                                    is_not_location_var = true;
-                                }
+                            if(std::find(high_level_loc_types.begin(), high_level_loc_types.end(), mapped_arg_type) == high_level_loc_types.end()) {
+                                is_not_location_var = true;
                             }
 
                             if(is_not_location_var) {
-                                method_agents.insert(mapping_val);
+                                method_agents.insert(mapping_val.first);
                             }
                         }
                     }
@@ -644,35 +646,30 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
                         for(int var_index = 0; var_index < t.number_of_original_vars; var_index++) {
                             string var = t.vars.at(var_index).first;
 
-                            string mapping_val;
+                            pair<string,string> mapping_val;
                             for(auto arg : d_args) {
                                 if(arg.second.first == var) {
                                     if(holds_alternative<string>(arg.first)) { // Only alternative for now
                                         string aux = std::get<string>(arg.first);
 
-                                        mapping_val = aux;
+                                        mapping_val = make_pair(aux,arg.second.second);
                                     }
 
                                     break;
                                 }
                             }
 
-                            if(mapping_val != "") {
+                            if(mapping_val.first != "") {
                                 bool is_not_location_var = false;
-                                if(holds_alternative<vector<string>>(d.at.location.first)) {
-                                    vector<string> aux = std::get<vector<string>>(d.at.location.first);
+                                
+                                string mapped_arg_type = type_mappings[mapping_val.second];
 
-                                    if(std::find(aux.begin(), aux.end(), mapping_val) == aux.end()) {
-                                        is_not_location_var = true;
-                                    }
-                                } else {
-                                    if(std::get<string>(d.at.location.first) != mapping_val) {
-                                        is_not_location_var = true;
-                                    }
+                                if(std::find(high_level_loc_types.begin(), high_level_loc_types.end(), mapped_arg_type) == high_level_loc_types.end()) {
+                                    is_not_location_var = true;
                                 }
 
                                 if(is_not_location_var) {
-                                    task_agents.insert(mapping_val);
+                                    task_agents.insert(mapping_val.first);
                                 }
                             }
                         }
