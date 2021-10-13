@@ -95,12 +95,30 @@ void ConfigManager::parse_xml_configuration_file(string filename) {
                             getchar();
                         }
 
+                        boost::optional<string> unique_id_attr = config.second.get_optional<string>("unique_id");
+
+                        string unique_id = "";
+                        if(unique_id_attr) {
+                            unique_id = unique_id_attr.get();
+                        }
+
+                        if(unique_id == "") {
+                            unique_id = "name";
+                            string unique_id_missing_warning = "\n\n###################################################################################################################################\n"; 
+                            unique_id_missing_warning += "WARNING: attribute [unique_id] is missing for XML file type database [" + db + "]. Defaulting its value to 'name'.";
+                            unique_id_missing_warning += "\n###################################################################################################################################\n";
+                        }
+
                         map<string,string> map_db;
 
                         map_db["type"] = db_type;
                         map_db["file_type"] = file_type;
                         map_db["path"] = db_path;
                         map_db["xml_root"] = xml_root;
+
+                        if(db == "world_db") {
+                            map_db["unique_id"] = unique_id;
+                        }
 
                         config_info[db] = map_db;
                     } else {
