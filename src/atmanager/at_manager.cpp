@@ -401,7 +401,7 @@ void FileKnowledgeATManager::query_goal_resolution(int current_node, pt::ptree w
 
 	string knowledge_unique_id = fk_manager->get_unique_id();
 
-	pair<vector<pt::ptree>,set<string>> query_result = solve_query_statement(queried_tree, q, gm, current_node, valid_variables, gm_var_map, knowledge_unique_id);
+	pair<vector<pt::ptree>,set<string>> query_result = solve_query_statement(queried_tree, q, gm, current_node, valid_variables, knowledge_unique_id);
 
 	string var_name = std::get<vector<pair<string,string>>>(gm[current_node].custom_props[controls_prop]).at(0).first;
 	string var_type = std::get<vector<pair<string,string>>>(gm[current_node].custom_props[controls_prop]).at(0).second;
