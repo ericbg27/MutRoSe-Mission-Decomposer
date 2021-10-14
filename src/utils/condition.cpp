@@ -44,10 +44,9 @@ bool ConditionExpression::evaluate_expression(vector<ground_literal> world_state
                     if(same_predicate) {
                         if(state.positive != forAll_pred.positive) {
                             left_res = false;
-                            break;
-                        } else {
-                            break;
                         }
+
+                        break;
                     }
                 }
 
@@ -355,8 +354,9 @@ ConditionExpression* ConditionExpression::check_non_active_predicates(vector<gro
                     if(same_predicate) {
                         if(state.positive != forAll_pred.positive) {
                             active = false;
-                            break;
                         }
+
+                        break;
                     }
                 }
 

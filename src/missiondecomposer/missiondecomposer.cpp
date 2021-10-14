@@ -347,7 +347,7 @@ void MissionDecomposer::final_context_dependency_links_generation() {
 */
 bool MissionDecomposer::check_context_dependency(int parent_node, int context_node, Context context, map<string, variant<pair<string,string>,pair<vector<string>,string>>> vars_map, vector<SemanticMapping> semantic_mapping) {
 	ConditionExpression* inactive_ctx_predicates = context.get_inactive_predicates(vars_map, world_state, semantic_mapping);
-	
+
 	vector<int> visited_nodes;
 
 	map<string,variant<string,vector<string>>> instantiated_vars;

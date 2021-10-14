@@ -111,28 +111,30 @@ void check_gm_validity(GMGraph gm) {
         if(goal_type == achieve_goal_type) {
             AchieveCondition ac = std::get<AchieveCondition>(gm[v].custom_props[achieve_condition_prop]);
             
-            bool found_iterated_var = false;
-            for(auto monitored : monitored_vars) {
-                if(monitored.first == ac.get_iterated_var()) {
-                    found_iterated_var = true;
-                    break;
+            if(ac.has_forAll_expr) {
+                bool found_iterated_var = false;
+                for(auto monitored : monitored_vars) {
+                    if(monitored.first == ac.get_iterated_var()) {
+                        found_iterated_var = true;
+                        break;
+                    }
                 }
-            }
-            if(!found_iterated_var) {
-                string iterated_var_err = "Did not find iterated variable " + ac.get_iterated_var() + " in " + get_node_name(gm[v].text) + "'s controlled variables list";
-                throw std::runtime_error(iterated_var_err);
-            }
+                if(!found_iterated_var) {
+                    string iterated_var_err = "Did not find iterated variable " + ac.get_iterated_var() + " in " + get_node_name(gm[v].text) + "'s controlled variables list";
+                    throw std::runtime_error(iterated_var_err);
+                }
 
-            bool found_iteration_var = false;
-            for(auto controlled : controlled_vars) {
-                if(controlled.first == ac.get_iteration_var()) {
-                    found_iteration_var = true;
-                    break;
+                bool found_iteration_var = false;
+                for(auto controlled : controlled_vars) {
+                    if(controlled.first == ac.get_iteration_var()) {
+                        found_iteration_var = true;
+                        break;
+                    }
                 }
-            }
-            if(!found_iteration_var) {
-                string iteration_var_err = "Did not find iteration variable " + ac.get_iteration_var() + " in " + get_node_name(gm[v].text) + "'s monitored variables list";
-                throw std::runtime_error(iteration_var_err);
+                if(!found_iteration_var) {
+                    string iteration_var_err = "Did not find iteration variable " + ac.get_iteration_var() + " in " + get_node_name(gm[v].text) + "'s monitored variables list";
+                    throw std::runtime_error(iteration_var_err);
+                }
             }
         } else if(goal_type == query_goal_type) {
             QueriedProperty qp = std::get<QueriedProperty>(gm[v].custom_props[queried_property_prop]);
