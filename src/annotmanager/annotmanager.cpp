@@ -318,11 +318,22 @@ bool FileKnowledgeAnnotManager::goal_node_resolution(general_annot* node_annot, 
         string var_name = std::get<vector<pair<string,string>>>(gm[current_node].custom_props[controls_prop]).at(0).first;
         string var_type = std::get<vector<pair<string,string>>>(gm[current_node].custom_props[controls_prop]).at(0).second;
 
-        valid_variables[var_name] = make_pair(var_type,query_result.first);
+        if(parse_gm_var_type(var_type) == "COLLECTION") {
+            valid_variables[var_name] = make_pair(var_type,query_result.first);
+        } else {
+            vector<pt::ptree> aux = {};
+
+            if(query_result.first.size() > 0) {
+                aux.push_back(query_result.first.at(0));
+                valid_variables[var_name] = make_pair(var_type,aux);
+            } else {
+                valid_variables[var_name] = make_pair(var_type,aux);
+            }
+        }
     } else if(std::get<string>(gm[current_node].custom_props[goal_type_prop]) == achieve_goal_type) {
-        is_forAll_goal = true;
         AchieveCondition a = std::get<AchieveCondition>(gm[current_node].custom_props[achieve_condition_prop]);
         if(a.has_forAll_expr) {
+            is_forAll_goal = true;
             valid_forAll_conditions[depth] = a;
         }
     }
