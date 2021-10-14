@@ -165,6 +165,8 @@ pair<vector<vector<pair<int,ATNode>>>,set<Decomposition>> ValidMissionGenerator:
                                 } else {
                                     std::cout << val << ",";
                                 }
+
+                                val_index++;
                             }
                         } else {
                             string arg_val = std::get<string>(arg.first);
