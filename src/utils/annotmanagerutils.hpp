@@ -6,7 +6,8 @@
 #include <vector>
 #include <variant>
 
-#include "../utils/at.hpp"
+#include "at.hpp"
+#include "query_utils.hpp"
 #include "../gm/gm.hpp"
 
 namespace pt = boost::property_tree;
@@ -43,9 +44,5 @@ void recursive_at_instances_renaming(general_annot* rannot, std::map<std::string
 void print_runtime_annot_from_general_annot(general_annot* rt);
 
 std::string recursive_rt_annot_build(general_annot* rt);
-
-std::pair<std::vector<pt::ptree>,std::set<std::string>> solve_query_statement(pt::ptree queried_tree, QueriedProperty q, GMGraph gm, int node_id, std::map<std::string,std::pair<std::string,std::vector<pt::ptree>>>& valid_variables, std::string knowledge_unique_id);
-
-pt::ptree get_query_ptree(GMGraph gm, int node_id, map<string,pair<string,vector<pt::ptree>>> valid_variables, map<int,AchieveCondition> valid_forAll_conditions, pt::ptree world_tree, std::string knowledge_unique_id);
 
 #endif
