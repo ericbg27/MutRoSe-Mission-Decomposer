@@ -57,10 +57,10 @@ vector<sort_definition> sort_definitions;
 vector<string> rewards_definitions;
 vector<string> capabilities_definitions;
 vector<predicate_definition> predicate_definitions;
+vector<pair<predicate_definition,string>> parsed_functions;
 vector<parsed_task> parsed_primitive;
 vector<parsed_task> parsed_abstract;
 map<string,vector<parsed_method> > parsed_methods;
-vector<pair<predicate_definition,string>> parsed_functions;
 string metric_target = dummy_function_type;
 
 map<string,set<string>> sorts;
@@ -171,6 +171,7 @@ int main(int argc, char** argv) {
 	pt::ptree json_root;
 	pt::read_json(argv[jsonfile], json_root);
 
+	// Generate configuration map from configuration file
 	map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> cfg;
 
 	ConfigManager cfg_manager;
@@ -182,13 +183,12 @@ int main(int argc, char** argv) {
 	vector<SemanticMapping> semantic_mapping = std::get<vector<SemanticMapping>>(cfg["semantic_mapping"]);
 	
 	vector<string> high_level_loc_types = std::get<vector<string>>(cfg["location_types"]);
+	vector<string> output_info = std::get<vector<string>>(cfg["output"]);
 
 	//Generate Knowledge Bases and Knowledge Manager
 	KnowledgeManagerFactory k_manager_factory;
 	shared_ptr<KnowledgeManager> knowledge_manager = k_manager_factory.create_knowledge_manager(cfg, type_mapping, "world_db");
 	knowledge_manager->construct_knowledge_base(cfg);
-
-	vector<string> output = std::get<vector<string>>(cfg["output"]);
 
 	//Parse HDDL Domain file
 	run_parser_on_file(domain_file, argv[dfile]);
@@ -421,10 +421,10 @@ int main(int argc, char** argv) {
 	}
 
 	if(!ihtn_output) {
-		if(output.at(0) == "FILE") {
+		if(output_info.at(0) == "FILE") {
 			FileOutputGeneratorFactory output_gen_factory;
 
-			pair<string,string> file_output_data = std::make_pair(output.at(1),output.at(2));
+			pair<string,string> file_output_data = std::make_pair(output_info.at(1),output_info.at(2));
 			std::shared_ptr<FileOutputGenerator> output_generator_ptr = output_gen_factory.create_file_output_generator(gm, mission_decomposition, init, init_functions, file_output_data, verbose, pretty_print);
 
 			if(output_generator_ptr->get_file_output_generator_type() == XMLFILEOUTGEN) {
