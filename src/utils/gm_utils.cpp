@@ -42,13 +42,6 @@ void AchieveCondition::set_iteration_var(std::string itvar) {
 
 ConditionEvaluation* AchieveCondition::evaluate_condition(vector<SemanticMapping> semantic_mapping, map<string, variant<pair<string,string>,pair<vector<string>,string>>> gm_var_map) {
     if(has_forAll_expr) {
-        /*string iteration_var_type;
-        if(holds_alternative<pair<string,string>>(gm_var_map[iteration_var])) { // For now, the only valid condition
-            iteration_var_type = std::get<pair<string,string>>(gm_var_map[iteration_var]).second;
-        }
-
-        vector<string> iterated_var_values = std::get<pair<vector<string>,string>>(gm_var_map[iterated_var]).first;*/
-
         string var_attr_regex = "([!]?[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}";
         string var_attr_regex2 = "(((\\bnot\\b)[ ]+){1}[A-Za-z]+[A-Za-z0-9_]*[.][A-Za-z]+[A-Za-z_]*){1}";
         string number_compare_regex = "[A-Za-z]+[A-Za-z0-9_]*[.][A-za-z]+[A-za-z_]*([ ]+((=)|(<>)){1}[ ]+([0-9]*[.])?[0-9]+){1}"; 
@@ -81,11 +74,23 @@ ConditionEvaluation* AchieveCondition::evaluate_condition(vector<SemanticMapping
     @ Input: The string representing the achieve condition
     @ Output: The generated achieve condition
 */ 
-AchieveCondition parse_achieve_condition(string cond) {
+AchieveCondition parse_achieve_condition(string cond, bool universal) {
     AchieveCondition a;
-    if(cond.find("forAll") != string::npos) {
+    if(universal) {
+        if(cond.find("forAll") == string::npos) {
+            string universal_achieve_condition_error = "Universal achieve condition must contain forAll statement!";
+
+            throw std::runtime_error(universal_achieve_condition_error);
+        }
+
         a.has_forAll_expr = true;
     } else {
+        if(cond.find("forAll") != string::npos) {
+            string achieve_condition_error = "Non-universal achieve condition must not contain forAll statement!";
+
+            throw std::runtime_error(achieve_condition_error);
+        }
+
         a.has_forAll_expr = false;
     }
 

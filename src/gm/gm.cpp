@@ -301,7 +301,12 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
     if(v.custom_props.find(goal_type_prop) != v.custom_props.end()) {
         if(std::get<string>(v.custom_props[goal_type_prop]) == achieve_goal_type) {
             AchieveCondition a;
-            a = parse_achieve_condition(custom_props[achieve_condition_prop]);
+
+            if(custom_props.find(universal_achieve_condition_prop) != custom_props.end()) {
+                a = parse_achieve_condition(custom_props[universal_achieve_condition_prop], true);
+            } else if(custom_props.find(achieve_condition_prop) != custom_props.end()) {
+                a = parse_achieve_condition(custom_props[achieve_condition_prop], false);
+            }
             v.custom_props[achieve_condition_prop] = a;
             /*if(custom_props.find(failure_condition_prop) != custom_props.end()) {
                 FailureCondition f;
