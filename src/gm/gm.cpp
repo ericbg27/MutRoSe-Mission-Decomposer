@@ -245,7 +245,13 @@ void analyze_custom_props(map<string,string> custom_props, VertexData& v) {
                 v.custom_props[cp_it->first] = parse_vars(cp_it->second);
             }
         } else if(cp_it->first == context_prop) {
-            Context c = parse_context_condition(cp_it->second);
+            v.custom_props[cp_it->first] = cp_it->second;
+        } else if(cp_it->first == context_trigger_prop) {
+            Context c = parse_context_condition(cp_it->second, context_trigger_prop);
+
+            v.custom_props[cp_it->first] = c;
+        } else if(cp_it->first == context_condition_prop) {
+            Context c = parse_context_condition(cp_it->second, context_condition_prop);
             
             v.custom_props[cp_it->first] = c;
         } else if(cp_it->first == location_prop) {

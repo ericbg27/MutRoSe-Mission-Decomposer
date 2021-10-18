@@ -1051,7 +1051,13 @@ void FileKnowledgeMissionDecomposer::recursive_at_graph_build(int parent, genera
 
 			gm_node = gm[gm_node_id];
 			if(gm_node.custom_props.find(context_prop) != gm_node.custom_props.end()) {
-				context = std::get<Context>(gm_node.custom_props[context_prop]);
+				string context_type = std::get<string>(gm_node.custom_props[context_prop]);
+
+				if(context_type == context_trigger_prop) {
+					context = std::get<Context>(gm_node.custom_props[context_trigger_prop]);
+				} else if(context_type == context_condition_prop) {
+					context = std::get<Context>(gm_node.custom_props[context_condition_prop]);
+				}
 
 				if(context.get_context_type() == condition_context_type) {
 					map<string, variant<pair<string,string>,pair<vector<string>,string>>> vars_map = rannot->var_maps;

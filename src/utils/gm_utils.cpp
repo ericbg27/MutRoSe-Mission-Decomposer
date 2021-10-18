@@ -164,21 +164,17 @@ QueriedProperty parse_select_expr(string expr) {
     return q;
 }
 
-Context parse_context_condition(string condition) {
+Context parse_context_condition(string condition, string context_type) {
     Context c;
-    size_t pos1 = condition.find('\"');
-    size_t pos2 = condition.find('\"',pos1+1);
-    string cond = condition.substr(pos1+1,pos2); 
 
-    string aux = condition;
-    std::transform(aux.begin(),aux.end(),aux.begin(),::tolower);  
-    if(aux.find(trigger_context_type) != string::npos) {
+    string cond = condition;
+    if(context_type == context_trigger_prop) {
         c.set_context_type(trigger_context_type);
-        c.set_condition(cond.substr(0,cond.size()-1));
-    } else if(aux.find(condition_context_type) != string::npos) {
+        c.set_condition(cond);
+    } else if(context_type == context_condition_prop) {
         c.set_context_type(condition_context_type);
 
-        parse_condition(cond.substr(0,cond.size()-1).c_str());
+        parse_condition(cond.c_str());
 
         c.set_condition(parsed_condition->get_condition());
         c.set_is_and(parsed_condition->get_is_and());

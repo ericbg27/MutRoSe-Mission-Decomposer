@@ -15,7 +15,9 @@
 const std::string goal_type_prop = "GoalType";
 const std::string controls_prop = "Controls";
 const std::string monitors_prop = "Monitors";
-const std::string context_prop = "CreationCondition";
+const std::string context_prop = "Context";
+const std::string context_trigger_prop = "Trigger";
+const std::string context_condition_prop = "Condition";
 const std::string location_prop = "Location";
 const std::string robot_number_prop = "RobotNumber";
 const std::string params_prop = "Params";
@@ -82,7 +84,7 @@ AchieveCondition parse_achieve_condition(std::string cond);
 
 QueriedProperty parse_select_expr(std::string expr);
 
-Context parse_context_condition(std::string condition);
+Context parse_context_condition(std::string condition, std::string context_type);
 
 std::string get_node_name(std::string node_text);
 std::string parse_gm_var_type(std::string var_type);
