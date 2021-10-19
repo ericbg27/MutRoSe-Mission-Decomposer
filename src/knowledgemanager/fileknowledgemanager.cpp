@@ -21,16 +21,26 @@ using namespace std;
 		   -> When (and if) more types are allowed we need to delegate the task of opening these files to functions
 		    passing the configuration file as a function parameter
 */ 
-void FileKnowledgeManager::construct_knowledge_base(map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> cfg) {
-	string db_file_type = std::get<map<string,string>>(cfg[db_name])["file_type"];
-    string unique_id = std::get<map<string,string>>(cfg[db_name])["unique_id"];
+void FileKnowledgeManager::construct_knowledge_base(map<string, variant<map<string,string>, vector<string>, vector<SemanticMapping>, vector<VariableMapping>, pair<string,string>>> cfg, string db_file_name) {
     string db_root = "";
+
+    string db_file_type;
+    if(db_file_name.find(".") != std::string::npos) {
+        size_t separator_pos = db_file_name.rfind(".");
+
+        db_file_type = db_file_name.substr(separator_pos+1,db_file_name.size()-separator_pos-1);
+        std::transform(db_file_type.begin(),db_file_type.end(),db_file_type.begin(),::toupper);
+    } else {
+        db_file_type = "XML";
+    }
         
     if(db_file_type == "XML") {
         pt::ptree db_knowledge;
-        pt::read_xml(std::get<map<string,string>>(cfg[db_name])["path"], db_knowledge);
-                    
-        db_root = std::get<map<string,string>>(cfg[db_name])["xml_root"];
+        pt::read_xml(db_file_name, db_knowledge);
+
+        if(std::get<map<string,string>>(cfg[db_name]).find("xml_root") != std::get<map<string,string>>(cfg[db_name]).end()) {  
+            db_root = std::get<map<string,string>>(cfg[db_name])["xml_root"];
+        }
 
         if(db_name == "world_db") {
             XMLKnowledgeBase wk(db_name, db_knowledge, db_root, unique_id);

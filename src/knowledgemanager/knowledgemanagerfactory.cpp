@@ -9,7 +9,12 @@ shared_ptr<KnowledgeManager> KnowledgeManagerFactory::create_knowledge_manager(m
         throw std::runtime_error(unknown_knowledge_name);
     }
     
-    string db_type = std::get<map<string,string>>(cfg[db_name])["type"];
+    string db_type;
+    if(std::get<map<string,string>>(cfg[db_name]).find("type") != std::get<map<string,string>>(cfg[db_name]).end()) {
+        db_type = std::get<map<string,string>>(cfg[db_name])["type"];
+    } else {
+        db_type = "FILE";
+    }
 
     string knowledge_unique_id = "name";
     if(db_name == "world_db") {

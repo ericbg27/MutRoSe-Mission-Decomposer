@@ -88,15 +88,17 @@ int main(int argc, char** argv) {
 	int dfile = -1;
 	int jsonfile = -1;
 	int configfile = -1;
+	int knowledgefile = -1;
 	vector<int> options;
 
 	for (int i = optind; i < argc; i++) {
 		if (dfile == -1) dfile = i;
 		else if (jsonfile == -1) jsonfile = i;
 		else if (configfile == -1) configfile = i;
+		else if (knowledgefile == -1) knowledgefile = i;
 	}
 
-	for(int i = configfile+1; i < argc; i++) {
+	for(int i = knowledgefile+1; i < argc; i++) {
 		options.push_back(i);
 	}
 
@@ -141,12 +143,15 @@ int main(int argc, char** argv) {
 		cout << "You need to provide a configuration file as input." << endl;
 		return 1;
 	}
+	if(knowledgefile == -1) {
+		cout << "You need to provide a knowledge file as input" << endl;
+		return 1;
+	}
 
 	FILE *domain_file = fopen(argv[dfile], "r");
 	FILE *json_file = fopen(argv[jsonfile], "r");
-	FILE *config_file;
-
-	config_file = fopen(argv[configfile], "r");
+	FILE *config_file = fopen(argv[configfile], "r");
+	FILE *knowledge_file = fopen(argv[knowledgefile], "r");
 
 	if (!domain_file) {
 		cout << "I can't open " << argv[dfile] << "!" << endl;
@@ -158,6 +163,10 @@ int main(int argc, char** argv) {
 	}
 	if(!config_file) {
 		cout << "I can't open " << argv[configfile] << "!" << endl;
+		return 2;
+	}
+	if(!knowledge_file) {
+		cout << "I can't open " << argv[knowledgefile] << "!" << endl;
 		return 2;
 	}
 
@@ -188,7 +197,7 @@ int main(int argc, char** argv) {
 	//Generate Knowledge Bases and Knowledge Manager
 	KnowledgeManagerFactory k_manager_factory;
 	shared_ptr<KnowledgeManager> knowledge_manager = k_manager_factory.create_knowledge_manager(cfg, type_mapping, "world_db");
-	knowledge_manager->construct_knowledge_base(cfg);
+	knowledge_manager->construct_knowledge_base(cfg, argv[knowledgefile]);
 
 	//Parse HDDL Domain file
 	run_parser_on_file(domain_file, argv[dfile]);

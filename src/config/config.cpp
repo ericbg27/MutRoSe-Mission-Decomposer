@@ -61,9 +61,7 @@ void ConfigManager::parse_xml_configuration_file(string filename) {
                         file_type = file_type_attr.get();
                         std::transform(file_type.begin(),file_type.end(),file_type.begin(),::toupper);
                     } else {
-                        string undefined_file_type_error = "Database file type for [" + db + "] was not defined";
-
-                        throw std::runtime_error(undefined_file_type_error);
+                        file_type = "XML";
                     }
 
                     vector<string> undefined_attrs;
@@ -74,8 +72,6 @@ void ConfigManager::parse_xml_configuration_file(string filename) {
                         string db_path = "";
                         if(db_path_attr) {
                             db_path = db_path_attr.get();
-                        } else {
-                            undefined_attrs.push_back("path");
                         }
 
                         boost::optional<string> xml_root_attr = config.second.get_optional<string>("xml_root");
@@ -83,16 +79,6 @@ void ConfigManager::parse_xml_configuration_file(string filename) {
                         string xml_root = "";
                         if(xml_root_attr) {
                             xml_root = xml_root_attr.get();
-                        } else {
-                            string xml_root_missing_warning = "\n\n###################################################################################################################################\n"; 
-                            xml_root_missing_warning += "WARNING: attribute [xml_root] is missing for XML file type database [" + db + "]. Unexpected behaviors (or even errors) may happen!";
-                            xml_root_missing_warning += "\n###################################################################################################################################\n";
-
-                            std::cout << xml_root_missing_warning << std::endl;
-
-                            std::cout << "[PRESS ENTER TO CONTINUE OR CTRL+C TO END]" << std::endl;
-
-                            getchar();
                         }
 
                         boost::optional<string> unique_id_attr = config.second.get_optional<string>("unique_id");
@@ -341,9 +327,7 @@ void ConfigManager::parse_json_configuration_file(std::string filename) {
                         file_type = file_type_attr.get();
                         std::transform(file_type.begin(),file_type.end(),file_type.begin(),::toupper);
                     } else {
-                        string undefined_file_type_error = "Database file type for [" + db + "] was not defined";
-
-                        throw std::runtime_error(undefined_file_type_error);
+                        file_type = "XML";
                     }
 
                     vector<string> undefined_attrs;
@@ -353,8 +337,6 @@ void ConfigManager::parse_json_configuration_file(std::string filename) {
                         string db_path = "";
                         if(db_path_attr) {
                             db_path = db_path_attr.get();
-                        } else {
-                            undefined_attrs.push_back("path");
                         }
 
                         boost::optional<string> xml_root_attr = config.second.get_optional<string>("xml_root");
@@ -362,16 +344,6 @@ void ConfigManager::parse_json_configuration_file(std::string filename) {
                         string xml_root = "";
                         if(xml_root_attr) {
                             xml_root = xml_root_attr.get();
-                        } else {
-                            string xml_root_missing_warning = "\n\n###################################################################################################################################\n"; 
-                            xml_root_missing_warning += "WARNING: attribute [xml_root] is missing for XML file type database [" + db + "]. Unexpected behaviors (or even errors) may happen!";
-                            xml_root_missing_warning += "\n###################################################################################################################################\n";
-
-                            std::cout << xml_root_missing_warning << std::endl;
-
-                            std::cout << "[PRESS ENTER TO CONTINUE OR CTRL+C TO END]" << std::endl;
-
-                            getchar();
                         }
 
                         boost::optional<string> unique_id_attr = config.second.get_optional<string>("unique_id");
