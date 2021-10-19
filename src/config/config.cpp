@@ -197,6 +197,18 @@ void ConfigManager::parse_xml_configuration_file(string filename) {
             config_info["location_types"] = l_types;
         }
 
+        // Read Possible High-Level Agent Types
+        if(config.first == "agent_types") {
+            vector<string> a_types;
+
+            BOOST_FOREACH(pt::ptree::value_type& type, config.second) {
+                string type_name = type.second.get<string>("");
+                a_types.push_back(type_name);
+            }
+
+            config_info["agent_types"] = a_types;
+        }
+
         //Read Type Mappings
         if(config.first == "type_mapping") {
             map<string,string> type_mapping;
@@ -475,6 +487,18 @@ void ConfigManager::parse_json_configuration_file(std::string filename) {
             }
             
             config_info["location_types"] = l_types;
+        }
+
+        // Read Possible High-Level Agent Types
+        if(config.first == "agent_types") {
+            vector<string> a_types;
+
+            BOOST_FOREACH(pt::ptree::value_type& type, config.second) {
+                string type_name = type.second.get<string>("");
+                a_types.push_back(type_name);
+            }
+
+            config_info["agent_types"] = a_types;
         }
 
         //Read Type Mappings

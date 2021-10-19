@@ -182,7 +182,14 @@ int main(int argc, char** argv) {
 	vector<VariableMapping> variable_mapping = std::get<vector<VariableMapping>>(cfg["var_mapping"]);
 	vector<SemanticMapping> semantic_mapping = std::get<vector<SemanticMapping>>(cfg["semantic_mapping"]);
 	
-	vector<string> high_level_loc_types = std::get<vector<string>>(cfg["location_types"]);
+	vector<string> high_level_loc_types;
+	if(cfg.find("location_types") != cfg.end()) {
+		high_level_loc_types = std::get<vector<string>>(cfg["location_types"]);
+	}
+	vector<string> high_level_agent_types;
+	if(cfg.find("agent_types") != cfg.end()) {
+		high_level_agent_types = std::get<vector<string>>(cfg["agent_types"]);
+	}
 	vector<string> output_info = std::get<vector<string>>(cfg["output"]);
 
 	//Generate Knowledge Bases and Knowledge Manager
@@ -448,7 +455,7 @@ int main(int argc, char** argv) {
 			hddl_to_ocl_type_mapping[t_mapping_it->second] = t_mapping_it->first;
 		}
 
-		IHTNGenerator ihtn_gen(gm, mission_decomposition, verbose, pretty_print, init, init_functions, high_level_loc_types, hddl_to_ocl_type_mapping, decomposition_mapping);
+		IHTNGenerator ihtn_gen(gm, mission_decomposition, verbose, pretty_print, init, init_functions, high_level_loc_types, high_level_agent_types, hddl_to_ocl_type_mapping, decomposition_mapping);
 
 		ihtn_gen.generate_ihtn(semantic_mapping, gm_var_map, robot_related_sorts_map);
 	}

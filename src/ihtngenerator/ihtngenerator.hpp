@@ -53,10 +53,10 @@ class IHTNDFSVisitor : public boost::default_dfs_visitor {
 
 class IHTNGenerator {
     public:
-        IHTNGenerator(GMGraph gm, ATGraph mission_decomposition, bool verbose, bool pretty_print, std::vector<ground_literal> world_state, std::vector<std::pair<ground_literal,std::variant<int,float>>> world_state_functions, std::vector<std::string> high_level_loc_types, std::map<std::string,std::string> type_mappings, std::map<std::string,CompleteDecompositionPath> decomposition_path_mapping);
+        IHTNGenerator(GMGraph gm, ATGraph mission_decomposition, bool verbose, bool pretty_print, std::vector<ground_literal> world_state, std::vector<std::pair<ground_literal,std::variant<int,float>>> world_state_functions, std::vector<std::string> high_level_loc_types, std::vector<std::string> high_level_agent_types, std::map<std::string,std::string> type_mappings, std::map<std::string,CompleteDecompositionPath> decomposition_path_mapping);
 
         void generate_ihtn(std::vector<SemanticMapping> semantic_mapping, std::map<std::string, std::variant<std::pair<std::string,std::string>,std::pair<std::vector<std::string>,std::string>>> gm_var_map, std::map<std::string,std::set<std::string>> robot_related_sorts_map);
-        IHTN ihtn_create(std::vector<int> nodes, std::map<int,ATNode> nodes_map, std::set<std::string> agents, std::map<int,std::vector<std::string>> agents_map); 
+        IHTN ihtn_create(std::vector<int> nodes, std::map<int,ATNode> nodes_map, std::set<std::string> agents, std::map<int,std::vector<std::string>> agents_map, std::map<std::string,std::set<std::string>> robot_related_sorts_map); 
     
     private:
         GMGraph gm;
@@ -66,6 +66,7 @@ class IHTNGenerator {
         std::vector<ground_literal> world_state;
         std::vector<std::pair<ground_literal,std::variant<int,float>>> world_state_functions;
         std::vector<std::string> high_level_loc_types;
+        std::vector<std::string> high_level_agent_types;
         std::map<std::string,std::string> type_mappings;
         std::map<std::string,CompleteDecompositionPath> decomposition_path_mapping;
 };

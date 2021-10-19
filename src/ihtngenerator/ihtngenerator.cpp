@@ -7,7 +7,7 @@
 
 using namespace std;
 
-IHTNGenerator::IHTNGenerator(GMGraph gm, ATGraph mission_decomposition, bool verbose, bool pretty_print, vector<ground_literal> world_state, vector<pair<ground_literal,variant<int,float>>> world_state_functions, vector<string> high_level_loc_types, map<string,string> type_mappings, map<string,CompleteDecompositionPath> decomposition_path_mapping) {
+IHTNGenerator::IHTNGenerator(GMGraph gm, ATGraph mission_decomposition, bool verbose, bool pretty_print, vector<ground_literal> world_state, vector<pair<ground_literal,variant<int,float>>> world_state_functions, vector<string> high_level_loc_types, vector<string> high_level_agent_types, map<string,string> type_mappings, map<string,CompleteDecompositionPath> decomposition_path_mapping) {
     this->gm = gm;
     this->mission_decomposition = mission_decomposition;
     this->verbose = verbose;
@@ -15,6 +15,7 @@ IHTNGenerator::IHTNGenerator(GMGraph gm, ATGraph mission_decomposition, bool ver
     this->world_state = world_state;
     this->world_state_functions = world_state_functions;
     this->high_level_loc_types = high_level_loc_types;
+    this->high_level_agent_types = high_level_agent_types;
     this->type_mappings = type_mappings;
     this->decomposition_path_mapping = decomposition_path_mapping;
 }
@@ -148,14 +149,24 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
 
                     bool ground = (argument == "") ? false : true;
                     if(ground) {
-                        bool is_not_location_var = false;
+                        bool is_agent_var = false;
 
                         string mapped_arg_type = type_mappings[arg.second.second];
-                        if(std::find(high_level_loc_types.begin(), high_level_loc_types.end(), mapped_arg_type) == high_level_loc_types.end()) {
-                            is_not_location_var = true;
+                        if(std::find(high_level_agent_types.begin(), high_level_agent_types.end(), mapped_arg_type) != high_level_agent_types.end()) {
+                            is_agent_var = true;
+                        } else if(arg.second.second == hddl_robot_type || arg.second.second == hddl_robotteam_type) {
+                            is_agent_var = true;
+                        } else {
+                            for(auto r_sorts_it = robot_related_sorts_map.begin(); r_sorts_it != robot_related_sorts_map.end(); ++r_sorts_it) {
+                                if(r_sorts_it->second.find(arg.second.second) != r_sorts_it->second.end()) {
+                                    is_agent_var = true;
+
+                                    break;
+                                }
+                            }
                         }
 
-                        if(is_not_location_var) {
+                        if(is_agent_var) {
                             agents_set.insert(argument);
 
                             task_agents.push_back(argument);
@@ -168,16 +179,26 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
 
                     bool ground = (arguments.size() == 0) ? false : true;
 
-                    bool is_not_location_var = false;
+                    bool is_agent_var = false;
 
                     string mapped_arg_type = type_mappings[arg.second.second];
                     mapped_arg_type = mapped_arg_type.substr(mapped_arg_type.find("(")+1,mapped_arg_type.find(")")-mapped_arg_type.find("(")-1);
                     
-                    if(std::find(high_level_loc_types.begin(), high_level_loc_types.end(), mapped_arg_type) == high_level_loc_types.end()) {
-                        is_not_location_var = true;
+                    if(std::find(high_level_agent_types.begin(), high_level_agent_types.end(), mapped_arg_type) == high_level_agent_types.end()) {
+                        is_agent_var = true;
+                    } else if(arg.second.second == hddl_robot_type || arg.second.second == hddl_robotteam_type) {
+                            is_agent_var = true;
+                    } else {
+                        for(auto r_sorts_it = robot_related_sorts_map.begin(); r_sorts_it != robot_related_sorts_map.end(); ++r_sorts_it) {
+                            if(r_sorts_it->second.find(arg.second.second) != r_sorts_it->second.end()) {
+                                is_agent_var = true;
+
+                                break;
+                            }
+                        }
                     }
                     
-                    if(is_not_location_var) {
+                    if(is_agent_var) {
                         string vector_of_agents_error("Agent-related type container is not supported for iHTN generation");
 
                         throw std::runtime_error(vector_of_agents_error);
@@ -375,7 +396,7 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
 
         try {
             for(vector<int> ordering : decomposition_orderings) {
-                IHTN ordering_ihtn = ihtn_create(ordering, nodes_map, agents_set, agents_map);
+                IHTN ordering_ihtn = ihtn_create(ordering, nodes_map, agents_set, agents_map, robot_related_sorts_map);
 
                 auto indexmap = boost::get(boost::vertex_index, ordering_ihtn);
                 auto colormap = boost::make_vector_property_map<boost::default_color_type>(indexmap);
@@ -536,7 +557,7 @@ void IHTNGenerator::generate_ihtn(vector<SemanticMapping> semantic_mapping, map<
     @ Input 4: The map of agents to the decomposition nodes
     @ Output: The iHTN that was built
 */
-IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, set<string> agents, map<int,vector<string>> agents_map) {
+IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, set<string> agents, map<int,vector<string>> agents_map, map<string,set<string>> robot_related_sorts_map) {
     IHTN ihtn;
     
     TaskNode root;
@@ -640,15 +661,25 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
                         }
 
                         if(mapping_val.first != "") {
-                            bool is_not_location_var = false;
+                            bool is_agent_var = false;
                             
                             string mapped_arg_type = type_mappings[mapping_val.second];
 
-                            if(std::find(high_level_loc_types.begin(), high_level_loc_types.end(), mapped_arg_type) == high_level_loc_types.end()) {
-                                is_not_location_var = true;
+                            if(std::find(high_level_agent_types.begin(), high_level_agent_types.end(), mapped_arg_type) == high_level_agent_types.end()) {
+                                is_agent_var = true;
+                            } else if(mapping_val.second == hddl_robot_type || mapping_val.second == hddl_robotteam_type) {
+                                is_agent_var = true;
+                            } else {
+                                for(auto r_sorts_it = robot_related_sorts_map.begin(); r_sorts_it != robot_related_sorts_map.end(); ++r_sorts_it) {
+                                    if(r_sorts_it->second.find(mapping_val.second) != r_sorts_it->second.end()) {
+                                        is_agent_var = true;
+
+                                        break;
+                                    }
+                                }
                             }
 
-                            if(is_not_location_var) {
+                            if(is_agent_var) {
                                 method_agents.insert(mapping_val.first);
                             }
                         }
@@ -683,15 +714,25 @@ IHTN IHTNGenerator::ihtn_create(vector<int> nodes, map<int,ATNode> nodes_map, se
                             }
 
                             if(mapping_val.first != "") {
-                                bool is_not_location_var = false;
+                                bool is_agent_var = false;
                                 
                                 string mapped_arg_type = type_mappings[mapping_val.second];
 
-                                if(std::find(high_level_loc_types.begin(), high_level_loc_types.end(), mapped_arg_type) == high_level_loc_types.end()) {
-                                    is_not_location_var = true;
+                                if(std::find(high_level_agent_types.begin(), high_level_agent_types.end(), mapped_arg_type) == high_level_agent_types.end()) {
+                                    is_agent_var = true;
+                                } else if(mapping_val.second == hddl_robot_type || mapping_val.second == hddl_robotteam_type) {
+                                    is_agent_var = true;
+                                } else {
+                                    for(auto r_sorts_it = robot_related_sorts_map.begin(); r_sorts_it != robot_related_sorts_map.end(); ++r_sorts_it) {
+                                        if(r_sorts_it->second.find(mapping_val.second) != r_sorts_it->second.end()) {
+                                            is_agent_var = true;
+
+                                            break;
+                                        }
+                                    }
                                 }
 
-                                if(is_not_location_var) {
+                                if(is_agent_var) {
                                     task_agents.insert(mapping_val.first);
                                 }
                             }
