@@ -8,9 +8,35 @@
 #include "parsetree.hpp"
 
 //################################### CONSTANTS DECLARATION ###############################################
+const std::string world_db_config_key = "world_db";
+const std::string db_type_key = "type";
+const std::string db_file_type_key = "file_type";
+const std::string db_path_key = "path";
+const std::string db_xml_root_key = "xml_root";
+const std::string db_unique_id_key = "unique_id";
+
+const std::string output_config_key = "output";
+const std::string output_type_key = "output_type";
+const std::string output_file_path_key = "file_path";
+const std::string output_file_type_key = "file_type";
+
+const std::string location_types_config_key = "location_types";
+const std::string agent_types_config_key = "agent_types";
+
+const std::string type_mapping_config_key = "type_mapping";
+const std::string hddl_type_key = "hddl_type";
+const std::string ocl_type_key = "ocl_type";
+
+const std::string var_mapping_config_key = "var_mapping";
+const std::string task_id_key = "task_id";
+const std::string map_var_mapping_key = "map";
+const std::string gm_var_key = "gm_var";
+const std::string hddl_var_key = "hddl_var";
 
 //******************* Semantic Mapping related constants ***********************
-// XML keys
+const std::string semantic_mapping_config_key = "semantic_mapping";
+
+// XML/JSON keys
 const std::string type_key = "type";
 const std::string name_key = "name";
 const std::string relatesto_key = "relates_to";

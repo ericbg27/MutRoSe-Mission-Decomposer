@@ -177,20 +177,20 @@ int main(int argc, char** argv) {
 	ConfigManager cfg_manager;
 	cfg = cfg_manager.parse_configuration_file(argv[configfile]);
 
-	map<string,string> type_mapping = std::get<map<string,string>>(cfg["type_mapping"]);
+	map<string,string> type_mapping = std::get<map<string,string>>(cfg[type_mapping_config_key]);
 
-	vector<VariableMapping> variable_mapping = std::get<vector<VariableMapping>>(cfg["var_mapping"]);
-	vector<SemanticMapping> semantic_mapping = std::get<vector<SemanticMapping>>(cfg["semantic_mapping"]);
+	vector<VariableMapping> variable_mapping = std::get<vector<VariableMapping>>(cfg[var_mapping_config_key]);
+	vector<SemanticMapping> semantic_mapping = std::get<vector<SemanticMapping>>(cfg[semantic_mapping_config_key]);
 	
 	vector<string> high_level_loc_types;
-	if(cfg.find("location_types") != cfg.end()) {
-		high_level_loc_types = std::get<vector<string>>(cfg["location_types"]);
+	if(cfg.find(location_types_config_key) != cfg.end()) {
+		high_level_loc_types = std::get<vector<string>>(cfg[location_types_config_key]);
 	}
 	vector<string> high_level_agent_types;
-	if(cfg.find("agent_types") != cfg.end()) {
-		high_level_agent_types = std::get<vector<string>>(cfg["agent_types"]);
+	if(cfg.find(agent_types_config_key) != cfg.end()) {
+		high_level_agent_types = std::get<vector<string>>(cfg[agent_types_config_key]);
 	}
-	vector<string> output_info = std::get<vector<string>>(cfg["output"]);
+	vector<string> output_info = std::get<vector<string>>(cfg[output_config_key]);
 
 	//Generate Knowledge Bases and Knowledge Manager
 	KnowledgeManagerFactory k_manager_factory;
@@ -217,8 +217,8 @@ int main(int argc, char** argv) {
 	}
 
 	if(has_object_sort) {
-		aux.declared_sorts.push_back("robot");
-		aux.declared_sorts.push_back("robotteam");
+		aux.declared_sorts.push_back(hddl_robot_type);
+		aux.declared_sorts.push_back(hddl_robotteam_type);
 		added_native_sorts = true;
 
 		sort_definitions.erase(sort_definitions.begin()+cnt);
@@ -227,11 +227,11 @@ int main(int argc, char** argv) {
 
 	if(!added_native_sorts) {
 		sort_definition robot_sort;
-		robot_sort.declared_sorts.push_back("robot");
+		robot_sort.declared_sorts.push_back(hddl_robot_type);
 		robot_sort.has_parent_sort = false;
 
 		sort_definition robotteam_sort;
-		robotteam_sort.declared_sorts.push_back("robotteam");
+		robotteam_sort.declared_sorts.push_back(hddl_robotteam_type);
 		robotteam_sort.has_parent_sort = false;
 
 		sort_definitions.push_back(robot_sort);

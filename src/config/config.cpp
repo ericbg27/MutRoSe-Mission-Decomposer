@@ -38,10 +38,10 @@ void ConfigManager::parse_xml_configuration_file(string filename) {
 
     BOOST_FOREACH(pt::ptree::value_type& config, config_root.get_child("configuration")) {
         //Read Databases Info
-        vector<string> databases {"world_db"};
+        vector<string> databases {world_db_config_key};
         for(string db : databases) {
             if(config.first == db) {
-                boost::optional<string> db_type_attr = config.second.get_optional<string>("type");
+                boost::optional<string> db_type_attr = config.second.get_optional<string>(db_type_key);
 
                 string db_type = "";
                 if(db_type_attr) {
@@ -54,7 +54,7 @@ void ConfigManager::parse_xml_configuration_file(string filename) {
                 }
 
                 if(db_type == "FILE") { 
-                    boost::optional<string> file_type_attr = config.second.get_optional<string>("file_type");
+                    boost::optional<string> file_type_attr = config.second.get_optional<string>(db_file_type_key);
 
                     string file_type = "";
                     if(file_type_attr) {
@@ -69,16 +69,16 @@ void ConfigManager::parse_xml_configuration_file(string filename) {
                     vector<string> undefined_attrs;
                     if(file_type == "XML") {
                         
-                        boost::optional<string> db_path_attr = config.second.get_optional<string>("path");
+                        boost::optional<string> db_path_attr = config.second.get_optional<string>(db_path_key);
 
                         string db_path = "";
                         if(db_path_attr) {
                             db_path = db_path_attr.get();
                         } else {
-                            undefined_attrs.push_back("path");
+                            undefined_attrs.push_back(db_path_key);
                         }
 
-                        boost::optional<string> xml_root_attr = config.second.get_optional<string>("xml_root");
+                        boost::optional<string> xml_root_attr = config.second.get_optional<string>(db_xml_root_key);
 
                         string xml_root = "";
                         if(xml_root_attr) {
@@ -95,7 +95,7 @@ void ConfigManager::parse_xml_configuration_file(string filename) {
                             getchar();
                         }
 
-                        boost::optional<string> unique_id_attr = config.second.get_optional<string>("unique_id");
+                        boost::optional<string> unique_id_attr = config.second.get_optional<string>(db_unique_id_key);
 
                         string unique_id = "";
                         if(unique_id_attr) {
@@ -111,13 +111,13 @@ void ConfigManager::parse_xml_configuration_file(string filename) {
 
                         map<string,string> map_db;
 
-                        map_db["type"] = db_type;
-                        map_db["file_type"] = file_type;
-                        map_db["path"] = db_path;
-                        map_db["xml_root"] = xml_root;
+                        map_db[db_type_key] = db_type;
+                        map_db[db_file_type_key] = file_type;
+                        map_db[db_path_key] = db_path;
+                        map_db[db_xml_root_key] = xml_root;
 
-                        if(db == "world_db") {
-                            map_db["unique_id"] = unique_id;
+                        if(db == world_db_config_key) {
+                            map_db[db_unique_id_key] = unique_id;
                         }
 
                         config_info[db] = map_db;
@@ -155,15 +155,15 @@ void ConfigManager::parse_xml_configuration_file(string filename) {
             Read output file path and type
             -> FOR NOW THE ONLY ALLOWED TYPE IS XML
         */
-        if(config.first == "output") {
+        if(config.first == output_config_key) {
             vector<string> output_info;
 
-            string output_type = config.second.get<string>("output_type");
+            string output_type = config.second.get<string>(output_type_key);
             std::transform(output_type.begin(),output_type.end(),output_type.begin(),::toupper);
             output_info.push_back(output_type);
 
             if(output_type == "FILE") {
-                string file_type = config.second.get<string>("file_type");
+                string file_type = config.second.get<string>(output_file_type_key);
                 std::transform(file_type.begin(),file_type.end(),file_type.begin(),::toupper);
 
                 if(accepted_output_file_types.find(file_type) == accepted_output_file_types.end()) {
@@ -172,7 +172,7 @@ void ConfigManager::parse_xml_configuration_file(string filename) {
                     throw std::runtime_error(unsupported_file_type_error);
                 }
 
-                string output_path = config.second.get<string>("file_path");
+                string output_path = config.second.get<string>(output_file_path_key);
                 
                 output_info.push_back(output_path);
                 output_info.push_back(file_type);
@@ -182,11 +182,11 @@ void ConfigManager::parse_xml_configuration_file(string filename) {
                 throw std::runtime_error(unsupported_output_type_error);
             }
 
-            config_info["output"] = output_info;
+            config_info[output_config_key] = output_info;
         }
 
         //Read Possible High Level Location Types
-        if(config.first == "location_types") {
+        if(config.first == location_types_config_key) {
             vector<string> l_types;
 
             BOOST_FOREACH(pt::ptree::value_type& type, config.second) {
@@ -194,11 +194,11 @@ void ConfigManager::parse_xml_configuration_file(string filename) {
                 l_types.push_back(type_name);
             }
             
-            config_info["location_types"] = l_types;
+            config_info[location_types_config_key] = l_types;
         }
 
         // Read Possible High-Level Agent Types
-        if(config.first == "agent_types") {
+        if(config.first == agent_types_config_key) {
             vector<string> a_types;
 
             BOOST_FOREACH(pt::ptree::value_type& type, config.second) {
@@ -206,35 +206,35 @@ void ConfigManager::parse_xml_configuration_file(string filename) {
                 a_types.push_back(type_name);
             }
 
-            config_info["agent_types"] = a_types;
+            config_info[agent_types_config_key] = a_types;
         }
 
         //Read Type Mappings
-        if(config.first == "type_mapping") {
+        if(config.first == type_mapping_config_key) {
             map<string,string> type_mapping;
             BOOST_FOREACH(pt::ptree::value_type& mapping, config.second) {
-                string hddl_type = mapping.second.get<string>("hddl_type");
-                string actual_type = mapping.second.get<string>("ocl_type");
+                string hddl_type = mapping.second.get<string>(hddl_type_key);
+                string actual_type = mapping.second.get<string>(ocl_type_key);
 
                 type_mapping[actual_type] = hddl_type;
             }
 
-            config_info["type_mapping"] = type_mapping;
+            config_info[type_mapping_config_key] = type_mapping;
         }
 
         //Read Variable Mappings
-        if(config.first == "var_mapping") {
+        if(config.first == var_mapping_config_key) {
             vector<VariableMapping> var_mappings;
             BOOST_FOREACH(pt::ptree::value_type& mapping, config.second) { 
-                string task_id = mapping.second.get<string>("task_id");
+                string task_id = mapping.second.get<string>(task_id_key);
                 BOOST_FOREACH(pt::ptree::value_type& child, mapping.second) {
-                    if(child.first == "map") {
+                    if(child.first == map_var_mapping_key) {
                         string hddl_var, gm_var;
 
                         pt::ptree var_map_attrs = child.second.get_child("<xmlattr>");
 
-                        gm_var = var_map_attrs.get<string>("gm_var");
-                        hddl_var = var_map_attrs.get<string>("hddl_var");
+                        gm_var = var_map_attrs.get<string>(gm_var_key);
+                        hddl_var = var_map_attrs.get<string>(hddl_var_key);
 
                         VariableMapping v_map(task_id,hddl_var,gm_var);
 
@@ -243,11 +243,11 @@ void ConfigManager::parse_xml_configuration_file(string filename) {
                 }
             }
             
-            config_info["var_mapping"] = var_mappings;
+            config_info[var_mapping_config_key] = var_mappings;
         }
 
         //Read Semantic Mappings
-        if(config.first == "semantic_mapping") {
+        if(config.first == semantic_mapping_config_key) {
             vector<SemanticMapping> mappings;
             BOOST_FOREACH(pt::ptree::value_type& mapping, config.second) {
                 string mapping_type = mapping.second.get<string>(type_key);
@@ -319,7 +319,7 @@ void ConfigManager::parse_xml_configuration_file(string filename) {
                 mappings.push_back(sm);
             }
 
-            config_info["semantic_mapping"] = mappings;
+            config_info[semantic_mapping_config_key] = mappings;
         }
     }
 }
@@ -330,10 +330,10 @@ void ConfigManager::parse_json_configuration_file(std::string filename) {
 
     BOOST_FOREACH(pt::ptree::value_type& config, config_root) {
         //Read Databases Info
-        vector<string> databases {"world_db"};
+        vector<string> databases {world_db_config_key};
         for(string db : databases) {
             if(config.first == db) {
-                boost::optional<string> db_type_attr = config.second.get_optional<string>("type");
+                boost::optional<string> db_type_attr = config.second.get_optional<string>(db_type_key);
 
                 string db_type = "";
                 if(db_type_attr) {
@@ -346,7 +346,7 @@ void ConfigManager::parse_json_configuration_file(std::string filename) {
                 }
 
                 if(db_type == "FILE") { 
-                    boost::optional<string> file_type_attr = config.second.get_optional<string>("file_type");
+                    boost::optional<string> file_type_attr = config.second.get_optional<string>(db_file_type_key);
 
                     string file_type = "";
                     if(file_type_attr) {
@@ -360,16 +360,16 @@ void ConfigManager::parse_json_configuration_file(std::string filename) {
 
                     vector<string> undefined_attrs;
                     if(file_type == "XML") {
-                        boost::optional<string> db_path_attr = config.second.get_optional<string>("path");
+                        boost::optional<string> db_path_attr = config.second.get_optional<string>(db_path_key);
 
                         string db_path = "";
                         if(db_path_attr) {
                             db_path = db_path_attr.get();
                         } else {
-                            undefined_attrs.push_back("path");
+                            undefined_attrs.push_back(db_path_key);
                         }
 
-                        boost::optional<string> xml_root_attr = config.second.get_optional<string>("xml_root");
+                        boost::optional<string> xml_root_attr = config.second.get_optional<string>(db_xml_root_key);
 
                         string xml_root = "";
                         if(xml_root_attr) {
@@ -386,7 +386,7 @@ void ConfigManager::parse_json_configuration_file(std::string filename) {
                             getchar();
                         }
 
-                        boost::optional<string> unique_id_attr = config.second.get_optional<string>("unique_id");
+                        boost::optional<string> unique_id_attr = config.second.get_optional<string>(db_unique_id_key);
 
                         string unique_id = "";
                         if(unique_id_attr) {
@@ -402,13 +402,13 @@ void ConfigManager::parse_json_configuration_file(std::string filename) {
 
                         map<string,string> map_db;
 
-                        map_db["type"] = db_type;
-                        map_db["file_type"] = file_type;
-                        map_db["path"] = db_path;
-                        map_db["xml_root"] = xml_root;
+                        map_db[db_type_key] = db_type;
+                        map_db[db_file_type_key] = file_type;
+                        map_db[db_path_key] = db_path;
+                        map_db[db_xml_root_key] = xml_root;
 
-                        if(db == "world_db") {
-                            map_db["unique_id"] = unique_id;
+                        if(db == world_db_config_key) {
+                            map_db[db_unique_id_key] = unique_id;
                         }
 
                         config_info[db] = map_db;
@@ -447,15 +447,15 @@ void ConfigManager::parse_json_configuration_file(std::string filename) {
 
             -> FOR NOW THE ONLY ALLOWED TYPE IS XML
         */
-        if(config.first == "output") {
+        if(config.first == output_config_key) {
             vector<string> output_info;
 
-            string output_type = config.second.get<string>("output_type");
+            string output_type = config.second.get<string>(output_type_key);
             std::transform(output_type.begin(),output_type.end(),output_type.begin(),::toupper);
             output_info.push_back(output_type);
 
             if(output_type == "FILE") {
-                string file_type = config.second.get<string>("file_type");
+                string file_type = config.second.get<string>(output_file_type_key);
                 std::transform(file_type.begin(),file_type.end(),file_type.begin(),::toupper);
 
                 if(accepted_output_file_types.find(file_type) == accepted_output_file_types.end()) {
@@ -464,7 +464,7 @@ void ConfigManager::parse_json_configuration_file(std::string filename) {
                     throw std::runtime_error(unsupported_file_type_error);
                 }
 
-                string output_path = config.second.get<string>("file_path");
+                string output_path = config.second.get<string>(output_file_path_key);
                 
                 output_info.push_back(output_path);
                 output_info.push_back(file_type);
@@ -474,11 +474,11 @@ void ConfigManager::parse_json_configuration_file(std::string filename) {
                 throw std::runtime_error(unsupported_output_type_error);
             }
 
-            config_info["output"] = output_info;
+            config_info[output_config_key] = output_info;
         }
 
         //Read Possible High Level Location Types
-        if(config.first == "location_types") {
+        if(config.first == location_types_config_key) {
             vector<string> l_types;
 
             BOOST_FOREACH(pt::ptree::value_type& type, config.second) {
@@ -486,11 +486,11 @@ void ConfigManager::parse_json_configuration_file(std::string filename) {
                 l_types.push_back(type_name);
             }
             
-            config_info["location_types"] = l_types;
+            config_info[location_types_config_key] = l_types;
         }
 
         // Read Possible High-Level Agent Types
-        if(config.first == "agent_types") {
+        if(config.first == agent_types_config_key) {
             vector<string> a_types;
 
             BOOST_FOREACH(pt::ptree::value_type& type, config.second) {
@@ -498,34 +498,34 @@ void ConfigManager::parse_json_configuration_file(std::string filename) {
                 a_types.push_back(type_name);
             }
 
-            config_info["agent_types"] = a_types;
+            config_info[agent_types_config_key] = a_types;
         }
 
         //Read Type Mappings
-        if(config.first == "type_mapping") {
+        if(config.first == type_mapping_config_key) {
             map<string,string> type_mapping;
             BOOST_FOREACH(pt::ptree::value_type& mapping, config.second) {
-                string hddl_type = mapping.second.get<string>("hddl_type");
-                string actual_type = mapping.second.get<string>("ocl_type");
+                string hddl_type = mapping.second.get<string>(hddl_type_key);
+                string actual_type = mapping.second.get<string>(ocl_type_key);
 
                 type_mapping[actual_type] = hddl_type;
             }
 
-            config_info["type_mapping"] = type_mapping;
+            config_info[type_mapping_config_key] = type_mapping;
         }
 
         //Read Variable Mappings
-        if(config.first == "var_mapping") {
+        if(config.first == var_mapping_config_key) {
             vector<VariableMapping> var_mappings;
             BOOST_FOREACH(pt::ptree::value_type& mapping, config.second) { 
-                string task_id = mapping.second.get<string>("task_id");
-                pt::ptree map_ptree = mapping.second.get_child("map");
+                string task_id = mapping.second.get<string>(task_id_key);
+                pt::ptree map_ptree = mapping.second.get_child(map_var_mapping_key);
  
                 BOOST_FOREACH(pt::ptree::value_type& child, map_ptree) {
                     string hddl_var, gm_var;
 
-                    gm_var = child.second.get<string>("gm_var");
-                    hddl_var = child.second.get<string>("hddl_var");
+                    gm_var = child.second.get<string>(gm_var_key);
+                    hddl_var = child.second.get<string>(hddl_var_key);
 
                     VariableMapping v_map(task_id,hddl_var,gm_var);
 
@@ -533,11 +533,11 @@ void ConfigManager::parse_json_configuration_file(std::string filename) {
                 }
             }
             
-            config_info["var_mapping"] = var_mappings;
+            config_info[var_mapping_config_key] = var_mappings;
         }
 
         //Read Semantic Mappings
-        if(config.first == "semantic_mapping") {
+        if(config.first == semantic_mapping_config_key) {
             vector<SemanticMapping> mappings;
             BOOST_FOREACH(pt::ptree::value_type& mapping, config.second) {
                 string mapping_type = mapping.second.get<string>(type_key);
@@ -606,7 +606,7 @@ void ConfigManager::parse_json_configuration_file(std::string filename) {
                 mappings.push_back(sm);
             }
 
-            config_info["semantic_mapping"] = mappings;
+            config_info[semantic_mapping_config_key] = mappings;
         }
     }
 }
