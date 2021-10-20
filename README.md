@@ -18,7 +18,7 @@ If you want to compile it by yourself you will need to install:
 
  - [Boost C++ Library](https://www.boost.org/) (>= 1.74.0)
  - [GNU Bison Parser](https://www.gnu.org/software/bison/) (>= v3.7.5)
- - [Flex (Fast Lexical Analyzer Generator)](https://github.com/westes/flex)(>= v2.6.4)
+ - [Flex (Fast Lexical Analyzer Generator)](https://github.com/westes/flex) (>= v2.6.4)
  - C++17 (or greater)
 
 When all of the dependencies are installed, one simply go to the root folder of the source-code and run:
