@@ -1,4 +1,5 @@
-[![Build Status](https://app.travis-ci.com/ericbg27/MutRoSe-Mission-Decomposer.svg?branch=main)](https://app.travis-ci.com/ericbg27/MutRoSe-Mission-Decomposer)  [![License](https://img.shields.io/badge/License-Boost%201.0-lightblue.svg)](https://www.boost.org/LICENSE_1_0.txt) [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
+[![Build Status](https://app.travis-ci.com/ericbg27/MutRoSe-Mission-Decomposer.svg?branch=main)](https://app.travis-ci.com/ericbg27/MutRoSe-Mission-Decomposer)  [![License](https://img.shields.io/badge/License-Boost%201.0-lightblue.svg)](https://www.boost.org/LICENSE_1_0.txt) [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) ![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5584561.svg)
 
 
 # MutRoSe-Mission-Decomposer
